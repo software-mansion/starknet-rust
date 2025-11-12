@@ -1,7 +1,11 @@
 use starknet_types_core::felt::Felt;
 
+use starknet_crypto::{
+    blake2s_hash, blake2s_hash_many, blake2s_hash_single, poseidon_hash, poseidon_hash_many,
+    poseidon_hash_single, rfc6979_generate_k, sign, verify, Blake2Hasher, PoseidonHasher,
+    SignError, VerifyError,
+};
 pub use starknet_crypto::{pedersen_hash, ExtendedSignature, Signature};
-use starknet_crypto::{rfc6979_generate_k, sign, verify, SignError, VerifyError};
 
 mod errors {
     use core::fmt::{Display, Formatter, Result};
@@ -123,6 +127,97 @@ pub fn ecdsa_verify(
     }
 }
 
+/// A hash function that is used in Starknet.
+#[derive(Clone, Debug, Copy, Eq, PartialEq)]
+pub struct HashFunction {
+    inner: HashFunctionInner,
+}
+
+#[derive(Clone, Debug, Copy, Eq, PartialEq)]
+enum HashFunctionInner {
+    Poseidon,
+    Blake2s,
+}
+
+/// A stateful hasher that can be updated with messages and finalized to produce a hash.
+#[derive(Debug, Clone)]
+pub struct StatefulHasher {
+    inner: StatefulHasherInner,
+}
+
+#[derive(Debug, Clone)]
+enum StatefulHasherInner {
+    Poseidon(PoseidonHasher),
+    Blake2s(Blake2Hasher),
+}
+
+impl HashFunction {
+    /// Creates a new stateful hasher with chosen hash function.
+    pub fn stateful(&self) -> StatefulHasher {
+        let hasher = match &self.inner {
+            HashFunctionInner::Poseidon => StatefulHasherInner::Poseidon(PoseidonHasher::new()),
+            HashFunctionInner::Blake2s => StatefulHasherInner::Blake2s(Blake2Hasher::new()),
+        };
+        StatefulHasher { inner: hasher }
+    }
+
+    /// Creates a new Poseidon hash function.
+    pub fn poseidon() -> Self {
+        Self {
+            inner: HashFunctionInner::Poseidon,
+        }
+    }
+
+    /// Creates a new Blake2s hash function.
+    pub fn blake2s() -> Self {
+        Self {
+            inner: HashFunctionInner::Blake2s,
+        }
+    }
+
+    /// Computes the Starknet Poseidon hash of x and y with chosen hash function.
+    pub fn hash(&self, x: Felt, y: Felt) -> Felt {
+        match &self.inner {
+            HashFunctionInner::Poseidon => poseidon_hash(x, y),
+            HashFunctionInner::Blake2s => blake2s_hash(x, y),
+        }
+    }
+
+    /// Computes the Starknet hash of a single [`Felt`] with chosen hash function.
+    pub fn hash_single(&self, input: Felt) -> Felt {
+        match &self.inner {
+            HashFunctionInner::Poseidon => poseidon_hash_single(input),
+            HashFunctionInner::Blake2s => blake2s_hash_single(input),
+        }
+    }
+
+    /// Computes the Starknet hash of an arbitrary number of [`Felt`]s with chosen hash function.
+    pub fn hash_many(&self, inputs: &[Felt]) -> Felt {
+        match &self.inner {
+            HashFunctionInner::Poseidon => poseidon_hash_many(inputs),
+            HashFunctionInner::Blake2s => blake2s_hash_many(inputs),
+        }
+    }
+}
+
+impl StatefulHasher {
+    /// Absorbs message into the hash.
+    pub fn update(&mut self, msg: Felt) {
+        match &mut self.inner {
+            StatefulHasherInner::Poseidon(hasher) => hasher.update(msg),
+            StatefulHasherInner::Blake2s(hasher) => hasher.update(msg),
+        }
+    }
+
+    /// Finishes and returns hash.
+    pub fn finalize(self) -> Felt {
+        match self.inner {
+            StatefulHasherInner::Poseidon(hasher) => hasher.finalize(),
+            StatefulHasherInner::Blake2s(hasher) => hasher.finalize(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,5 +321,66 @@ mod tests {
             .unwrap();
 
         assert!(!ecdsa_verify(&public_key, &message_hash, &Signature { r, s }).unwrap());
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_hash_function_hash() {
+        let x = Felt::from_hex("0x1").unwrap();
+        let y = Felt::from_hex("0x2").unwrap();
+
+        assert_eq!(HashFunction::poseidon().hash(x, y), poseidon_hash(x, y));
+        assert_eq!(HashFunction::blake2s().hash(x, y), blake2s_hash(x, y));
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_hash_function_hash_single() {
+        let x = Felt::from_hex("0x1").unwrap();
+
+        assert_eq!(
+            HashFunction::poseidon().hash_single(x),
+            poseidon_hash_single(x)
+        );
+        assert_eq!(
+            HashFunction::blake2s().hash_single(x),
+            blake2s_hash_single(x)
+        );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_hash_function_hash_many() {
+        let many = vec![
+            Felt::from_hex("0x3").unwrap(),
+            Felt::from_hex("0x4").unwrap(),
+        ];
+
+        assert_eq!(
+            HashFunction::poseidon().hash_many(&many),
+            poseidon_hash_many(&many)
+        );
+
+        assert_eq!(
+            HashFunction::blake2s().hash_many(&many),
+            blake2s_hash_many(&many)
+        );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_hash_function_stateful() {
+        let x = Felt::from_hex("0x1").unwrap();
+        let y = Felt::from_hex("0x2").unwrap();
+
+        let mut poseidon_hasher = HashFunction::poseidon().stateful();
+        poseidon_hasher.update(x);
+        poseidon_hasher.update(y);
+        assert_eq!(poseidon_hasher.finalize(), poseidon_hash_many(&[x, y]));
+
+        let mut blake2s_hasher = HashFunction::blake2s().stateful();
+        blake2s_hasher.update(x);
+        blake2s_hasher.update(y);
+        assert_eq!(blake2s_hasher.finalize(), blake2s_hash_many(&[x, y]));
     }
 }

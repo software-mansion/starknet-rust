@@ -1,5 +1,5 @@
 use alloc::{format, string::*, vec::*};
-
+use semver::Version;
 use serde::{de::Visitor, ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json_pythonic::to_string_pythonic;
 use serde_with::serde_as;
@@ -545,6 +545,7 @@ pub use errors::{
     JsonError, PcOutOfRangeError,
 };
 
+use crate::crypto::HashFunction;
 #[cfg(feature = "std")]
 pub use errors::CompressProgramError;
 
@@ -640,20 +641,28 @@ impl FlattenedSierraClass {
 impl CompiledClass {
     /// Computes the class hash of the Cairo assembly (CASM) class.
     pub fn class_hash(&self) -> Result<Felt, ComputeClassHashError> {
-        let mut hasher = PoseidonHasher::new();
+        self.class_hash_with_hash_function(HashFunction::blake2s())
+    }
+
+    /// Computes the class hash of the Cairo assembly (CASM) class with given hash function
+    pub fn class_hash_with_hash_function(
+        &self,
+        hash_function: HashFunction,
+    ) -> Result<Felt, ComputeClassHashError> {
+        let mut hasher = hash_function.stateful();
         hasher.update(PREFIX_COMPILED_CLASS_V1);
 
         // Hashes entry points
         hasher.update(
-            Self::hash_entrypoints(&self.entry_points_by_type.external)
+            Self::hash_entrypoints(&self.entry_points_by_type.external, hash_function)
                 .map_err(|_| ComputeClassHashError::InvalidBuiltinName)?,
         );
         hasher.update(
-            Self::hash_entrypoints(&self.entry_points_by_type.l1_handler)
+            Self::hash_entrypoints(&self.entry_points_by_type.l1_handler, hash_function)
                 .map_err(|_| ComputeClassHashError::InvalidBuiltinName)?,
         );
         hasher.update(
-            Self::hash_entrypoints(&self.entry_points_by_type.constructor)
+            Self::hash_entrypoints(&self.entry_points_by_type.constructor, hash_function)
                 .map_err(|_| ComputeClassHashError::InvalidBuiltinName)?,
         );
 
@@ -691,10 +700,10 @@ impl CompiledClass {
                     }));
                 }
 
-                res.hash()
+                res.hash(hash_function)
             } else {
                 // Pre-Sierra-1.5.0 compiled classes
-                poseidon_hash_many(&self.bytecode)
+                hash_function.hash_many(&self.bytecode)
             },
         );
 
@@ -703,14 +712,15 @@ impl CompiledClass {
 
     fn hash_entrypoints(
         entrypoints: &[CompiledClassEntrypoint],
+        hash_function: HashFunction,
     ) -> Result<Felt, CairoShortStringToFeltError> {
-        let mut hasher = PoseidonHasher::new();
+        let mut hasher = hash_function.stateful();
 
         for entry in entrypoints {
             hasher.update(entry.selector);
             hasher.update(entry.offset.into());
 
-            let mut builtin_hasher = PoseidonHasher::new();
+            let mut builtin_hasher = hash_function.stateful();
             for builtin in &entry.builtins {
                 builtin_hasher.update(cairo_short_string_to_felt(builtin)?)
             }
@@ -809,27 +819,40 @@ impl CompiledClass {
     }
 }
 
+/// Creates a new hash function based on the given Starknet spec version.
+/// Returns `None` if the version string is invalid.
+///
+/// For versions >= 0.10.0, Blake2s is used. For older versions, Poseidon is used.
+pub fn hash_function_from_spec_version(ver: &Version) -> Option<HashFunction> {
+    // Compare only (major, minor, patch) tuple to ignore pre-release/build metadata.
+    if (ver.major, ver.minor, ver.patch) >= (0, 10, 0) {
+        Some(HashFunction::blake2s())
+    } else {
+        Some(HashFunction::poseidon())
+    }
+}
+
 impl BytecodeSegmentStructure {
-    fn hash(&self) -> Felt {
+    fn hash(&self, hash_function: HashFunction) -> Felt {
         match self {
-            Self::BytecodeLeaf(inner) => inner.hash(),
-            Self::BytecodeSegmentedNode(inner) => inner.hash(),
+            Self::BytecodeLeaf(inner) => inner.hash(hash_function),
+            Self::BytecodeSegmentedNode(inner) => inner.hash(hash_function),
         }
     }
 }
 
 impl BytecodeLeaf {
-    fn hash(&self) -> Felt {
-        poseidon_hash_many(&self.data)
+    fn hash(&self, hash_function: HashFunction) -> Felt {
+        hash_function.hash_many(&self.data)
     }
 }
 
 impl BytecodeSegmentedNode {
-    fn hash(&self) -> Felt {
-        let mut hasher = PoseidonHasher::new();
+    fn hash(&self, hash_function: HashFunction) -> Felt {
+        let mut hasher = hash_function.stateful();
         for node in &self.segments {
             hasher.update(node.segment_length.into());
-            hasher.update(node.inner_structure.hash());
+            hasher.update(node.inner_structure.hash(hash_function));
         }
         hasher.finalize() + Felt::ONE
     }
@@ -1013,7 +1036,8 @@ mod tests {
     #[derive(serde::Deserialize)]
     struct ContractHashes {
         sierra_class_hash: String,
-        compiled_class_hash: String,
+        compiled_class_hash_poseidon: String,
+        compiled_class_hash_blake2s: String,
     }
 
     #[test]
@@ -1062,8 +1086,21 @@ mod tests {
 
             // Class should be identical however it's deserialized
             assert_eq!(
-                direct_deser.class_hash().unwrap(),
-                via_contract_artifact.class_hash().unwrap()
+                direct_deser
+                    .class_hash_with_hash_function(HashFunction::poseidon())
+                    .unwrap(),
+                via_contract_artifact
+                    .class_hash_with_hash_function(HashFunction::poseidon())
+                    .unwrap()
+            );
+
+            assert_eq!(
+                direct_deser
+                    .class_hash_with_hash_function(HashFunction::blake2s())
+                    .unwrap(),
+                via_contract_artifact
+                    .class_hash_with_hash_function(HashFunction::blake2s())
+                    .unwrap()
             );
         }
     }
@@ -1146,12 +1183,51 @@ mod tests {
             ),
         ] {
             let compiled_class = serde_json::from_str::<CompiledClass>(raw_artifact).unwrap();
-            let computed_hash = compiled_class.class_hash().unwrap();
+            let computed_hash_poseidon = compiled_class
+                .class_hash_with_hash_function(HashFunction::poseidon())
+                .unwrap();
 
             let hashes: ContractHashes = serde_json::from_str(raw_hashes).unwrap();
-            let expected_hash = Felt::from_hex(&hashes.compiled_class_hash).unwrap();
+            let expected_hash = Felt::from_hex(&hashes.compiled_class_hash_poseidon).unwrap();
 
-            assert_eq!(computed_hash, expected_hash);
+            assert_eq!(computed_hash_poseidon, expected_hash);
+
+            let computed_hash_blake = compiled_class
+                .class_hash_with_hash_function(HashFunction::blake2s())
+                .unwrap();
+
+            let hashes: ContractHashes = serde_json::from_str(raw_hashes).unwrap();
+            let expected_hash_blake = Felt::from_hex(&hashes.compiled_class_hash_blake2s).unwrap();
+
+            assert_eq!(computed_hash_blake, expected_hash_blake);
         }
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_hash_function_from_spec_version() {
+        let version_09 = Version::parse("0.9.1").unwrap();
+        let hash_fn_v09 = hash_function_from_spec_version(&version_09).unwrap();
+        assert_eq!(hash_fn_v09, HashFunction::poseidon());
+
+        let version_10_rc = Version::parse("0.10.0-rc.1").unwrap();
+        let hash_fn_v10_rc = hash_function_from_spec_version(&version_10_rc).unwrap();
+        assert_eq!(hash_fn_v10_rc, HashFunction::blake2s());
+
+        let version_10 = Version::parse("0.10.0").unwrap();
+        let hash_fn_v10 = hash_function_from_spec_version(&version_10).unwrap();
+        assert_eq!(hash_fn_v10, HashFunction::blake2s());
+
+        let version_11 = Version::parse("0.11.2").unwrap();
+        let hash_fn_v11 = hash_function_from_spec_version(&version_11).unwrap();
+        assert_eq!(hash_fn_v11, HashFunction::blake2s());
+
+        let version_11_rc = Version::parse("0.11.0-rc.1").unwrap();
+        let hash_fn_v10_rc = hash_function_from_spec_version(&version_11_rc).unwrap();
+        assert_eq!(hash_fn_v10_rc, HashFunction::blake2s());
+
+        let version_1_0_rc = Version::parse("1.0.0-rc.3").unwrap();
+        let hash_fn_v1_0_rc = hash_function_from_spec_version(&version_1_0_rc).unwrap();
+        assert_eq!(hash_fn_v1_0_rc, HashFunction::blake2s());
     }
 }

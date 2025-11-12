@@ -262,7 +262,7 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + 
 async fn can_estimate_declare_v3_fee_inner<P: Provider + Send + Sync>(provider: P, address: &str) {
     #[derive(serde::Deserialize)]
     struct ContractHashes {
-        compiled_class_hash: String,
+        compiled_class_hash_poseidon: String,
     }
 
     let signer = LocalWallet::from(SigningKey::from_secret_scalar(
@@ -295,7 +295,7 @@ async fn can_estimate_declare_v3_fee_inner<P: Provider + Send + Sync>(provider: 
     let result = account
         .declare_v3(
             Arc::new(flattened_class),
-            Felt::from_hex(&hashes.compiled_class_hash).unwrap(),
+            Felt::from_hex(&hashes.compiled_class_hash_poseidon).unwrap(),
         )
         .estimate_fee()
         .await
@@ -312,7 +312,7 @@ async fn can_declare_cairo1_contract_v3_inner<P: Provider + Send + Sync>(
 
     #[derive(serde::Deserialize)]
     struct ContractHashes {
-        compiled_class_hash: String,
+        compiled_class_hash_poseidon: String,
     }
 
     let signer = LocalWallet::from(SigningKey::from_secret_scalar(
@@ -345,7 +345,7 @@ async fn can_declare_cairo1_contract_v3_inner<P: Provider + Send + Sync>(
     let result = account
         .declare_v3(
             Arc::new(flattened_class),
-            Felt::from_hex(&hashes.compiled_class_hash).unwrap(),
+            Felt::from_hex(&hashes.compiled_class_hash_poseidon).unwrap(),
         )
         .l1_gas(0)
         .l1_gas_price(1000000000000000)

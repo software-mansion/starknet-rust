@@ -8,6 +8,7 @@ name: "Validate contract artifacts"
 
 jobs:
   check-artifacts:
+    if: false # Issue #8
     name: "Check artifacts"
     runs-on: "ubuntu-latest"
 

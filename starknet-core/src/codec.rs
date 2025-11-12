@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, fmt::Formatter, format, string::*, vec::*};
 use core::{fmt::Display, mem::MaybeUninit};
-use starknet_crypto::{PedersenHasher, PoseidonHasher};
+use starknet_crypto::{Blake2Hasher, PedersenHasher, PoseidonHasher};
 
 use num_traits::ToPrimitive;
 
@@ -138,6 +138,12 @@ impl FeltWriter for PedersenHasher {
 }
 
 impl FeltWriter for PoseidonHasher {
+    fn write(&mut self, felt: Felt) {
+        self.update(felt);
+    }
+}
+
+impl FeltWriter for Blake2Hasher {
     fn write(&mut self, felt: Felt) {
         self.update(felt);
     }
