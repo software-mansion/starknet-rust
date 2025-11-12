@@ -3,7 +3,7 @@
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#29b359aeb373001f024553059cd242f1e91417d1
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#c09f4419f1dc3c7ecb489de035bfb55e186ba23e
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -879,6 +879,10 @@ pub struct EmittedEvent {
     /// The transaction that emitted the event
     #[serde_as(as = "UfeHex")]
     pub transaction_hash: Felt,
+    /// The index of the transaction in the block by which the event was emitted
+    pub transaction_index: u64,
+    /// The index of the event in the transaction by which it was emitted
+    pub event_index: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1566,6 +1570,21 @@ pub struct MessageFeeEstimate {
     pub overall_fee: u128,
 }
 
+/// Migrated classes.
+///
+/// The class hash and the new blake-migrated compiled class hash.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct MigratedCompiledClassItem {
+    /// The hash of the class
+    #[serde_as(as = "UfeHex")]
+    pub class_hash: Felt,
+    /// The blake-migrated cairo assembly hash corresponding to the class
+    #[serde_as(as = "UfeHex")]
+    pub compiled_class_hash: Felt,
+}
+
 /// Message from L1.
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1769,8 +1788,9 @@ pub struct PreConfirmedBlockWithTxs {
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct PreConfirmedStateUpdate {
     /// The previous global state root
-    #[serde_as(as = "UfeHex")]
-    pub old_root: Felt,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "Option<UfeHex>")]
+    pub old_root: Option<Felt>,
     /// State diff
     pub state_diff: StateDiff,
 }
@@ -1954,7 +1974,7 @@ pub enum StarknetError {
     FailedToReceiveTransaction,
     /// Contract not found
     ContractNotFound,
-    /// Requested entrypoint does not exist in the contract
+    /// Requested entry point does not exist in the contract
     EntrypointNotFound,
     /// Block not found
     BlockNotFound,
@@ -2107,7 +2127,7 @@ impl StarknetError {
         match self {
             Self::FailedToReceiveTransaction => "Failed to write transaction",
             Self::ContractNotFound => "Contract not found",
-            Self::EntrypointNotFound => "Requested entrypoint does not exist in the contract",
+            Self::EntrypointNotFound => "Requested entry point does not exist in the contract",
             Self::BlockNotFound => "Block not found",
             Self::InvalidTransactionIndex => "Invalid transaction index in a block",
             Self::ClassHashNotFound => "Class hash not found",
@@ -2165,6 +2185,9 @@ pub struct StateDiff {
     pub deprecated_declared_classes: Vec<Felt>,
     /// Declared classes
     pub declared_classes: Vec<DeclaredClassItem>,
+    /// Migrated compiled classes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub migrated_compiled_classes: Option<Vec<MigratedCompiledClassItem>>,
     /// Deployed contracts
     pub deployed_contracts: Vec<DeployedContractItem>,
     /// Replaced classes

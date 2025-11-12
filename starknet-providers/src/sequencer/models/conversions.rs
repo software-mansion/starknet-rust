@@ -457,15 +457,17 @@ impl TryFrom<StateUpdate> for core::MaybePreConfirmedStateUpdate {
     type Error = ConversionError;
 
     fn try_from(value: StateUpdate) -> Result<Self, Self::Error> {
-        match (value.block_hash, value.new_root) {
-            (Some(block_hash), Some(new_root)) => Ok(Self::Update(core::StateUpdate {
-                block_hash,
-                new_root,
-                old_root: value.old_root,
-                state_diff: value.state_diff.into(),
-            })),
-            (None, None) => Ok(Self::PreConfirmedUpdate(core::PreConfirmedStateUpdate {
-                old_root: value.old_root,
+        match (value.block_hash, value.new_root, value.old_root) {
+            (Some(block_hash), Some(new_root), Some(old_root)) => {
+                Ok(Self::Update(core::StateUpdate {
+                    block_hash,
+                    new_root,
+                    old_root,
+                    state_diff: value.state_diff.into(),
+                }))
+            }
+            (None, None, old_root) => Ok(Self::PreConfirmedUpdate(core::PreConfirmedStateUpdate {
+                old_root,
                 state_diff: value.state_diff.into(),
             })),
             _ => Err(ConversionError),
@@ -490,6 +492,9 @@ impl From<StateDiff> for core::StateDiff {
                 .into_iter()
                 .map(|item| item.into())
                 .collect(),
+            migrated_compiled_classes: value
+                .migrated_compiled_classes
+                .map(|classes| classes.into_iter().map(|item| item.into()).collect()),
             deployed_contracts: value
                 .deployed_contracts
                 .into_iter()
@@ -522,6 +527,15 @@ impl From<StorageDiff> for core::StorageEntry {
 }
 
 impl From<DeclaredContract> for core::DeclaredClassItem {
+    fn from(value: DeclaredContract) -> Self {
+        Self {
+            class_hash: value.class_hash,
+            compiled_class_hash: value.compiled_class_hash,
+        }
+    }
+}
+
+impl From<DeclaredContract> for core::MigratedCompiledClassItem {
     fn from(value: DeclaredContract) -> Self {
         Self {
             class_hash: value.class_hash,

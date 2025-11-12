@@ -1,6 +1,9 @@
 use serde::Deserialize;
 use serde_with::serde_as;
-use starknet_core::{serde::unsigned_field_element::UfeHex, types::Felt};
+use starknet_core::{
+    serde::unsigned_field_element::UfeHex,
+    types::{Felt, MigratedCompiledClassItem},
+};
 use std::collections::HashMap;
 
 use super::Block;
@@ -21,8 +24,8 @@ pub struct StateUpdate {
     pub block_hash: Option<Felt>,
     #[serde_as(as = "Option<UfeHex>")]
     pub new_root: Option<Felt>,
-    #[serde_as(as = "UfeHex")]
-    pub old_root: Felt,
+    #[serde_as(as = "Option<UfeHex>")]
+    pub old_root: Option<Felt>,
     pub state_diff: StateDiff,
 }
 
@@ -36,6 +39,7 @@ pub struct StateDiff {
     #[serde_as(as = "Vec<UfeHex>")]
     pub old_declared_contracts: Vec<Felt>,
     pub declared_classes: Vec<DeclaredContract>,
+    pub migrated_compiled_classes: Option<Vec<DeclaredContract>>,
     #[serde(default)]
     #[serde_as(as = "HashMap<UfeHex, UfeHex>")]
     pub nonces: HashMap<Felt, Felt>,
