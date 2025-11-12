@@ -2412,8 +2412,10 @@ dependencies = [
 name = "starknet-crypto"
 version = "0.8.1"
 dependencies = [
+ "blake2",
  "criterion",
  "crypto-bigint",
+ "digest",
  "hex",
  "hex-literal",
  "hmac",

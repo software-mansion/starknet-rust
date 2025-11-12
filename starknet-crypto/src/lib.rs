@@ -21,6 +21,7 @@
 #[cfg(all(not(feature = "std"), any(test, feature = "alloc")))]
 extern crate alloc;
 
+mod blake2s_hash;
 mod ecdsa;
 mod error;
 mod fe_utils;
@@ -38,6 +39,8 @@ pub use pedersen_hash::{pedersen_hash, PedersenHasher};
 pub use poseidon_hash::{
     poseidon_hash, poseidon_hash_many, poseidon_hash_single, poseidon_permute_comp, PoseidonHasher,
 };
+
+pub use blake2s_hash::{blake2s_hash, blake2s_hash_many, blake2s_hash_single, Blake2Hasher};
 
 pub use ecdsa::{get_public_key, recover, sign, verify, ExtendedSignature, Signature};
 
