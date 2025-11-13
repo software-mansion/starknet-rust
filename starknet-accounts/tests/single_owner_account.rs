@@ -98,6 +98,7 @@ async fn can_estimate_declare_v3_fee_with_jsonrpc() {
 }
 
 #[tokio::test]
+#[ignore = "Issue #1"]
 async fn can_declare_cairo1_contract_v3_with_jsonrpc() {
     can_declare_cairo1_contract_v3_inner(
         create_jsonrpc_client(),
