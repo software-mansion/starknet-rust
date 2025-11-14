@@ -639,21 +639,6 @@ impl FlattenedSierraClass {
 }
 
 impl CompiledClass {
-    /// Creates a new hash function based on the given Starknet spec version.
-    /// Returns `None` if the version string is invalid.
-    ///
-    /// For versions >= 0.10.0, Blake2s is used. For older versions, Poseidon is used.
-    pub fn hash_method_from_spec_version(version: &str) -> Option<HashFunction> {
-        let ver = Version::parse(version).ok()?;
-
-        // Compare only (major, minor, patch) tuple to ignore pre-release/build metadata.
-        if (ver.major, ver.minor, ver.patch) >= (0, 10, 0) {
-            Some(HashFunction::blake2s())
-        } else {
-            Some(HashFunction::poseidon())
-        }
-    }
-
     /// Computes the class hash of the Cairo assembly (CASM) class.
     pub fn class_hash(&self) -> Result<Felt, ComputeClassHashError> {
         self.class_hash_with_hash_function(HashFunction::blake2s())
@@ -831,6 +816,21 @@ impl CompiledClass {
                 ))
             }
         }
+    }
+}
+
+/// Creates a new hash function based on the given Starknet spec version.
+/// Returns `None` if the version string is invalid.
+///
+/// For versions >= 0.10.0, Blake2s is used. For older versions, Poseidon is used.
+pub fn hash_function_from_spec_version(version: &str) -> Option<HashFunction> {
+    let ver = Version::parse(version).ok()?;
+
+    // Compare only (major, minor, patch) tuple to ignore pre-release/build metadata.
+    if (ver.major, ver.minor, ver.patch) >= (0, 10, 0) {
+        Some(HashFunction::blake2s())
+    } else {
+        Some(HashFunction::poseidon())
     }
 }
 
@@ -1208,22 +1208,25 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_hash_function_from_spec_version() {
-        let hash_fn_v09 = CompiledClass::hash_method_from_spec_version("0.9.1").unwrap();
+        let hash_fn_v09 = hash_function_from_spec_version("0.9.1").unwrap();
         assert_eq!(hash_fn_v09, HashFunction::poseidon());
 
-        let hash_fn_v10_rc = CompiledClass::hash_method_from_spec_version("0.10.0-rc.1").unwrap();
+        let hash_fn_v10_rc = hash_function_from_spec_version("0.10.0-rc.1").unwrap();
         assert_eq!(hash_fn_v10_rc, HashFunction::blake2s());
 
-        let hash_fn_v10 = CompiledClass::hash_method_from_spec_version("0.10.0").unwrap();
+        let hash_fn_v10 = hash_function_from_spec_version("0.10.0").unwrap();
         assert_eq!(hash_fn_v10, HashFunction::blake2s());
 
-        let hash_fn_v11 = CompiledClass::hash_method_from_spec_version("0.11.2").unwrap();
+        let hash_fn_v11 = hash_function_from_spec_version("0.11.2").unwrap();
         assert_eq!(hash_fn_v11, HashFunction::blake2s());
 
-        let hash_fn_v10_rc = CompiledClass::hash_method_from_spec_version("0.11.0-rc.1").unwrap();
+        let hash_fn_v10_rc = hash_function_from_spec_version("0.11.0-rc.1").unwrap();
         assert_eq!(hash_fn_v10_rc, HashFunction::blake2s());
 
-        let hash_fn_invalid = CompiledClass::hash_method_from_spec_version("invalid.version");
+        let hash_fn_v1_0_rc = hash_function_from_spec_version("1.0.0-rc.3").unwrap();
+        assert_eq!(hash_fn_v1_0_rc, HashFunction::blake2s());
+
+        let hash_fn_invalid = hash_function_from_spec_version("invalid.version");
         assert!(hash_fn_invalid.is_none());
     }
 }

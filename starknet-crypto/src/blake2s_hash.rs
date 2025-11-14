@@ -2,7 +2,7 @@ use blake2::Blake2s256;
 use digest::Digest;
 use starknet_types_core::{felt::Felt, hash::Blake2Felt252};
 
-/// A stateful hasher for Starknet Poseidon hash.
+/// A stateful hasher for Starknet Blake2s hash.
 ///
 /// Using this hasher is the same as calling [`blake2s_hash_many`].
 #[derive(Debug, Default, Clone)]
@@ -64,6 +64,7 @@ pub fn blake2s_hash_many(msgs: &[Felt]) -> Felt {
     Blake2Felt252::encode_felt252_data_and_calc_blake_hash(msgs)
 }
 
+// TODO: (#10) Investigate if this can be not duplicated from the `starknet-types-core`
 // Adapted from https://github.com/starknet-io/types-rs/blob/734276638c8a6976ce69364acdbbb2b3c3463f07/crates/starknet-types-core/src/hash/blake2s.rs
 fn pack_256_le_to_felt(bytes: &[u8]) -> Felt {
     assert!(bytes.len() >= 32, "need at least 32 bytes to pack 8 words");
