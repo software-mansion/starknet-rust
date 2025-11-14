@@ -7,8 +7,8 @@ use starknet_core::{
         Felt, FunctionCall, Hash256, InvokeTransaction, MaybePreConfirmedBlockWithReceipts,
         MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
         MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds, ResourceBoundsMapping,
-        StarknetError, SyncStatusType, Transaction, TransactionFinalityStatus, TransactionReceipt,
-        TransactionStatus, TransactionTrace,
+        StarknetError, StorageKey, SyncStatusType, Transaction, TransactionFinalityStatus,
+        TransactionReceipt, TransactionStatus, TransactionTrace,
     },
     utils::{get_selector_from_name, get_storage_var_address},
 };
@@ -900,7 +900,7 @@ async fn jsonrpc_get_storage_proof() {
                     "04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
                 )
                 .unwrap(),
-                storage_keys: vec![Felt::ONE],
+                storage_keys: vec![StorageKey("1".to_string())],
             }],
         )
         .await

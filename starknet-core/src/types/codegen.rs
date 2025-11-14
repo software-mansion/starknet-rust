@@ -3,7 +3,7 @@
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#c09f4419f1dc3c7ecb489de035bfb55e186ba23e
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#f2450c746e7acb3b5984da316beb0d9bf74babe4
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -413,8 +413,7 @@ pub struct ContractStorageDiffItem {
 pub struct ContractStorageKeys {
     #[serde_as(as = "UfeHex")]
     pub contract_address: Felt,
-    #[serde_as(as = "Vec<UfeHex>")]
-    pub storage_keys: Vec<Felt>,
+    pub storage_keys: Vec<StorageKey>,
 }
 
 #[serde_as]
@@ -2227,6 +2226,12 @@ pub struct StorageEntry {
     pub value: Felt,
 }
 
+/// Storage key.
+///
+/// A storage key. Represented as up to 62 hex digits, 3 bits, and 5 leading zeroes.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct StorageKey(pub String);
+
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
@@ -2603,7 +2608,7 @@ pub struct GetStorageAtRequest {
     /// The address of the contract to read from
     pub contract_address: Felt,
     /// The key to the storage value for the given contract
-    pub key: Felt,
+    pub key: StorageKey,
     /// The hash of the requested block, or number (height) of the requested block, or a block tag
     pub block_id: BlockId,
 }
@@ -2612,7 +2617,7 @@ pub struct GetStorageAtRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetStorageAtRequestRef<'a> {
     pub contract_address: &'a Felt,
-    pub key: &'a Felt,
+    pub key: &'a StorageKey,
     pub block_id: &'a BlockId,
 }
 
@@ -7831,12 +7836,10 @@ impl Serialize for GetStorageAtRequest {
             pub value: &'a Felt,
         }
 
-        #[serde_as]
         #[derive(Serialize)]
         #[serde(transparent)]
         struct Field1<'a> {
-            #[serde_as(as = "UfeHex")]
-            pub value: &'a Felt,
+            pub value: &'a StorageKey,
         }
 
         #[derive(Serialize)]
@@ -7877,12 +7880,10 @@ impl Serialize for GetStorageAtRequestRef<'_> {
             pub value: &'a Felt,
         }
 
-        #[serde_as]
         #[derive(Serialize)]
         #[serde(transparent)]
         struct Field1<'a> {
-            #[serde_as(as = "UfeHex")]
-            pub value: &'a Felt,
+            pub value: &'a StorageKey,
         }
 
         #[derive(Serialize)]
@@ -7923,12 +7924,10 @@ impl<'de> Deserialize<'de> for GetStorageAtRequest {
             pub value: Felt,
         }
 
-        #[serde_as]
         #[derive(Deserialize)]
         #[serde(transparent)]
         struct Field1 {
-            #[serde_as(as = "UfeHex")]
-            pub value: Felt,
+            pub value: StorageKey,
         }
 
         #[derive(Deserialize)]

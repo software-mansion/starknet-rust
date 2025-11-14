@@ -48,7 +48,7 @@ pub use codegen::{
     ReorgData, ReplacedClassItem, ResourceBounds, ResourceBoundsMapping, ResourcePrice,
     ResultPageRequest, RevertedInvocation, SequencerTransactionStatus, SierraEntryPoint,
     SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError, StateDiff,
-    StateUpdate, StorageEntry, StorageProof, SubscriptionId, SyncStatus,
+    StateUpdate, StorageEntry, StorageKey, StorageProof, SubscriptionId, SyncStatus,
     TransactionExecutionErrorData, TransactionExecutionStatus, TransactionFinalityStatus,
     TransactionReceiptWithBlockInfo, TransactionTraceWithHash, TransactionWithL2Status,
     TransactionWithReceipt,
