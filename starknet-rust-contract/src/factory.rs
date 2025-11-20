@@ -195,7 +195,7 @@ impl<A> DeploymentV3<'_, A> {
 
     /// Returns a new [`DeploymentV3`] with the gas amount estimate multiplier.  The multiplier is
     /// used when the gas amount is not manually specified and must be fetched from a
-    /// [`Provider`](starknet_providers::Provider) instead.
+    /// [`Provider`](starknet_rust_providers::Provider) instead.
     pub fn gas_estimate_multiplier(self, gas_estimate_multiplier: f64) -> Self {
         Self {
             gas_estimate_multiplier,
@@ -205,7 +205,7 @@ impl<A> DeploymentV3<'_, A> {
 
     /// Returns a new [`DeploymentV3`] with the gas price estimate multiplier.  The multiplier is
     /// used when the gas price is not manually specified and must be fetched from a
-    /// [`Provider`](starknet_providers::Provider) instead.
+    /// [`Provider`](starknet_rust_providers::Provider) instead.
     pub fn gas_price_estimate_multiplier(self, gas_price_estimate_multiplier: f64) -> Self {
         Self {
             gas_price_estimate_multiplier,
@@ -248,13 +248,13 @@ impl<A> DeploymentV3<'_, A>
 where
     A: ConnectedAccount + Sync,
 {
-    /// Estimates transaction fees from a [`Provider`](starknet_providers::Provider).
+    /// Estimates transaction fees from a [`Provider`](starknet_rust_providers::Provider).
     pub async fn estimate_fee(&self) -> Result<FeeEstimate, AccountError<A::SignError>> {
         let execution: ExecutionV3<'_, A> = self.into();
         execution.estimate_fee().await
     }
 
-    /// Simulates the transaction from a [`Provider`](starknet_providers::Provider). Transaction
+    /// Simulates the transaction from a [`Provider`](starknet_rust_providers::Provider). Transaction
     /// validation and fee transfer can be skipped.
     pub async fn simulate(
         &self,
