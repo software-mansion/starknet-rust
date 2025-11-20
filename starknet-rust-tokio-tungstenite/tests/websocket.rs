@@ -8,7 +8,7 @@ use starknet_rust_tokio_tungstenite::{
 
 async fn create_stream() -> TungsteniteStream {
     TungsteniteStream::connect(
-        std::env::var("STARKNET_RPC").unwrap().replace("http://", "ws://"),
+        "wss://pathfinder.rpc.sepolia.starknet.rs/rpc/v0_9",
         Duration::from_secs(5),
     )
     .await
