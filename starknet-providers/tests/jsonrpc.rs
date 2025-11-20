@@ -35,6 +35,18 @@ async fn jsonrpc_spec_version() {
 }
 
 #[tokio::test]
+async fn jsonrpc_starknet_version() {
+    let rpc_client = create_jsonrpc_client();
+
+    let version = rpc_client
+        .starknet_version(BlockId::Tag(BlockTag::Latest))
+        .await
+        .unwrap();
+
+    assert_eq!(version, "0.14.0");
+}
+
+#[tokio::test]
 async fn jsonrpc_get_block_with_tx_hashes_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
