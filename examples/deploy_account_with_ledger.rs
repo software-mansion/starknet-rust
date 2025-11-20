@@ -8,7 +8,7 @@ use starknet::{
     },
     signers::LedgerSigner,
 };
-use starknet_accounts::OpenZeppelinAccountFactory;
+use starknet_rust_accounts::OpenZeppelinAccountFactory;
 
 #[tokio::main]
 async fn main() {

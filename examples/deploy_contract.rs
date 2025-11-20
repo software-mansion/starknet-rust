@@ -14,7 +14,7 @@ use starknet::{
     },
     signers::{LocalWallet, SigningKey},
 };
-use starknet_contract::UdcSelector;
+use starknet_rust_contract::UdcSelector;
 
 #[tokio::main]
 async fn main() {

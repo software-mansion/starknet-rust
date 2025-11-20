@@ -1,1 +1,1 @@
-../starknet-accounts/README.md
+../starknet-rust-accounts/README.md

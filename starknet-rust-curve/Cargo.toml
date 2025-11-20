@@ -1,0 +1,18 @@
+[package]
+name = "starknet-rust-curve"
+version = "0.6.0"
+authors = ["Software Mansion", "Jonathan LEI <me@xjonathan.dev>"]
+license = "MIT OR Apache-2.0"
+edition = "2021"
+readme = "README.md"
+repository = "https://github.com/xJonathanLEI/starknet-rs"
+description = """
+Stark curve
+"""
+keywords = ["ethereum", "starknet", "web3", "no_std"]
+
+[dependencies]
+starknet-types-core = { version = "0.2.0", default-features = false, features = ["curve"] }
+
+[lints]
+workspace = true
