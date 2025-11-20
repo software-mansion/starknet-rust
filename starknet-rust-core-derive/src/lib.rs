@@ -343,7 +343,7 @@ fn derive_core_path(input: &DeriveInput) -> proc_macro2::TokenStream {
         || {
             #[cfg(not(feature = "import_from_starknet"))]
             quote! {
-                ::starknet_core
+                ::starknet_rust_core
             }
 
             // This feature is enabled by the `starknet` crate. When using `starknet` it's assumed

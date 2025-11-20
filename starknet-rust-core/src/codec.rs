@@ -39,7 +39,7 @@ pub trait FeltWriter {
 /// # use starknet_rust_core::types::Felt;
 ///
 /// #[derive(Encode)]
-/// # #[starknet(core = "starknet_core")]
+/// # #[starknet(core = "starknet_rust_core")]
 /// struct CairoType {
 ///     a: u32,
 ///     b: Option<bool>,
@@ -74,7 +74,7 @@ pub trait Encode {
 /// # use starknet_rust_core::types::Felt;
 ///
 /// #[derive(Debug, PartialEq, Eq, Decode)]
-/// # #[starknet(core = "starknet_core")]
+/// # #[starknet(core = "starknet_rust_core")]
 /// struct CairoType {
 ///     a: u32,
 ///     b: Option<bool>,
