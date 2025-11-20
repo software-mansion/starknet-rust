@@ -74,7 +74,7 @@ mod ledger {
             Felt::from_hex_unchecked(
                 "0x01b0f8a1ab14f84573d8ed9eec0852a2099ff76ffb601686ffb14fac352b78b3",
             ),
-            starknet_core::chain_id::SEPOLIA,
+            starknet_rust_core::chain_id::SEPOLIA,
             ExecutionEncoding::New,
         );
 

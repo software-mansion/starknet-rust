@@ -133,5 +133,5 @@ const fn field_element_path() -> &'static str {
 
 #[cfg(not(feature = "use_imported_type"))]
 const fn field_element_path() -> &'static str {
-    "::starknet::core::types::Felt"
+    "::starknet_rust::core::types::Felt"
 }

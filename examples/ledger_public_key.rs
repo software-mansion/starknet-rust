@@ -1,4 +1,4 @@
-use starknet::signers::{LedgerSigner, Signer};
+use starknet_rust::signers::{LedgerSigner, Signer};
 
 #[tokio::main]
 async fn main() {

@@ -350,7 +350,7 @@ fn derive_core_path(input: &DeriveInput) -> proc_macro2::TokenStream {
             // that users would not have imported `starknet-core` directly.
             #[cfg(feature = "import_from_starknet")]
             quote! {
-                ::starknet::core
+                ::starknet_rust::core
             }
         },
         |id| id.parse().expect("unable to parse core crate path"),

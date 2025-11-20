@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use starknet::{
+use starknet_rust::{
     accounts::{ExecutionEncoding, SingleOwnerAccount},
     contract::ContractFactory,
     core::{

@@ -1,4 +1,4 @@
-use starknet::{
+use starknet_rust::{
     accounts::AccountFactory,
     core::chain_id,
     macros::felt,

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use starknet::core::types::ConfirmedBlockId;
+use starknet_rust::core::types::ConfirmedBlockId;
 use starknet_rust_tokio_tungstenite::{NewHeadsUpdate, TungsteniteStream};
 
 #[tokio::main]

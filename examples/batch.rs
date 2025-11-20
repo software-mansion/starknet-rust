@@ -1,4 +1,4 @@
-use starknet::providers::{
+use starknet_rust::providers::{
     jsonrpc::{HttpTransport, JsonRpcClient},
     Provider, ProviderRequestData, ProviderResponseData, Url,
 };

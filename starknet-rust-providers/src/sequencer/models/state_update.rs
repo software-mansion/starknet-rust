@@ -203,11 +203,11 @@ mod tests {
         );
 
         let state_update: StateUpdate = serde_json::from_str(raw).unwrap();
-        let converted: starknet_core::types::MaybePreConfirmedStateUpdate =
+        let converted: starknet_rust_core::types::MaybePreConfirmedStateUpdate =
             state_update.try_into().unwrap();
 
         match converted {
-            starknet_core::types::MaybePreConfirmedStateUpdate::PreConfirmedUpdate(update) => {
+            starknet_rust_core::types::MaybePreConfirmedStateUpdate::PreConfirmedUpdate(update) => {
                 assert!(update.old_root.is_none());
             }
             _ => panic!("Expected PreConfirmedUpdate variant"),
