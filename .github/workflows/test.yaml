@@ -67,7 +67,7 @@ jobs:
           timeout_minutes: 30
           max_attempts: 20
           retry_wait_seconds: 30
-          command: $env:STARKNET_RPC = ${{ secrets.NODE_URL }}; cargo test --all --target ${{ matrix.target }} --exclude starknet-rust-cxx
+          command: $env:STARKNET_RPC = "${{ secrets.NODE_URL }}"; cargo test --all --target ${{ matrix.target }} --exclude starknet-rust-cxx
 
   wasm-test:
     name: WASM tests
