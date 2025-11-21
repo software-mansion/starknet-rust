@@ -32,6 +32,11 @@ pub trait Provider {
     /// Returns the version of the Starknet JSON-RPC specification being used.
     async fn spec_version(&self) -> Result<String, ProviderError>;
 
+    /// Returns the version of the Starknet being used.
+    async fn starknet_version<B>(&self, block_id: B) -> Result<String, ProviderError>
+    where
+        B: AsRef<BlockId> + Send + Sync;
+
     /// Gets block information with transaction hashes given the block id.
     async fn get_block_with_tx_hashes<B>(
         &self,

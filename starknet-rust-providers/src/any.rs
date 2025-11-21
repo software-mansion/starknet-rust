@@ -48,6 +48,17 @@ impl Provider for AnyProvider {
         }
     }
 
+    /// Returns the version of the Starknet being used.
+    async fn starknet_version<B>(&self, block_id: B) -> Result<String, ProviderError>
+    where
+        B: AsRef<BlockId> + Send + Sync,
+    {
+        Ok(match self.get_block_with_tx_hashes(block_id).await? {
+            MaybePreConfirmedBlockWithTxHashes::Block(block) => block.starknet_version,
+            MaybePreConfirmedBlockWithTxHashes::PreConfirmedBlock(block) => block.starknet_version,
+        })
+    }
+
     async fn get_block_with_tx_hashes<B>(
         &self,
         block_id: B,
