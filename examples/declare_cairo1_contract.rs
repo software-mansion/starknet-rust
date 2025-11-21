@@ -12,10 +12,9 @@ use starknet_rust::{
     },
     signers::{LocalWallet, SigningKey},
 };
-use starknet_accounts::ConnectedAccount;
-use starknet_core::types::contract::CompiledClass;
-use starknet_core::types::{BlockId, BlockTag};
-use starknet_providers::Provider;
+use starknet_rust_accounts::ConnectedAccount;
+use starknet_rust_core::types::{contract::CompiledClass, BlockId, BlockTag};
+use starknet_rust_providers::Provider;
 
 #[tokio::main]
 async fn main() {
