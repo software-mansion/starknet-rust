@@ -1,6 +1,6 @@
 [package]
 name = "starknet-rust-contract"
-version = "0.16.0"
+version = "0.17.0-rc.0"
 authors = ["Software Mansion", "Jonathan LEI <me@xjonathan.dev>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
@@ -13,9 +13,9 @@ keywords = ["ethereum", "starknet", "web3"]
 exclude = ["test-data/**"]
 
 [dependencies]
-starknet-rust-core = { version = "0.16.0", path = "../starknet-rust-core" }
-starknet-rust-providers = { version = "0.16.0", path = "../starknet-rust-providers" }
-starknet-rust-accounts = { version = "0.16.0", path = "../starknet-rust-accounts" }
+starknet-rust-core = { version = "0.17.0-rc.0", path = "../starknet-rust-core" }
+starknet-rust-providers = { version = "0.17.0-rc.0", path = "../starknet-rust-providers" }
+starknet-rust-accounts = { version = "0.17.0-rc.0", path = "../starknet-rust-accounts" }
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0.96"
 serde_with = "3.9.0"
@@ -23,7 +23,7 @@ thiserror = "1.0.40"
 
 [dev-dependencies]
 rand = { version = "0.8.5", features=["std_rng"] }
-starknet-rust-signers = { version = "0.14.0", path = "../starknet-rust-signers" }
+starknet-rust-signers = { version = "0.15.0-rc.0", path = "../starknet-rust-signers" }
 tokio = { version = "1.27.0", features = ["full"] }
 url = "2.3.1"
 

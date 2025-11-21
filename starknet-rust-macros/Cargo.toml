@@ -1,6 +1,6 @@
 [package]
 name = "starknet-rust-macros"
-version = "0.2.5"
+version = "0.2.6-rc.0"
 authors = ["Software Mansion", "Jonathan LEI <me@xjonathan.dev>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
@@ -15,7 +15,7 @@ keywords = ["ethereum", "starknet", "web3"]
 proc-macro = true
 
 [dependencies]
-starknet-rust-core = { version = "0.16.0", path = "../starknet-rust-core" }
+starknet-rust-core = { version = "0.17.0-rc.0", path = "../starknet-rust-core" }
 syn = "2.0.15"
 
 [features]

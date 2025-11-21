@@ -19,6 +19,6 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-starknet-rust-crypto = { version = "0.8.1", path = "../../starknet-rust-crypto" }
+starknet-rust-crypto = { version = "0.9.0-rc.0", path = "../../starknet-rust-crypto" }
 console_error_panic_hook = { version = "0.1.7", optional = true }
 wasm-bindgen = "0.2.84"
