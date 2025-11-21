@@ -1,8 +1,8 @@
 on:
   push:
     tags:
-      - "starknet/v*.*.*"
-      - "starknet-*/v*.*.*"
+      - "starknet-rust/v*.*.*"
+      - "starknet-rust-*/v*.*.*"
 
 name: "Release"
 

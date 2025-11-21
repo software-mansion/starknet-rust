@@ -1,1 +1,1 @@
-../starknet-providers/README.md
+../starknet-rust-providers/README.md

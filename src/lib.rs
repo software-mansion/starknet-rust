@@ -46,30 +46,30 @@
 
 #[doc = include_str!("../assets/CORE_README.md")]
 pub mod core {
-    pub use starknet_core::*;
+    pub use starknet_rust_core::*;
 }
 
 #[doc = include_str!("../assets/PROVIDERS_README.md")]
 pub mod providers {
-    pub use starknet_providers::*;
+    pub use starknet_rust_providers::*;
 }
 
 #[doc = include_str!("../assets/CONTRACT_README.md")]
 pub mod contract {
-    pub use starknet_contract::*;
+    pub use starknet_rust_contract::*;
 }
 
 #[doc = include_str!("../assets/SIGNERS_README.md")]
 pub mod signers {
-    pub use starknet_signers::*;
+    pub use starknet_rust_signers::*;
 }
 
 #[doc = include_str!("../assets/ACCOUNTS_README.md")]
 pub mod accounts {
-    pub use starknet_accounts::*;
+    pub use starknet_rust_accounts::*;
 }
 
 #[doc = include_str!("../assets/MACROS_README.md")]
 pub mod macros {
-    pub use starknet_macros::*;
+    pub use starknet_rust_macros::*;
 }

@@ -1,8 +1,8 @@
-use starknet::providers::{
+use starknet_rust::providers::{
     jsonrpc::{HttpTransport, JsonRpcClient},
     Provider, ProviderRequestData, ProviderResponseData, Url,
 };
-use starknet_core::types::{
+use starknet_rust_core::types::{
     requests::{BlockNumberRequest, GetBlockTransactionCountRequest},
     BlockId,
 };

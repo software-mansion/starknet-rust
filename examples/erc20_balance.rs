@@ -1,4 +1,4 @@
-use starknet::{
+use starknet_rust::{
     core::types::{BlockId, BlockTag, Felt, FunctionCall},
     macros::{felt, selector},
     providers::{

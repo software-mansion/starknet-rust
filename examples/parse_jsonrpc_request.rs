@@ -1,4 +1,4 @@
-use starknet_providers::{jsonrpc::JsonRpcRequest, ProviderRequestData};
+use starknet_rust_providers::{jsonrpc::JsonRpcRequest, ProviderRequestData};
 
 fn main() {
     // Let's pretend this is the raw request body coming from HTTP

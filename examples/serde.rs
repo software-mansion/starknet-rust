@@ -1,4 +1,4 @@
-use starknet::{
+use starknet_rust::{
     core::{
         codec::{Decode, Encode},
         types::Felt,

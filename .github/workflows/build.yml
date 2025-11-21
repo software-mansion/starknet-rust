@@ -14,15 +14,15 @@ jobs:
     strategy:
       matrix:
         package:
-          - "starknet-curve"
-          - "starknet-crypto"
-          - "starknet-core"
-          - "starknet-providers"
-          - "starknet-signers"
-          - "starknet-accounts"
-          - "starknet-contract"
-          - "starknet-macros"
-          - "starknet"
+          - "starknet-rust-curve"
+          - "starknet-rust-crypto"
+          - "starknet-rust-core"
+          - "starknet-rust-providers"
+          - "starknet-rust-signers"
+          - "starknet-rust-accounts"
+          - "starknet-rust-contract"
+          - "starknet-rust-macros"
+          - "starknet-rust"
 
     steps:
       - name: "Checkout source code"
@@ -63,14 +63,14 @@ jobs:
           profile: "minimal"
           override: true
 
-      - name: "Build starknet-cxx example"
+      - name: "Build starknet-rust-cxx example"
         run: |
-          cd ./examples/starknet-cxx
+          cd ./examples/starknet-rust-cxx
           mkdir build
           cd ./build
           cmake -DCMAKE_BUILD_TYPE=Release ..
           make
 
-      - name: "Run starknet-cxx example"
+      - name: "Run starknet-rust-cxx example"
         run: |
-          ./examples/starknet-cxx/build/main
+          ./examples/starknet-rust-cxx/build/main

@@ -1,4 +1,4 @@
-use starknet::{
+use starknet_rust::{
     core::types::{BlockId, BlockTag},
     providers::{
         jsonrpc::{HttpTransport, JsonRpcClient},

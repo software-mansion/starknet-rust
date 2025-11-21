@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use starknet::{
+use starknet_rust::{
     accounts::{ExecutionEncoding, SingleOwnerAccount},
     contract::ContractFactory,
     core::{
@@ -14,7 +14,7 @@ use starknet::{
     },
     signers::{LocalWallet, SigningKey},
 };
-use starknet_contract::UdcSelector;
+use starknet_rust_contract::UdcSelector;
 
 #[tokio::main]
 async fn main() {

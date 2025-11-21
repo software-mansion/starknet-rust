@@ -1,0 +1,36 @@
+[package]
+name = "starknet-rust-accounts"
+version = "0.16.0"
+authors = ["Software Mansion", "Jonathan LEI <me@xjonathan.dev>"]
+license = "MIT OR Apache-2.0"
+edition = "2021"
+readme = "README.md"
+repository = "https://github.com/software-mansion-labs/starknet-rs"
+description = """
+Types for handling Starknet account abstraction
+"""
+keywords = ["ethereum", "starknet", "web3"]
+exclude = ["test-data/**"]
+
+[dependencies]
+starknet-rust-core = { version = "0.16.0", path = "../starknet-rust-core" }
+starknet-rust-crypto = { version = "0.8.1", path = "../starknet-rust-crypto" }
+starknet-rust-providers = { version = "0.16.0", path = "../starknet-rust-providers" }
+starknet-rust-signers = { version = "0.14.0", path = "../starknet-rust-signers" }
+async-trait = "0.1.68"
+auto_impl = "1.0.1"
+thiserror = "1.0.40"
+
+[dev-dependencies]
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"
+tokio = { version = "1.27.0", features = ["full"] }
+url = "2.3.1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+coins-ledger = { version = "0.12.0", default-features = false }
+speculos-client = "0.1.2"
+starknet-rust-signers = { version = "0.14.0", path = "../starknet-rust-signers", features = ["ledger"] }
+
+[lints]
+workspace = true

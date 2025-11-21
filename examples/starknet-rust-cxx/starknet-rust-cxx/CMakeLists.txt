@@ -1,0 +1,2 @@
+corrosion_import_crate(MANIFEST_PATH Cargo.toml)
+corrosion_add_cxxbridge(starknet_rust_cxx_bridge CRATE starknet_rust_cxx MANIFEST_PATH starknet_rust_cxx FILES lib.rs)

@@ -1,4 +1,4 @@
-use starknet::{
+use starknet_rust::{
     core::{
         types::Felt,
         utils::{cairo_short_string_to_felt, get_selector_from_name},

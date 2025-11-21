@@ -1,4 +1,4 @@
-use starknet::{core::types::TypedData, macros::felt};
+use starknet_rust::{core::types::TypedData, macros::felt};
 
 fn main() {
     let raw = r#"{

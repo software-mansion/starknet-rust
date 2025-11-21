@@ -1,1 +1,1 @@
-../starknet-signers/README.md
+../starknet-rust-signers/README.md
