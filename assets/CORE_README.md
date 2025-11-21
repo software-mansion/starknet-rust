@@ -1,1 +1,1 @@
-../starknet-core/README.md
+../starknet-rust-core/README.md

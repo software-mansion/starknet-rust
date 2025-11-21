@@ -2320,25 +2320,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "starknet"
+name = "starknet-rust"
 version = "0.17.0"
 dependencies = [
  "serde_json",
- "starknet-accounts",
- "starknet-contract",
- "starknet-core",
- "starknet-core-derive",
- "starknet-crypto",
- "starknet-macros",
- "starknet-providers",
- "starknet-signers",
- "starknet-tokio-tungstenite",
+ "starknet-rust-accounts",
+ "starknet-rust-contract",
+ "starknet-rust-core",
+ "starknet-rust-core-derive",
+ "starknet-rust-crypto",
+ "starknet-rust-macros",
+ "starknet-rust-providers",
+ "starknet-rust-signers",
+ "starknet-rust-tokio-tungstenite",
  "tokio",
  "url",
 ]
 
 [[package]]
-name = "starknet-accounts"
+name = "starknet-rust-accounts"
 version = "0.16.0"
 dependencies = [
  "async-trait",
@@ -2347,34 +2347,34 @@ dependencies = [
  "serde",
  "serde_json",
  "speculos-client",
- "starknet-core",
- "starknet-crypto",
- "starknet-providers",
- "starknet-signers",
+ "starknet-rust-core",
+ "starknet-rust-crypto",
+ "starknet-rust-providers",
+ "starknet-rust-signers",
  "thiserror 1.0.63",
  "tokio",
  "url",
 ]
 
 [[package]]
-name = "starknet-contract"
+name = "starknet-rust-contract"
 version = "0.16.0"
 dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
  "serde_with",
- "starknet-accounts",
- "starknet-core",
- "starknet-providers",
- "starknet-signers",
+ "starknet-rust-accounts",
+ "starknet-rust-core",
+ "starknet-rust-providers",
+ "starknet-rust-signers",
  "thiserror 1.0.63",
  "tokio",
  "url",
 ]
 
 [[package]]
-name = "starknet-core"
+name = "starknet-rust-core"
 version = "0.16.0"
 dependencies = [
  "base64 0.21.7",
@@ -2393,15 +2393,15 @@ dependencies = [
  "serde_json_pythonic",
  "serde_with",
  "sha3",
- "starknet-core",
- "starknet-core-derive",
- "starknet-crypto",
+ "starknet-rust-core",
+ "starknet-rust-core-derive",
+ "starknet-rust-crypto",
  "starknet-types-core",
  "wasm-bindgen-test",
 ]
 
 [[package]]
-name = "starknet-core-derive"
+name = "starknet-rust-core-derive"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
@@ -2410,7 +2410,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "starknet-crypto"
+name = "starknet-rust-crypto"
 version = "0.8.1"
 dependencies = [
  "blake2",
@@ -2427,7 +2427,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "starknet-curve",
+ "starknet-rust-curve",
  "starknet-types-core",
  "test-case",
  "wasm-bindgen-test",
@@ -2435,32 +2435,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "starknet-curve"
+name = "starknet-rust-curve"
 version = "0.6.0"
 dependencies = [
  "starknet-types-core",
 ]
 
 [[package]]
-name = "starknet-cxx"
+name = "starknet-rust-cxx"
 version = "0.1.0"
 dependencies = [
  "cxx",
  "cxx-build",
- "starknet-core",
- "starknet-crypto",
+ "starknet-rust-core",
+ "starknet-rust-crypto",
 ]
 
 [[package]]
-name = "starknet-macros"
+name = "starknet-rust-macros"
 version = "0.2.5"
 dependencies = [
- "starknet-core",
+ "starknet-rust-core",
  "syn 2.0.87",
 ]
 
 [[package]]
-name = "starknet-providers"
+name = "starknet-rust-providers"
 version = "0.16.0"
 dependencies = [
  "async-trait",
@@ -2473,8 +2473,8 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "starknet-core",
- "starknet-providers",
+ "starknet-rust-core",
+ "starknet-rust-providers",
  "thiserror 1.0.63",
  "tokio",
  "url",
@@ -2482,7 +2482,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "starknet-signers"
+name = "starknet-rust-signers"
 version = "0.14.0"
 dependencies = [
  "async-trait",
@@ -2495,16 +2495,16 @@ dependencies = [
  "rand 0.8.5",
  "semver",
  "speculos-client",
- "starknet-core",
- "starknet-crypto",
- "starknet-signers",
+ "starknet-rust-core",
+ "starknet-rust-crypto",
+ "starknet-rust-signers",
  "thiserror 1.0.63",
  "tokio",
  "wasm-bindgen-test",
 ]
 
 [[package]]
-name = "starknet-tokio-tungstenite"
+name = "starknet-rust-tokio-tungstenite"
 version = "0.3.0"
 dependencies = [
  "futures-util",
@@ -2512,12 +2512,21 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "starknet-core",
- "starknet-providers",
+ "starknet-rust-core",
+ "starknet-rust-providers",
  "tokio",
  "tokio-tungstenite",
  "tokio-util",
  "tungstenite",
+]
+
+[[package]]
+name = "starknet-rust-wasm"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "starknet-rust-crypto",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2535,15 +2544,6 @@ dependencies = [
  "num-traits",
  "serde",
  "zeroize",
-]
-
-[[package]]
-name = "starknet-wasm"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "starknet-crypto",
- "wasm-bindgen",
 ]
 
 [[package]]

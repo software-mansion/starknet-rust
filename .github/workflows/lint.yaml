@@ -92,5 +92,5 @@ jobs:
 
       - name: "Run Clippy (no_std)"
         run: |
-          cargo clippy --package starknet-crypto --no-default-features -- -D warnings $ALLOWED
-          cargo clippy --package starknet-crypto --no-default-features --features alloc -- -D warnings $ALLOWED
+          cargo clippy --package starknet-rust-crypto --no-default-features -- -D warnings $ALLOWED
+          cargo clippy --package starknet-rust-crypto --no-default-features --features alloc -- -D warnings $ALLOWED

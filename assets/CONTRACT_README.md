@@ -1,1 +1,1 @@
-../starknet-contract/README.md
+../starknet-rust-contract/README.md

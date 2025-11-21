@@ -1,4 +1,4 @@
-use starknet_providers::{
+use starknet_rust_providers::{
     jsonrpc::{HttpTransport, HttpTransportError, JsonRpcClient, JsonRpcClientError},
     Provider, ProviderError,
 };

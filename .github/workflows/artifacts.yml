@@ -20,17 +20,17 @@ jobs:
 
       - name: "Generate artifacts (Cairo 0)"
         run: |
-          cd ./starknet-core/test-data/contracts/cairo0
+          cd ./starknet-rust-core/test-data/contracts/cairo0
           ./generate_artifacts.sh
 
       - name: "Generate artifacts (Cairo 1)"
         run: |
-          cd ./starknet-core/test-data/contracts/cairo1
+          cd ./starknet-rust-core/test-data/contracts/cairo1
           ./generate_artifacts.sh
 
       - name: "Generate artifacts (Cairo 2)"
         run: |
-          cd ./starknet-core/test-data/contracts/cairo2
+          cd ./starknet-rust-core/test-data/contracts/cairo2
           ./generate_artifacts.sh
 
       - name: "Check Git diffs"

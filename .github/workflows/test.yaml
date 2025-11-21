@@ -25,9 +25,9 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Test starknet-crypto with pedersen_no_lookup
+      - name: Test starknet-rust-crypto with pedersen_no_lookup
         run: |
-          cargo test -p starknet-crypto --features pedersen_no_lookup
+          cargo test -p starknet-rust-crypto --features pedersen_no_lookup
 
       - name: Run cargo tests
         uses: nick-fields/retry@v2
@@ -35,7 +35,7 @@ jobs:
           timeout_minutes: 30
           max_attempts: 20
           retry_wait_seconds: 30
-          command: cargo test --all
+          command: STARKNET_RPC=${{ secrets.NODE_URL }} cargo test --all
 
   win-test:
     name: Windows tests
@@ -57,9 +57,9 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Test starknet-crypto with pedersen_no_lookup
+      - name: Test starknet-rust-crypto with pedersen_no_lookup
         run: |
-          cargo test -p starknet-crypto --features pedersen_no_lookup
+          cargo test -p starknet-rust-crypto --features pedersen_no_lookup
 
       - name: Run cargo tests
         uses: nick-fields/retry@v2
@@ -67,7 +67,7 @@ jobs:
           timeout_minutes: 30
           max_attempts: 20
           retry_wait_seconds: 30
-          command: cargo test --all --target ${{ matrix.target }} --exclude starknet-cxx
+          command: $env:STARKNET_RPC = "${{ secrets.NODE_URL }}"; cargo test --all --target ${{ matrix.target }} --exclude starknet-rust-cxx
 
   wasm-test:
     name: WASM tests
@@ -91,8 +91,8 @@ jobs:
       - name: Build project
         run: |
           cargo build --all --target wasm32-unknown-unknown \
-            --exclude starknet-cxx \
-            --exclude starknet-tokio-tungstenite
+            --exclude starknet-rust-cxx \
+            --exclude starknet-rust-tokio-tungstenite
 
       - name: Install wasm-pack
         uses: actions-rs/cargo@v1
@@ -100,21 +100,21 @@ jobs:
           command: install
           args: wasm-pack
 
-      - name: Run starknet-crypto tests
+      - name: Run starknet-rust-crypto tests
         run: |
-          (cd ./starknet-crypto && wasm-pack test --release --node)
+          (cd ./starknet-rust-crypto && wasm-pack test --release --node)
 
-      - name: Run starknet-core tests
+      - name: Run starknet-rust-core tests
         run: |
-          (cd ./starknet-core && wasm-pack test --release --node)
+          (cd ./starknet-rust-core && wasm-pack test --release --node)
 
-      - name: Run starknet-signers tests
+      - name: Run starknet-rust-signers tests
         run: |
-          (cd ./starknet-signers && wasm-pack test --release --node)
+          (cd ./starknet-rust-signers && wasm-pack test --release --node)
 
-      - name: Run starknet-macros tests
+      - name: Run starknet-rust-macros tests
         run: |
-          (cd ./starknet-macros && wasm-pack test --release --node)
+          (cd ./starknet-rust-macros && wasm-pack test --release --node)
 
   no-std-build:
     name: no-std build
@@ -135,20 +135,20 @@ jobs:
         run: |
           rustup target add thumbv6m-none-eabi
 
-      - name: Build starknet-crypto
+      - name: Build starknet-rust-crypto
         run: |
-          cargo build --package starknet-crypto \
+          cargo build --package starknet-rust-crypto \
             --target thumbv6m-none-eabi \
             --no-default-features
 
-          cargo build --package starknet-crypto \
+          cargo build --package starknet-rust-crypto \
             --target thumbv6m-none-eabi \
             --no-default-features \
             --features alloc
 
-      - name: Build starknet-core
+      - name: Build starknet-rust-core
         run: |
-          cargo build --package starknet-core \
+          cargo build --package starknet-rust-core \
             --target thumbv6m-none-eabi \
             --no-default-features
 
@@ -166,14 +166,18 @@ jobs:
           rustup toolchain install stable
           rustup default stable
 
-      - name: Run starknet-signers tests
+      - name: Run starknet-rust-signers tests
+        env:
+          STARKNET_RPC: ${{ secrets.NODE_URL }}
         run: |
-          cargo test --package starknet-signers \
+          cargo test --package starknet-rust-signers \
             ledger:: \
             -- --ignored
 
-      - name: Run starknet-accounts tests
+      - name: Run starknet-rust-accounts tests
+        env:
+          STARKNET_RPC: ${{ secrets.NODE_URL }}
         run: |
-          cargo test --package starknet-accounts \
+          cargo test --package starknet-rust-accounts \
             ledger:: \
             -- --ignored

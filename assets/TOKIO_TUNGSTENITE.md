@@ -1,1 +1,1 @@
-../starknet-tokio-tungstenite/README.md
+../starknet-rust-tokio-tungstenite/README.md

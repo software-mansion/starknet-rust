@@ -1,0 +1,31 @@
+[package]
+name = "starknet-rust-tokio-tungstenite"
+version = "0.3.0"
+authors = ["Software Mansion", "Jonathan LEI <me@xjonathan.dev>"]
+license = "MIT OR Apache-2.0"
+edition = "2021"
+readme = "README.md"
+repository = "https://github.com/software-mansion-labs/starknet-rs"
+description = """
+Starknet JSON-RPC WebSocket client implementation with tokio-tungstenite
+"""
+keywords = ["ethereum", "starknet", "web3"]
+
+[dependencies]
+starknet-rust-core = { version = "0.16.0", path = "../starknet-rust-core", default-features = false }
+starknet-rust-providers = { version = "0.16.0", path = "../starknet-rust-providers" }
+futures-util = "0.3.31"
+log = "0.4.19"
+rand = { version = "0.8.5", features = ["std_rng"] }
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.74"
+tokio = { version = "1.15.0", default-features = false, features = ["macros", "time"] }
+tokio-tungstenite = { version = "0.26.2", features = ["rustls-tls-native-roots"] }
+tokio-util = "0.7.15"
+tungstenite = { version = "0.26.2", features = ["url"] }
+
+[dev-dependencies]
+starknet-rust-providers = { version = "0.16.0", path = "../starknet-rust-providers", features = ["no_unknown_fields"] }
+
+[lints]
+workspace = true

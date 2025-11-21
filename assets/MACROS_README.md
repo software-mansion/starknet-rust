@@ -1,1 +1,1 @@
-../starknet-macros/README.md
+../starknet-rust-macros/README.md
