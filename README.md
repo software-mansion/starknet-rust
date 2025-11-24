@@ -1,33 +1,26 @@
 <p align="center">
-  <img src="https://github.com/xJonathanLEI/starknet-rs/blob/master/images/starknet-rs-logo.png?raw=true" alt="Logo"/>
-  <h1 align="center">starknet-rs</h1>
+  <img src="https://github.com/software-mansion/starknet-rust/blob/master/images/starknet-rust-logo.png?raw=true" alt="Logo"/>
+  <h1 align="center">starknet-rust</h1>
 </p>
 
-**Complete Starknet library in Rust[™](https://www.reddit.com/r/rust/comments/12e7tdb/rust_trademark_policy_feedback_form/)**
+**Complete Starknet library in Rust**
 
 ![starknet-version-v0.14.0](https://img.shields.io/badge/Starknet_Version-v0.14.0-2ea44f?logo=ethereum)
 [![jsonrpc-spec-v0.10.0-rc.1](https://img.shields.io/badge/JSON--RPC-v0.10.0--rc.1-2ea44f?logo=ethereum)](https://github.com/starkware-libs/starknet-specs/releases/tag/v0.10.0-rc.1)
-[![linting-badge](https://github.com/xJonathanLEI/starknet-rs/actions/workflows/lint.yaml/badge.svg?branch=master)](https://github.com/xJonathanLEI/starknet-rs/actions/workflows/lint.yaml)
+[![linting-badge](https://github.com/software-mansion/starknet-rust/actions/workflows/lint.yaml/badge.svg?branch=master)](https://github.com/software-mansion/starknet-rust/actions/workflows/lint.yaml)
 [![crates-badge](https://img.shields.io/crates/v/starknet.svg)](https://crates.io/crates/starknet)
 
-> _Note that `starknet-rs` is still experimental. Breaking changes will be made before the first stable release. The library is also NOT audited or reviewed for security at the moment. Use at your own risk._
+> _Note that `starknet-rust` is still experimental. Breaking changes will be made before the first stable release. The library is also NOT audited or reviewed for security at the moment. Use at your own risk._
 
-> _The underlying cryptography library [`starknet-crypto`](./starknet-crypto) does NOT provide constant-time guarantees._
+> _The underlying cryptography library [`starknet-rust-crypto`](./starknet-rust-crypto) does NOT provide constant-time guarantees._
 
-## Adding starknet-rs to your project
+## Adding starknet-rust to your project
 
 To use the crate from [crates.io](https://crates.io/crates/starknet), add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-starknet = "0.17.0"
-```
-
-Note that the [crates.io version](https://crates.io/crates/starknet) might be outdated. You may want to use the library directly from GitHub for all the latest features and fixes:
-
-```toml
-[dependencies]
-starknet = { git = "https://github.com/xJonathanLEI/starknet-rs" }
+starknet-rust = "0.17.0"
 ```
 
 ## Features
@@ -45,32 +38,32 @@ starknet = { git = "https://github.com/xJonathanLEI/starknet-rs" }
 
 This workspace contains the following crates:
 
-- `starknet`: Re-export of other sub-crates (recommended)
-- `starknet-core`: Core data structures for interacting with Starknet
-- `starknet-providers`: Abstraction and implementation of clients for interacting with Starknet nodes and sequencers
-- `starknet-contract`: Types for deploying and interacting with Starknet smart contracts
-- `starknet-crypto`: **Low-level** cryptography utilities for Starknet
-- `starknet-signers`: Starknet signer implementations
-- `starknet-accounts`: Types for handling Starknet account abstraction
-- `starknet-curve`: Starknet curve operations
-- `starknet-macros`: Useful macros for using the `starknet` crates
-- `starknet-core-derive`: Derive macros for traits in `starknet-core`
-- `starknet-tokio-tungstenite`: WebSocket subscription client with `tokio-tungstenite`
+- `starknet-rust`: Re-export of other sub-crates (recommended)
+- `starknet-rust-core`: Core data structures for interacting with Starknet
+- `starknet-rust-providers`: Abstraction and implementation of clients for interacting with Starknet nodes and sequencers
+- `starknet-rust-contract`: Types for deploying and interacting with Starknet smart contracts
+- `starknet-rust-crypto`: **Low-level** cryptography utilities for Starknet
+- `starknet-rust-signers`: Starknet signer implementations
+- `starknet-rust-accounts`: Types for handling Starknet account abstraction
+- `starknet-rust-curve`: Starknet curve operations
+- `starknet-rust-macros`: Useful macros for using the `starknet-rust` crates
+- `starknet-rust-core-derive`: Derive macros for traits in `starknet-rust-core`
+- `starknet-rust-tokio-tungstenite`: WebSocket subscription client with `tokio-tungstenite`
 
 ## WebAssembly
 
-`starknet-rs` can be used as a WebAssembly module. Check out [this example](./examples/starknet-wasm/).
+`starknet-rust` can be used as a WebAssembly module. Check out [this example](./examples/starknet-rust-wasm/).
 
-## Using `starknet-rs` from C++
+## Using `starknet-rust` from C++
 
-`starknet-rs` can be used as a dynamic or static library from C++. Check out [this example](./examples/starknet-cxx/).
+`starknet-rust` can be used as a dynamic or static library from C++. Check out [this example](./examples/starknet-rust-cxx/).
 
 ## Performance
 
 Benchmark results for native and WebAssembly targets are available for these crates:
 
-- [starknet-core](./starknet-core/)
-- [starknet-crypto](./starknet-crypto/)
+- [starknet-rust-core](./starknet-rust-core/)
+- [starknet-rust-crypto](./starknet-rust-crypto/)
 
 For instructions on running the benchmark yourself, check [here](./BENCHMARK.md).
 
@@ -122,3 +115,9 @@ Licensed under either of
 - MIT license ([LICENSE-MIT](./LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
+
+## Acknowledgements
+
+This project is a fork of the original [starknet-rs](https://github.com/xJonathanLEI/starknet-rs) by Jonathan LEI.
+
+We would like to express our sincere thanks and appreciation to [xJonathanLEI](https://github.com/xJonathanLEI) and all contributors to the original starknet-rs repository for their outstanding work.

@@ -10,7 +10,7 @@
 //!
 //! # Warning
 //!
-//! You're advised to use high-level crypto utilities implemented by the `starknet-core` crate if
+//! You're advised to use high-level crypto utilities implemented by the `starknet-rust-core` crate if
 //! you're not familiar with cryptographic primitives. Using these low-level functions incorrectly
 //! could result in catastrophic consequences like leaking your private key.
 

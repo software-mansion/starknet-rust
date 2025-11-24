@@ -15,7 +15,7 @@ REPO_ROOT=$( dirname -- $SCRIPT_DIR )
 rm -rf $REPO_ROOT/target/bench-wasm
 mkdir -p $REPO_ROOT/target/bench-wasm
 
-cd $REPO_ROOT/starknet-core
+cd $REPO_ROOT/starknet-rust-core
 benches=(
   cairo0_class_hash
   sierra_class_hash
@@ -26,7 +26,7 @@ for bench in ${benches[@]}; do
   generate_wasm $bench
 done
 
-cd $REPO_ROOT/starknet-crypto
+cd $REPO_ROOT/starknet-rust-crypto
 benches=(
   ecdsa_get_public_key
   ecdsa_recover

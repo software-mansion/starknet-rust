@@ -1,3 +1,3 @@
-[submodule "starknet-core/test-data/contracts/cairo0/contracts/openzeppelin"]
-	path = starknet-core/test-data/contracts/cairo0/contracts/openzeppelin
+[submodule "starknet-rust-core/test-data/contracts/cairo0/contracts/openzeppelin"]
+	path = starknet-rust-core/test-data/contracts/cairo0/contracts/openzeppelin
 	url = https://github.com/OpenZeppelin/cairo-contracts

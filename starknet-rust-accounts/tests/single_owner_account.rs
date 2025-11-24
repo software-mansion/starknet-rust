@@ -286,7 +286,7 @@ async fn can_estimate_declare_v3_fee_inner<P: Provider + Send + Sync>(provider: 
     // by exploiting the fact that ABI is part of the class hash.
     let mut flattened_class = contract_artifact.flatten().unwrap();
     flattened_class.abi = format!(
-        "Declared from starknet-rs test case. Timestamp (ms): {}",
+        "Declared from starknet-rust test case. Timestamp (ms): {}",
         std::time::SystemTime::now()
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -336,7 +336,7 @@ async fn can_declare_cairo1_contract_v3_inner<P: Provider + Send + Sync>(
     // by exploiting the fact that ABI is part of the class hash.
     let mut flattened_class = contract_artifact.flatten().unwrap();
     flattened_class.abi = format!(
-        "Declared from starknet-rs test case. Timestamp (ms): {}",
+        "Declared from starknet-rust test case. Timestamp (ms): {}",
         std::time::SystemTime::now()
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
             .unwrap()

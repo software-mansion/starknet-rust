@@ -1,6 +1,6 @@
 # Starknet Curve Parameters
 
-The `starknet-curve` crate contains a few useful parameters for the STARK curve defined as:
+The `starknet-rust-curve` crate contains a few useful parameters for the STARK curve defined as:
 
 ```
 y^2 = x^3 + alpha * x + beta

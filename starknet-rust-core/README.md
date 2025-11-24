@@ -1,6 +1,6 @@
 # Starknet data types
 
-// TODO: add `starknet-core` documentation
+// TODO: add `starknet-rust-core` documentation
 
 ## Benchmark
 
