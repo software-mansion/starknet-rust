@@ -1,11 +1,11 @@
-# starknet-tokio-tungstenite
+# starknet-rust-tokio-tungstenite
 
-`starknet-tokio-tungstenite` provides a Starknet JSON-RPC WebSocket client implementation for the `tokio` runtime with `tokio-tungstenite`.
+`starknet-rust-tokio-tungstenite` provides a Starknet JSON-RPC WebSocket client implementation for the `tokio` runtime with `tokio-tungstenite`.
 
-Note that `starknet-tokio-tungstenite` is _under active development with foreseeable major breaking changes_, so the **API is unstable** (it still follows SemVer though). Therefore, as of this writing, the crate is not integrated into the rest of the library crates as a dependency to avoid unnecessarily breaking those. To use `starknet-tokio-tungstenite`, you must import it directly:
+Note that `starknet-rust-tokio-tungstenite` is _under active development with foreseeable major breaking changes_, so the **API is unstable** (it still follows SemVer though). Therefore, as of this writing, the crate is not integrated into the rest of the library crates as a dependency to avoid unnecessarily breaking those. To use `starknet-rust-tokio-tungstenite`, you must import it directly:
 
 ```console
-cargo add starknet-tokio-tungstenite
+cargo add starknet-rust-tokio-tungstenite
 ```
 
 > [!NOTE]

@@ -1,4 +1,4 @@
-// This file originally lived in starknet-core/src/types/mod.rs, but was moved here as part of the
+// This file originally lived in starknet-rust-core/src/types/mod.rs, but was moved here as part of the
 // migration to becoming jsonrpc-centric. This file, along with all other sequencer-related types,
 // will be removed after the sequencer API is removed from the network.
 

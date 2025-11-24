@@ -1,6 +1,6 @@
 # Benchmark
 
-`starknet-rs` uses [`criterion`](https://github.com/bheisler/criterion.rs) for performance benchmarking.
+`starknet-rust` uses [`criterion`](https://github.com/bheisler/criterion.rs) for performance benchmarking.
 
 ## Native
 

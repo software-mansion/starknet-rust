@@ -1,15 +1,15 @@
 //! # Complete Starknet library in Rust™
 //!
-//! > _Note that `starknet-rs` is still experimental. Breaking changes will be made before the first
+//! > _Note that `starknet-rust` is still experimental. Breaking changes will be made before the first
 //! > stable release. Use at your own risk._
 //!
-//! > _The underlying cryptography library `starknet-crypto` does NOT provide constant-time
+//! > _The underlying cryptography library `starknet-rust-crypto` does NOT provide constant-time
 //! > guarantees._
 //!
-//! `starknet-rs` is a Rust™ client library for Starknet. The current version offers full API
+//! `starknet-rust` is a Rust™ client library for Starknet. The current version offers full API
 //! coverage of the sequencer gateway and feeder gateway.
 //!
-//! Future versions of `starknet-rs` will support all common features required for buildling client
+//! Future versions of `starknet-rust` will support all common features required for buildling client
 //! software for Starknet:
 //!
 //! - full JSON-RPC API coverage as full node implementations become available

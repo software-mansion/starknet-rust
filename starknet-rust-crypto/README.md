@@ -1,6 +1,6 @@
 # Low-level cryptography utilities for Starknet
 
-`starknet-crypto` contains utilities for performing **low-level** cryptographic operations in Starknet:
+`starknet-rust-crypto` contains utilities for performing **low-level** cryptographic operations in Starknet:
 
 - ECDSA operations
   - Signing hashes
@@ -10,7 +10,7 @@
 - Poseidon hash
 - RFC-6979
 
-> _You're advised to use high-level crypto utilities implemented by the `starknet-core` crate (or use it through the `starknet::core` re-export) if you're not familiar with cryptographic primitives. Using these low-level functions incorrectly could result in leaking your private key, for example._
+> _You're advised to use high-level crypto utilities implemented by the `starknet-rust-core` crate (or use it through the `starknet::core` re-export) if you're not familiar with cryptographic primitives. Using these low-level functions incorrectly could result in leaking your private key, for example._
 
 > _This library does not provide constant-time guarantees._
 
@@ -67,7 +67,7 @@ rfc6979_generate_k      time:   [11.564 µs 11.566 µs 11.569 µs]
 
 ## Binary size optimization
 
-By default, `starknet-crypto` ships with a Pedersen hash implementation utilizing a lookup table for better performance. To optimize for binary size over performance, the crate offers a `pedersen_no_lookup` feature, which uses a vanilla unoptimized implementation instead.
+By default, `starknet-rust-crypto` ships with a Pedersen hash implementation utilizing a lookup table for better performance. To optimize for binary size over performance, the crate offers a `pedersen_no_lookup` feature, which uses a vanilla unoptimized implementation instead.
 
 > [!WARNING]
 >

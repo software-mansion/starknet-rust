@@ -1,17 +1,17 @@
 [package]
 name = "starknet-rust-cxx"
 version = "0.1.0"
-authors = ["Jonathan LEI <me@xjonathan.dev>"]
+authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
 edition = "2021"
 
 [dependencies]
 cxx = "1.0"
 
 # Using path dependency here to make development easier. However, you probably want to fetch the
-# crate from GitHub instead (because the `starknet-core` crate isn't being published to crates.io
-# regularly like `starknet-crypto` at the moment), which means changing the next line to:
+# crate from GitHub instead (because the `starknet-rust-core` crate isn't being published to crates.io
+# regularly like `starknet-rust-crypto` at the moment), which means changing the next line to:
 #
-# starknet-core = { git = "https://github.com/xJonathanLEI/starknet-rs" }
+# starknet-rust-core = { git = "https://github.com/software-mansion/starknet-rust" }
 starknet-rust-core = { path = "../../../starknet-rust-core" }
 
 # Same as above.

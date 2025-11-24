@@ -1,4 +1,4 @@
-//! This is a quick demo on exposing `starknet-crypto` to C++ with the cxx bridge:
+//! This is a quick demo on exposing `starknet-rust-crypto` to C++ with the cxx bridge:
 //!   <https://github.com/xJonathanLEI/starknet-rs/issues/325>
 //!
 //! This wrapper crate expose functions that operate on strings, which is bad and probably hurts

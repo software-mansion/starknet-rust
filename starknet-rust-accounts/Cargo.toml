@@ -1,11 +1,11 @@
 [package]
 name = "starknet-rust-accounts"
 version = "0.17.0-rc.0"
-authors = ["Software Mansion", "Jonathan LEI <me@xjonathan.dev>"]
+authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
 readme = "README.md"
-repository = "https://github.com/software-mansion-labs/starknet-rs"
+repository = "https://github.com/software-mansion/starknet-rust"
 description = """
 Types for handling Starknet account abstraction
 """

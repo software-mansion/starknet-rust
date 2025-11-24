@@ -1,4 +1,4 @@
-//! Procedural macros for the `starknet` crate. This crate provides macros that help make defining
+//! Procedural macros for the `starknet-rust` crate. This crate provides macros that help make defining
 //! certain compile-time constants easier.
 
 #![deny(missing_docs)]

@@ -1,1 +1,1 @@
-# Procedural macros for `starknet`
+# Procedural macros for `starknet-rust`
