@@ -34,19 +34,18 @@ members = [
 all-features = true
 
 [dependencies]
-starknet-rust-crypto = { version = "0.8.1", path = "./starknet-rust-crypto" }
-starknet-rust-core = { version = "0.16.0", path = "./starknet-rust-core", default-features = false }
+starknet-rust-core = { version = "0.17.0-rc.0", path = "./starknet-rust-core", default-features = false }
 starknet-rust-core-derive = { version = "0.1.0", path = "./starknet-rust-core-derive", features = ["import_from_starknet"] }
-starknet-rust-providers = { version = "0.16.0", path = "./starknet-rust-providers" }
-starknet-rust-contract = { version = "0.16.0", path = "./starknet-rust-contract" }
-starknet-rust-signers = { version = "0.14.0", path = "./starknet-rust-signers" }
-starknet-rust-accounts = { version = "0.16.0", path = "./starknet-rust-accounts" }
-starknet-rust-macros = { version = "0.2.5", path = "./starknet-rust-macros" }
+starknet-rust-providers = { version = "0.17.0-rc.0", path = "./starknet-rust-providers" }
+starknet-rust-contract = { version = "0.17.0-rc.0", path = "./starknet-rust-contract" }
+starknet-rust-signers = { version = "0.15.0-rc.0", path = "./starknet-rust-signers" }
+starknet-rust-accounts = { version = "0.17.0-rc.0", path = "./starknet-rust-accounts" }
+starknet-rust-macros = { version = "0.2.6-rc.0", path = "./starknet-rust-macros" }
 
 [dev-dependencies]
 serde_json = "1.0.74"
-starknet-rust-signers = { version = "0.14.0", path = "./starknet-rust-signers", features = ["ledger"] }
-starknet-rust-tokio-tungstenite = { version = "0.3.0", path = "./starknet-rust-tokio-tungstenite" }
+starknet-rust-signers = { version = "0.15.0-rc.0", path = "./starknet-rust-signers", features = ["ledger"] }
+starknet-rust-tokio-tungstenite = { version = "0.4.0-rc.0", path = "./starknet-rust-tokio-tungstenite" }
 tokio = { version = "1.15.0", features = ["full"] }
 url = "2.2.2"
 
