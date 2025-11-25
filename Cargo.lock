@@ -2321,7 +2321,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust"
-version = "0.17.0-rc.0"
+version = "0.18.0-rc.0"
 dependencies = [
  "serde_json",
  "starknet-rust-accounts",
