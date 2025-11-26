@@ -7,7 +7,6 @@ edition = "2021"
 readme = "README.md"
 documentation = "https://docs.rs/starknet"
 repository = "https://github.com/software-mansion/starknet-rust"
-homepage = "https://starknet.rs/"
 description = """
 Complete Starknet library in Rust™
 """
