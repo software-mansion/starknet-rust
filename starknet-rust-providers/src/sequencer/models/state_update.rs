@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use serde_with::serde_as;
-use starknet_core::{serde::unsigned_field_element::UfeHex, types::Felt};
+use starknet_rust_core::{serde::unsigned_field_element::UfeHex, types::Felt};
 use std::collections::HashMap;
 
 use super::Block;
