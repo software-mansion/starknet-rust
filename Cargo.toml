@@ -1,6 +1,6 @@
 [package]
 name = "starknet-rust"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
