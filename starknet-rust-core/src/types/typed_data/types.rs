@@ -418,13 +418,13 @@ mod tests {
         let types = serde_json::from_str::<Types>(VALID_V1_DATA).unwrap();
         assert_eq!(
             types.get_type_hash("Example Message").unwrap(),
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x01ef2892585a840aee9165aac7aaf811ba2f8619e43c119bd76a6109f81cecc3"
             )
         );
         assert_eq!(
             types.get_type_hash("My Object").unwrap(),
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x02f0ee9d399d4e7ccbc5d7e96df767296cc4b8a516600c121b393427ae3779f2"
             )
         );
