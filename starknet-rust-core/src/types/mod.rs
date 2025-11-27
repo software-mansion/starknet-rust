@@ -1043,7 +1043,7 @@ mod tests {
         assert_eq!(
             GetStorageProofRequest {
                 block_id: ConfirmedBlockId::Number(200),
-                class_hashes: Some(vec![Felt::from_hex_unchecked("0x123")]),
+                class_hashes: Some(vec![Felt::from_hex_unwrap("0x123")]),
                 contract_addresses: None,
                 contracts_storage_keys: None
             },
@@ -1053,7 +1053,7 @@ mod tests {
         assert_eq!(
             GetStorageProofRequest {
                 block_id: ConfirmedBlockId::Number(200),
-                class_hashes: Some(vec![Felt::from_hex_unchecked("0x123")]),
+                class_hashes: Some(vec![Felt::from_hex_unwrap("0x123")]),
                 contract_addresses: None,
                 contracts_storage_keys: None
             },
