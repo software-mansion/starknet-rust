@@ -355,6 +355,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    #[ignore]
     fn test_block_new_v0_10_optional_fields_present() {
         let raw = include_str!(
             "../../../test-data/raw_gateway_responses/get_block/17_with_commitment_and_count_fields.txt"

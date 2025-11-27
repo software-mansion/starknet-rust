@@ -63,7 +63,7 @@ mod ledger {
         let account = SingleOwnerAccount::new(
             provider,
             signer,
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x01b0f8a1ab14f84573d8ed9eec0852a2099ff76ffb601686ffb14fac352b78b3",
             ),
             starknet_rust_core::chain_id::SEPOLIA,
@@ -73,7 +73,7 @@ mod ledger {
         account
             .execute_v3(vec![Call {
                 // STRK
-                to: Felt::from_hex_unchecked(
+                to: Felt::from_hex_unwrap(
                     "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
                 ),
                 selector: get_selector_from_name("transfer").unwrap(),
