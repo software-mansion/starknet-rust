@@ -14,7 +14,7 @@ pub fn pedersen_hash(x: &Felt, y: &Felt) -> Felt {
     // Temporarily defining the projective points inline, as `ProjectivePoint::new()` is incorrectly
     // not `const`.
     // TODO: turn these into consts once upstream is fixed.
-    let p0_projective: ProjectivePoint = ProjectivePoint::new(
+    let p0_projective: ProjectivePoint = ProjectivePoint::new_unchecked(
         Felt::from_raw([
             241691544791834578,
             518715844721862878,
@@ -29,7 +29,7 @@ pub fn pedersen_hash(x: &Felt, y: &Felt) -> Felt {
         ]),
         Felt::ONE,
     );
-    let p1_projective: ProjectivePoint = ProjectivePoint::new(
+    let p1_projective: ProjectivePoint = ProjectivePoint::new_unchecked(
         Felt::from_raw([
             253000153565733272,
             10043949394709899044,
@@ -44,7 +44,7 @@ pub fn pedersen_hash(x: &Felt, y: &Felt) -> Felt {
         ]),
         Felt::ONE,
     );
-    let p2_projective: ProjectivePoint = ProjectivePoint::new(
+    let p2_projective: ProjectivePoint = ProjectivePoint::new_unchecked(
         Felt::from_raw([
             338510149841406402,
             12916675983929588442,
@@ -59,7 +59,7 @@ pub fn pedersen_hash(x: &Felt, y: &Felt) -> Felt {
         ]),
         Felt::ONE,
     );
-    let p3_projective: ProjectivePoint = ProjectivePoint::new(
+    let p3_projective: ProjectivePoint = ProjectivePoint::new_unchecked(
         Felt::from_raw([
             425493972656615276,
             299781701614706065,
