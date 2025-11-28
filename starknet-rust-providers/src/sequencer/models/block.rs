@@ -31,6 +31,7 @@ pub enum BlockStatus {
     AcceptedOnL1,
 }
 
+// TODO: (#22) Consider resolving Blocks on type level not by `Option`
 #[serde_as]
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
