@@ -31,6 +31,7 @@ pub enum BlockStatus {
     AcceptedOnL1,
 }
 
+// TODO: (#22) Consider resolving Blocks on type level not by `Option`
 #[serde_as]
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
@@ -42,10 +43,8 @@ pub struct Block {
     #[serde_as(as = "UfeHex")]
     pub parent_block_hash: Felt,
     pub timestamp: u64,
-    // Field marked optional as old blocks don't include it yet. Drop optional once resolved.
-    #[serde(default)]
-    #[serde_as(as = "UfeHexOption")]
-    pub sequencer_address: Option<Felt>,
+    #[serde_as(as = "UfeHex")]
+    pub sequencer_address: Felt,
     #[serde(default)]
     #[serde_as(as = "UfeHexOption")]
     pub state_root: Option<Felt>,
@@ -62,8 +61,20 @@ pub struct Block {
     pub l1_data_gas_price: ResourcePrice,
     pub transactions: Vec<TransactionType>,
     pub transaction_receipts: Vec<ConfirmedTransactionReceipt>,
-    // Field marked optional as old blocks don't include it yet. Drop optional once resolved.
-    pub starknet_version: Option<String>,
+    #[serde(default)]
+    pub starknet_version: String,
+    #[serde(default)]
+    #[serde_as(as = "UfeHexOption")]
+    pub receipt_commitment: Option<Felt>,
+    #[serde(default)]
+    #[serde_as(as = "UfeHexOption")]
+    pub state_diff_commitment: Option<Felt>,
+    #[serde(default)]
+    pub event_count: u64,
+    #[serde(default)]
+    pub transaction_count: u64,
+    #[serde(default)]
+    pub state_diff_length: Option<u64>,
 }
 
 #[cfg(test)]
@@ -184,7 +195,11 @@ mod tests {
             "../../../test-data/raw_gateway_responses/get_block/6_with_sequencer_address.txt"
         ))
         .unwrap();
-        assert!(new_block.sequencer_address.is_some());
+        assert_eq!(
+            new_block.sequencer_address,
+            Felt::from_hex("0x1176a1bd84444c89232ec27754698e5d2e7e1a7f1539f12027f28b23ec9f3d8")
+                .unwrap()
+        );
     }
 
     #[test]
@@ -195,7 +210,7 @@ mod tests {
             "../../../test-data/raw_gateway_responses/get_block/8_with_starknet_version.txt"
         ))
         .unwrap();
-        assert!(new_block.starknet_version.is_some());
+        assert_eq!(new_block.starknet_version, "0.12.3");
     }
 
     #[test]
@@ -336,5 +351,31 @@ mod tests {
             tx.execution_status,
             Some(TransactionExecutionStatus::Reverted)
         )));
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_block_new_v0_10_optional_fields_present() {
+        let raw = include_str!(
+            "../../../test-data/raw_gateway_responses/get_block/17_with_commitment_and_count_fields.txt"
+        );
+
+        let block: Block = serde_json::from_str(raw).unwrap();
+
+        assert_eq!(
+            block.receipt_commitment.unwrap(),
+            Felt::from_hex("0x2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b")
+                .unwrap()
+        );
+
+        assert_eq!(
+            block.state_diff_commitment.unwrap(),
+            Felt::from_hex("0x3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c")
+                .unwrap()
+        );
+
+        assert_eq!(block.event_count, 42);
+        assert_eq!(block.transaction_count, 15);
+        assert_eq!(block.state_diff_length, Some(128));
     }
 }
