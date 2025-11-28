@@ -60,7 +60,6 @@ pub struct Block {
     pub l1_data_gas_price: ResourcePrice,
     pub transactions: Vec<TransactionType>,
     pub transaction_receipts: Vec<ConfirmedTransactionReceipt>,
-    // Field marked optional as old blocks don't include it yet. Drop optional once resolved.
     #[serde(default)]
     pub starknet_version: String,
     #[serde(default)]
