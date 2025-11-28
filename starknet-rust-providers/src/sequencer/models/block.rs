@@ -42,10 +42,8 @@ pub struct Block {
     #[serde_as(as = "UfeHex")]
     pub parent_block_hash: Felt,
     pub timestamp: u64,
-    // Field marked optional as old blocks don't include it yet. Drop optional once resolved.
-    #[serde(default)]
-    #[serde_as(as = "UfeHexOption")]
-    pub sequencer_address: Option<Felt>,
+    #[serde_as(as = "UfeHex")]
+    pub sequencer_address: Felt,
     #[serde(default)]
     #[serde_as(as = "UfeHexOption")]
     pub state_root: Option<Felt>,
@@ -63,7 +61,20 @@ pub struct Block {
     pub transactions: Vec<TransactionType>,
     pub transaction_receipts: Vec<ConfirmedTransactionReceipt>,
     // Field marked optional as old blocks don't include it yet. Drop optional once resolved.
-    pub starknet_version: Option<String>,
+    #[serde(default)]
+    pub starknet_version: String,
+    #[serde(default)]
+    #[serde_as(as = "UfeHexOption")]
+    pub receipt_commitment: Option<Felt>,
+    #[serde(default)]
+    #[serde_as(as = "UfeHexOption")]
+    pub state_diff_commitment: Option<Felt>,
+    #[serde(default)]
+    pub event_count: u64,
+    #[serde(default)]
+    pub transaction_count: u64,
+    #[serde(default)]
+    pub state_diff_length: Option<u64>,
 }
 
 #[cfg(test)]
