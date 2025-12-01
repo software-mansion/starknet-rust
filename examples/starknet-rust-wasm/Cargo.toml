@@ -6,7 +6,6 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/software-mansion/starknet-rust"
-homepage = "https://starknet.rs/"
 description = """
 Example usage of starknet-rust from WASM
 """
