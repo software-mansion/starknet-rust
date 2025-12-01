@@ -98,6 +98,7 @@ pub use contract::ContractArtifact;
 /// block.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
+#[expect(clippy::large_enum_variant)]
 pub enum MaybePreConfirmedBlockWithTxHashes {
     /// A confirmed block.
     Block(BlockWithTxHashes),
@@ -111,6 +112,7 @@ pub enum MaybePreConfirmedBlockWithTxHashes {
 /// block.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
+#[expect(clippy::large_enum_variant)]
 pub enum MaybePreConfirmedBlockWithTxs {
     /// A confirmed block.
     Block(BlockWithTxs),
@@ -124,6 +126,7 @@ pub enum MaybePreConfirmedBlockWithTxs {
 /// block.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
+#[expect(clippy::large_enum_variant)]
 pub enum MaybePreConfirmedBlockWithReceipts {
     /// A confirmed block.
     Block(BlockWithReceipts),

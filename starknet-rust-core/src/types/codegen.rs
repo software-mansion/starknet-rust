@@ -3,7 +3,7 @@
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#f2450c746e7acb3b5984da316beb0d9bf74babe4
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#3ac8f62c0838753cda0e8ebefd4741a1e352186c
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -112,6 +112,29 @@ pub struct BlockHeader {
     pub l1_da_mode: L1DataAvailabilityMode,
     /// Semver of the current Starknet protocol
     pub starknet_version: String,
+    /// The root of merkle patricia trie for events in the block. For blocks where this data is not
+    /// available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub event_commitment: Felt,
+    /// The root of merkle patricia trie for transactions in the block. For blocks where this data
+    /// is not available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub transaction_commitment: Felt,
+    /// The root of merkle patricia trie for receipts in the block. For blocks where this data is
+    /// not available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub receipt_commitment: Felt,
+    /// The state diff commitment hash in the block. For blocks where this data is not available
+    /// (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub state_diff_commitment: Felt,
+    /// The number of events in the block
+    pub event_count: u64,
+    /// The number of transactions in the block
+    pub transaction_count: u64,
+    /// The length of the state diff in the block. For blocks where this data is not available
+    /// (e.g., old blocks), compute from state diff if possible, otherwise use 0
+    pub state_diff_length: u64,
 }
 
 /// Block status.
@@ -179,6 +202,29 @@ pub struct BlockWithReceipts {
     pub l1_da_mode: L1DataAvailabilityMode,
     /// Semver of the current Starknet protocol
     pub starknet_version: String,
+    /// The root of merkle patricia trie for events in the block. For blocks where this data is not
+    /// available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub event_commitment: Felt,
+    /// The root of merkle patricia trie for transactions in the block. For blocks where this data
+    /// is not available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub transaction_commitment: Felt,
+    /// The root of merkle patricia trie for receipts in the block. For blocks where this data is
+    /// not available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub receipt_commitment: Felt,
+    /// The state diff commitment hash in the block. For blocks where this data is not available
+    /// (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub state_diff_commitment: Felt,
+    /// The number of events in the block
+    pub event_count: u64,
+    /// The number of transactions in the block
+    pub transaction_count: u64,
+    /// The length of the state diff in the block. For blocks where this data is not available
+    /// (e.g., old blocks), compute from state diff if possible, otherwise use 0
+    pub state_diff_length: u64,
     /// The transactions in this block
     pub transactions: Vec<TransactionWithReceipt>,
 }
@@ -218,6 +264,29 @@ pub struct BlockWithTxHashes {
     pub l1_da_mode: L1DataAvailabilityMode,
     /// Semver of the current Starknet protocol
     pub starknet_version: String,
+    /// The root of merkle patricia trie for events in the block. For blocks where this data is not
+    /// available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub event_commitment: Felt,
+    /// The root of merkle patricia trie for transactions in the block. For blocks where this data
+    /// is not available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub transaction_commitment: Felt,
+    /// The root of merkle patricia trie for receipts in the block. For blocks where this data is
+    /// not available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub receipt_commitment: Felt,
+    /// The state diff commitment hash in the block. For blocks where this data is not available
+    /// (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub state_diff_commitment: Felt,
+    /// The number of events in the block
+    pub event_count: u64,
+    /// The number of transactions in the block
+    pub transaction_count: u64,
+    /// The length of the state diff in the block. For blocks where this data is not available
+    /// (e.g., old blocks), compute from state diff if possible, otherwise use 0
+    pub state_diff_length: u64,
     /// The hashes of the transactions included in this block
     #[serde_as(as = "Vec<UfeHex>")]
     pub transactions: Vec<Felt>,
@@ -258,6 +327,29 @@ pub struct BlockWithTxs {
     pub l1_da_mode: L1DataAvailabilityMode,
     /// Semver of the current Starknet protocol
     pub starknet_version: String,
+    /// The root of merkle patricia trie for events in the block. For blocks where this data is not
+    /// available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub event_commitment: Felt,
+    /// The root of merkle patricia trie for transactions in the block. For blocks where this data
+    /// is not available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub transaction_commitment: Felt,
+    /// The root of merkle patricia trie for receipts in the block. For blocks where this data is
+    /// not available (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub receipt_commitment: Felt,
+    /// The state diff commitment hash in the block. For blocks where this data is not available
+    /// (e.g., old blocks), use 0x0
+    #[serde_as(as = "UfeHex")]
+    pub state_diff_commitment: Felt,
+    /// The number of events in the block
+    pub event_count: u64,
+    /// The number of transactions in the block
+    pub transaction_count: u64,
+    /// The length of the state diff in the block. For blocks where this data is not available
+    /// (e.g., old blocks), compute from state diff if possible, otherwise use 0
+    pub state_diff_length: u64,
     /// The transactions in this block
     pub transactions: Vec<Transaction>,
 }
