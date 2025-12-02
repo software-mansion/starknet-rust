@@ -1,6 +1,6 @@
 [package]
 name = "starknet-rust-providers"
-version = "0.17.0-rc.0"
+version = "0.17.0"
 authors = ["Software Mansion", "Jonathan LEI <me@xjonathan.dev>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
@@ -13,7 +13,7 @@ keywords = ["ethereum", "starknet", "web3"]
 exclude = ["test-data/**"]
 
 [dependencies]
-starknet-rust-core = { version = "0.17.0-rc.0", path = "../starknet-rust-core" }
+starknet-rust-core = { version = "0.17.0", path = "../starknet-rust-core" }
 async-trait = "0.1.68"
 auto_impl = "1.0.1"
 ethereum-types = "0.14.1"
