@@ -8,7 +8,6 @@ use speculos_client::{
     AutomationAction, AutomationCondition, AutomationRule, Button, DeviceModel, SpeculosClient,
 };
 use starknet_rust_core::types::Felt;
-use starknet_rust_providers::jsonrpc::{HttpTransport, JsonRpcClient};
 use starknet_rust_signers::{ledger::LedgerStarknetApp, LedgerSigner};
 
 const TEST_PATH: &str = "m/2645'/1195502025'/1470455285'/0'/0'/0";

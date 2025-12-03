@@ -6,7 +6,7 @@ use starknet_rust_core::{
     chain_id,
     types::{contract::legacy::LegacyContractClass, BlockId, BlockTag, ExecutionResult, Felt},
 };
-use starknet_rust_providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
+use starknet_rust_providers::Provider;
 use starknet_rust_signers::{LocalWallet, SigningKey};
 use test_common::create_jsonrpc_client;
 

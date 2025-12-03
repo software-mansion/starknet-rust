@@ -5,10 +5,7 @@ use starknet_rust_core::{
     types::{contract::SierraClass, Call, ContractExecutionError, Felt, StarknetError},
     utils::get_selector_from_name,
 };
-use starknet_rust_providers::{
-    jsonrpc::{HttpTransport, JsonRpcClient},
-    Provider, ProviderError, SequencerGatewayProvider,
-};
+use starknet_rust_providers::{Provider, ProviderError, SequencerGatewayProvider};
 use starknet_rust_signers::{LocalWallet, SigningKey};
 use std::sync::Arc;
 use test_common::create_jsonrpc_client;
