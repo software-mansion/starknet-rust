@@ -27,7 +27,7 @@ members = [
     "starknet-rust-tokio-tungstenite",
     "examples/starknet-rust-wasm",
     "examples/starknet-rust-cxx/starknet-rust-cxx",
-    "test-common",
+    "utils/test-common",
 ]
 
 [package.metadata.docs.rs]
