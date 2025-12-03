@@ -1,0 +1,2 @@
+[alias]
+lint = "clippy --all --all-targets -- -D warnings"
