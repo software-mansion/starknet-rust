@@ -11,6 +11,7 @@ use starknet_rust_providers::{
 };
 use starknet_rust_signers::{LocalWallet, SigningKey};
 use std::sync::Arc;
+use test_common::create_jsonrpc_client;
 
 /// Cairo short string encoding for `SN_SEPOLIA`.
 const CHAIN_ID: Felt = Felt::from_raw([
@@ -22,11 +23,6 @@ const CHAIN_ID: Felt = Felt::from_raw([
 
 fn create_sequencer_client() -> SequencerGatewayProvider {
     SequencerGatewayProvider::starknet_alpha_sepolia()
-}
-
-fn create_jsonrpc_client() -> JsonRpcClient<HttpTransport> {
-    let rpc_url = std::env::var("STARKNET_RPC").unwrap();
-    JsonRpcClient::new(HttpTransport::new(url::Url::parse(&rpc_url).unwrap()))
 }
 
 #[tokio::test]

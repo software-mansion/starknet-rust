@@ -16,12 +16,8 @@ use starknet_rust_providers::{
     jsonrpc::{HttpTransport, JsonRpcClient},
     Provider, ProviderError, ProviderRequestData, ProviderResponseData,
 };
+use test_common::create_jsonrpc_client;
 use url::Url;
-
-fn create_jsonrpc_client() -> JsonRpcClient<HttpTransport> {
-    let rpc_url = std::env::var("STARKNET_RPC").unwrap();
-    JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()))
-}
 
 #[tokio::test]
 async fn jsonrpc_spec_version() {

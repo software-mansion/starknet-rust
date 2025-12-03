@@ -2350,6 +2350,7 @@ dependencies = [
  "starknet-rust-crypto",
  "starknet-rust-providers",
  "starknet-rust-signers",
+ "test-common",
  "thiserror 1.0.63",
  "tokio",
  "url",
@@ -2367,6 +2368,7 @@ dependencies = [
  "starknet-rust-core",
  "starknet-rust-providers",
  "starknet-rust-signers",
+ "test-common",
  "thiserror 1.0.63",
  "tokio",
  "url",
@@ -2474,6 +2476,7 @@ dependencies = [
  "serde_with",
  "starknet-rust-core",
  "starknet-rust-providers",
+ "test-common",
  "thiserror 1.0.63",
  "tokio",
  "url",
@@ -2640,6 +2643,14 @@ dependencies = [
  "quote",
  "syn 2.0.87",
  "test-case-core",
+]
+
+[[package]]
+name = "test-common"
+version = "0.1.0"
+dependencies = [
+ "starknet-rust-providers",
+ "url",
 ]
 
 [[package]]
