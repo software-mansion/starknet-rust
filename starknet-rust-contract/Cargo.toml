@@ -26,6 +26,7 @@ rand = { version = "0.8.5", features=["std_rng"] }
 starknet-rust-signers = { version = "0.15.0", path = "../starknet-rust-signers" }
 tokio = { version = "1.27.0", features = ["full"] }
 url = "2.3.1"
+test-common = { path = "../utils/test-common" }
 
 [lints]
 workspace = true

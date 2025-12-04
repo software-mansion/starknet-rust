@@ -6,9 +6,9 @@ use starknet_rust_core::{
     chain_id,
     types::{contract::legacy::LegacyContractClass, BlockId, BlockTag, ExecutionResult, Felt},
 };
-use starknet_rust_providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
+use starknet_rust_providers::Provider;
 use starknet_rust_signers::{LocalWallet, SigningKey};
-use url::Url;
+use test_common::create_jsonrpc_client;
 
 #[tokio::test]
 async fn can_deploy_contract_with_legacy_udc_unique() {
@@ -55,8 +55,7 @@ async fn can_deploy_contract_with_new_udc_not_unique() {
 }
 
 async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, unique: bool) {
-    let rpc_url = std::env::var("STARKNET_RPC").unwrap();
-    let provider = JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
+    let provider = create_jsonrpc_client();
 
     let account = SingleOwnerAccount::new(
         &provider,

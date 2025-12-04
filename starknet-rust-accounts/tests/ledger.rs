@@ -8,7 +8,6 @@ use speculos_client::{
     AutomationAction, AutomationCondition, AutomationRule, Button, DeviceModel, SpeculosClient,
 };
 use starknet_rust_core::types::Felt;
-use starknet_rust_providers::jsonrpc::{HttpTransport, JsonRpcClient};
 use starknet_rust_signers::{ledger::LedgerStarknetApp, LedgerSigner};
 
 const TEST_PATH: &str = "m/2645'/1195502025'/1470455285'/0'/0'/0";
@@ -39,17 +38,12 @@ fn setup_app(port: u16) -> (Arc<SpeculosClient>, LedgerStarknetApp<SpeculosTrans
     (client, app)
 }
 
-fn create_jsonrpc_client() -> JsonRpcClient<HttpTransport> {
-    let rpc_url = std::env::var("STARKNET_RPC").unwrap();
-    JsonRpcClient::new(HttpTransport::new(url::Url::parse(&rpc_url).unwrap()))
-}
-
 /// Module for easy test filtering.
 mod ledger {
+    use super::*;
     use starknet_rust_accounts::{Account, ExecutionEncoding, SingleOwnerAccount};
     use starknet_rust_core::{types::Call, utils::get_selector_from_name};
-
-    use super::*;
+    use test_common::create_jsonrpc_client;
 
     #[tokio::test]
     #[ignore = "requires Speculos installation"]
