@@ -308,7 +308,7 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
         impl<'a> #core::codec::Decode<'a> for #ident {
             fn decode_iter<T>(iter: &mut T) -> ::core::result::Result<Self, #core::codec::Error>
             where
-                T: core::iter::Iterator<Item = &'a #core::types::Felt>
+                T: ::core::iter::Iterator<Item = &'a #core::types::Felt>
             {
                 #impl_block
             }
