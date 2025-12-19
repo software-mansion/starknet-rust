@@ -361,7 +361,7 @@ pub enum IntOrList {
     /// A leave node of the tree representing a segment.
     Int(u64),
     /// A branch node of the tree.
-    List(Vec<IntOrList>),
+    List(Vec<Self>),
 }
 
 struct IntOrListVisitor;
