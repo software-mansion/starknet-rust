@@ -210,7 +210,7 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
     .into()
 }
 
-const DECODE_LIFETIME_IDENT: &'static str = "'de";
+const DECODE_LIFETIME_IDENT: &str = "'de";
 
 /// Derives the `Decode` trait.
 #[proc_macro_derive(Decode, attributes(starknet))]

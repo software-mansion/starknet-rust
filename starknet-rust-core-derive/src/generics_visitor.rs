@@ -37,13 +37,10 @@ impl<'ast> GenericsVisitor<'ast> {
         where_clause.predicates.extend(
             self.existing_generics
                 .type_params()
-                .filter_map(|param| {
-                    self.relevant_type_params
-                        .contains(&param.ident)
-                        .then(|| syn::TypePath {
-                            qself: None,
-                            path: param.ident.clone().into(),
-                        })
+                .filter(|&param| self.relevant_type_params.contains(&param.ident))
+                .map(|param| syn::TypePath {
+                    qself: None,
+                    path: param.ident.clone().into(),
                 })
                 .chain(self.associated_type_usage.into_iter().cloned())
                 .map(|bounded_ty| {
@@ -125,10 +122,7 @@ impl<'ast> GenericsVisitor<'ast> {
                     self.visit_type(elem);
                 }
             }
-
-            syn::Type::Infer(_) | syn::Type::Never(_) | syn::Type::Verbatim(_) => {}
-
-            _ => {}
+            syn::Type::Infer(_) | syn::Type::Never(_) | syn::Type::Verbatim(_) | _ => {}
         }
     }
 
@@ -147,8 +141,8 @@ impl<'ast> GenericsVisitor<'ast> {
                         syn::GenericArgument::Lifetime(_)
                         | syn::GenericArgument::Const(_)
                         | syn::GenericArgument::AssocConst(_)
-                        | syn::GenericArgument::Constraint(_) => {}
-                        _ => {}
+                        | syn::GenericArgument::Constraint(_)
+                        | _ => {}
                     }
                 }
             }
@@ -169,12 +163,8 @@ impl<'ast> GenericsVisitor<'ast> {
     }
 
     fn visit_type_param_bound(&mut self, bound: &'ast syn::TypeParamBound) {
-        match bound {
-            syn::TypeParamBound::Trait(bound) => self.visit_path(&bound.path),
-            syn::TypeParamBound::Lifetime(_)
-            | syn::TypeParamBound::PreciseCapture(_)
-            | syn::TypeParamBound::Verbatim(_) => {}
-            _ => {}
+        if let syn::TypeParamBound::Trait(bound) = bound {
+            self.visit_path(&bound.path);
         }
     }
 
@@ -184,7 +174,7 @@ impl<'ast> GenericsVisitor<'ast> {
     //         mac: T!(),
     //         marker: PhantomData<T>,
     //     }
-    fn visit_macro(&mut self, _mac: &'ast syn::Macro) {}
+    fn visit_macro(&self, _mac: &'ast syn::Macro) {}
 }
 
 fn ungroup(mut ty: &Type) -> &Type {
