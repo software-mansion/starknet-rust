@@ -34,15 +34,15 @@ mod test_utils;
 
 pub use starknet_types_core::felt::Felt;
 
-pub use pedersen_hash::{pedersen_hash, PedersenHasher};
+pub use pedersen_hash::{PedersenHasher, pedersen_hash};
 
 pub use poseidon_hash::{
-    poseidon_hash, poseidon_hash_many, poseidon_hash_single, poseidon_permute_comp, PoseidonHasher,
+    PoseidonHasher, poseidon_hash, poseidon_hash_many, poseidon_hash_single, poseidon_permute_comp,
 };
 
-pub use blake2s_hash::{blake2s_hash, blake2s_hash_many, blake2s_hash_single, Blake2Hasher};
+pub use blake2s_hash::{Blake2Hasher, blake2s_hash, blake2s_hash_many, blake2s_hash_single};
 
-pub use ecdsa::{get_public_key, recover, sign, verify, ExtendedSignature, Signature};
+pub use ecdsa::{ExtendedSignature, Signature, get_public_key, recover, sign, verify};
 
 pub use crate::rfc6979::generate_k as rfc6979_generate_k;
 

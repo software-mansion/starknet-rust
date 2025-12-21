@@ -1,5 +1,5 @@
 pub(crate) mod u64_hex {
-    use serde::{de::Visitor, Deserialize, Serialize};
+    use serde::{Deserialize, Serialize, de::Visitor};
 
     struct U64HexVisitor;
 
@@ -35,7 +35,7 @@ pub(crate) mod u64_hex {
 }
 
 pub(crate) mod u128_hex {
-    use serde::{de::Visitor, Deserialize, Serialize};
+    use serde::{Deserialize, Serialize, de::Visitor};
 
     struct U128HexVisitor;
 
@@ -71,7 +71,7 @@ pub(crate) mod u128_hex {
 }
 
 pub(crate) mod u64_hex_opt {
-    use serde::{de::Visitor, Deserialize, Serialize};
+    use serde::{Deserialize, Serialize, de::Visitor};
 
     struct U64HexOptVisitor;
 

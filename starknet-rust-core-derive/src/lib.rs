@@ -6,8 +6,9 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
+    DeriveInput, Fields, LitInt, LitStr, Meta, Token,
     parse::{Error as ParseError, Parse, ParseStream},
-    parse_macro_input, DeriveInput, Fields, LitInt, LitStr, Meta, Token,
+    parse_macro_input,
 };
 
 #[derive(Default)]
@@ -43,7 +44,7 @@ impl Parse for Args {
                         return Err(ParseError::new(
                             Span::call_site(),
                             "starknet attribute `core` defined more than once",
-                        ))
+                        ));
                     }
                     None => {
                         core = Some(value);

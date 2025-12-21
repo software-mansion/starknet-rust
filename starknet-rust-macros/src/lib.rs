@@ -8,7 +8,7 @@ use starknet_rust_core::{
     types::Felt,
     utils::{cairo_short_string_to_felt, get_selector_from_name},
 };
-use syn::{parse_macro_input, LitStr};
+use syn::{LitStr, parse_macro_input};
 
 /// Defines a compile-time constant for a entrypoint selector of a Starknet contract.
 #[proc_macro]
