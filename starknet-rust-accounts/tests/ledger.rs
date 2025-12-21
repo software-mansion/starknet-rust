@@ -3,12 +3,12 @@
 use std::{borrow::Cow, sync::Arc};
 
 use async_trait::async_trait;
-use coins_ledger::{transports::LedgerAsync, APDUAnswer, APDUCommand, LedgerError};
+use coins_ledger::{APDUAnswer, APDUCommand, LedgerError, transports::LedgerAsync};
 use speculos_client::{
     AutomationAction, AutomationCondition, AutomationRule, Button, DeviceModel, SpeculosClient,
 };
 use starknet_rust_core::types::Felt;
-use starknet_rust_signers::{ledger::LedgerStarknetApp, LedgerSigner};
+use starknet_rust_signers::{LedgerSigner, ledger::LedgerStarknetApp};
 
 const TEST_PATH: &str = "m/2645'/1195502025'/1470455285'/0'/0'/0";
 const APP_PATH: &str = "./test-data/ledger-app/nanox_2.4.2_2.3.1_sdk_v22.10.0";

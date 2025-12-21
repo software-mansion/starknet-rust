@@ -2,7 +2,7 @@ use starknet_rust_accounts::{
     Account, AccountError, ConnectedAccount, ExecutionEncoding, SingleOwnerAccount,
 };
 use starknet_rust_core::{
-    types::{contract::SierraClass, Call, ContractExecutionError, Felt, StarknetError},
+    types::{Call, ContractExecutionError, Felt, StarknetError, contract::SierraClass},
     utils::get_selector_from_name,
 };
 use starknet_rust_providers::{Provider, ProviderError, SequencerGatewayProvider};
