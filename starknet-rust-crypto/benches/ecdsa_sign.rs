@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use hex_literal::hex;
 use starknet_rust_crypto::sign;
 use starknet_types_core::felt::Felt;

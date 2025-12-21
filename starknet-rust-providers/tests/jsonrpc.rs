@@ -1,6 +1,5 @@
 use starknet_rust_core::{
     types::{
-        requests::{CallRequest, GetBlockTransactionCountRequest},
         BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedTransaction, ConfirmedBlockId,
         ContractClass, ContractStorageKeys, DataAvailabilityMode, DeclareTransaction,
         DeployAccountTransaction, EthAddress, EventFilter, ExecuteInvocation, ExecutionResult,
@@ -9,6 +8,7 @@ use starknet_rust_core::{
         MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds, ResourceBoundsMapping,
         StarknetError, StorageKey, SyncStatusType, Transaction, TransactionFinalityStatus,
         TransactionReceipt, TransactionStatus, TransactionTrace,
+        requests::{CallRequest, GetBlockTransactionCountRequest},
     },
     utils::{get_selector_from_name, get_storage_var_address},
 };
@@ -697,10 +697,12 @@ async fn jsonrpc_call() {
                 )
                 .unwrap(),
                 entry_point_selector: get_selector_from_name("balanceOf").unwrap(),
-                calldata: vec![Felt::from_hex(
-                    "03f47d3911396b6d579fd7848cf576286ab6f96dda977915d6c7b10f3dd2315b",
-                )
-                .unwrap()],
+                calldata: vec![
+                    Felt::from_hex(
+                        "03f47d3911396b6d579fd7848cf576286ab6f96dda977915d6c7b10f3dd2315b",
+                    )
+                    .unwrap(),
+                ],
             },
             BlockId::Tag(BlockTag::Latest),
         )
@@ -1031,10 +1033,12 @@ async fn jsonrpc_batch() {
                     )
                     .unwrap(),
                     entry_point_selector: get_selector_from_name("balanceOf").unwrap(),
-                    calldata: vec![Felt::from_hex(
-                        "03f47d3911396b6d579fd7848cf576286ab6f96dda977915d6c7b10f3dd2315b",
-                    )
-                    .unwrap()],
+                    calldata: vec![
+                        Felt::from_hex(
+                            "03f47d3911396b6d579fd7848cf576286ab6f96dda977915d6c7b10f3dd2315b",
+                        )
+                        .unwrap(),
+                    ],
                 },
                 block_id: BlockId::Tag(BlockTag::Latest),
             }),

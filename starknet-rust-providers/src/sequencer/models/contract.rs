@@ -1,16 +1,16 @@
 use std::io::Write;
 
-use flate2::{write::GzEncoder, Compression};
+use flate2::{Compression, write::GzEncoder};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::serde_as;
 use starknet_rust_core::{
     serde::{byte_array::base64::serialize as base64_ser, unsigned_field_element::UfeHex},
     types::{
-        contract::{
-            legacy::{LegacyContractClass, RawLegacyAbiEntry, RawLegacyEntryPoints},
-            CompressProgramError,
-        },
         EntryPointsByType, Felt, FlattenedSierraClass,
+        contract::{
+            CompressProgramError,
+            legacy::{LegacyContractClass, RawLegacyAbiEntry, RawLegacyEntryPoints},
+        },
     },
 };
 

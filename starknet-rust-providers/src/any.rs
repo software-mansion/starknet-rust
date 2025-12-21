@@ -13,8 +13,8 @@ use starknet_rust_core::types::{
 };
 
 use crate::{
-    jsonrpc::{HttpTransport, JsonRpcClient},
     Provider, ProviderError, ProviderRequestData, ProviderResponseData, SequencerGatewayProvider,
+    jsonrpc::{HttpTransport, JsonRpcClient},
 };
 
 /// A convenient Box-able type that implements the [Provider] trait. This can be useful when you

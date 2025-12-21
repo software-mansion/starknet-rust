@@ -1,10 +1,10 @@
 use alloc::{format, string::*, vec, vec::*};
 use core::str::FromStr;
 
-use serde::{de::Unexpected, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Unexpected};
 
 use crate::{
-    types::{typed_data::TypeReference, Felt},
+    types::{Felt, typed_data::TypeReference},
     utils::starknet_keccak,
 };
 
@@ -233,7 +233,7 @@ impl<'de> Deserialize<'de> for TypeDefinition {
                             return Err(serde::de::Error::invalid_type(
                                 Unexpected::Other("enum variant definition"),
                                 &"struct field definition",
-                            ))
+                            ));
                         }
                     }
                 }
@@ -249,7 +249,7 @@ impl<'de> Deserialize<'de> for TypeDefinition {
                             return Err(serde::de::Error::invalid_type(
                                 Unexpected::Other("struct field definition"),
                                 &"enum variant definition",
-                            ))
+                            ));
                         }
                     }
                 }

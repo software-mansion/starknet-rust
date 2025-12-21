@@ -5,12 +5,12 @@ use starknet_rust::{
     contract::ContractFactory,
     core::{
         chain_id,
-        types::{contract::legacy::LegacyContractClass, Felt},
+        types::{Felt, contract::legacy::LegacyContractClass},
     },
     macros::felt,
     providers::{
-        jsonrpc::{HttpTransport, JsonRpcClient},
         Url,
+        jsonrpc::{HttpTransport, JsonRpcClient},
     },
     signers::{LocalWallet, SigningKey},
 };

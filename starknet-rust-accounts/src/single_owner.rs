@@ -1,7 +1,7 @@
 use crate::{Account, ConnectedAccount, ExecutionEncoder, RawDeclarationV3, RawExecutionV3};
 
 use async_trait::async_trait;
-use starknet_rust_core::types::{contract::ComputeClassHashError, BlockId, BlockTag, Call, Felt};
+use starknet_rust_core::types::{BlockId, BlockTag, Call, Felt, contract::ComputeClassHashError};
 use starknet_rust_providers::Provider;
 use starknet_rust_signers::{Signer, SignerInteractivityContext};
 

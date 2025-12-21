@@ -4,7 +4,7 @@ use alloc::{
     str::FromStr,
 };
 
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 use starknet_types_core::felt::Felt;
 
 const HASH_256_BYTE_COUNT: usize = 32;
@@ -207,7 +207,7 @@ impl From<[u8; HASH_256_BYTE_COUNT]> for Hash256 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Felt, FromHexError, Hash256, HASH_256_BYTE_COUNT};
+    use super::{Felt, FromHexError, HASH_256_BYTE_COUNT, Hash256};
 
     use hex_literal::hex;
 

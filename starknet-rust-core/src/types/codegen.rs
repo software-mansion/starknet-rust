@@ -1,3 +1,4 @@
+#![allow(clippy::collapsible_if)]
 // AUTO-GENERATED CODE. DO NOT EDIT
 // To change the code generated, modify the codegen tool instead:
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
@@ -29,7 +30,6 @@
 // - `TXN`
 // - `TXN_CONTENT`
 // - `TXN_RECEIPT`
-
 #![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_const_for_fn)]

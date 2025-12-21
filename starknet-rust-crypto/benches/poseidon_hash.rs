@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use hex_literal::hex;
 use starknet_rust_crypto::{poseidon_hash, poseidon_hash_many, poseidon_hash_single};
 use starknet_types_core::felt::Felt;

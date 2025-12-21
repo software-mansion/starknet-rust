@@ -331,10 +331,12 @@ mod tests {
 
         let block: Block = serde_json::from_str(raw).unwrap();
 
-        assert!(block
-            .transactions
-            .into_iter()
-            .any(|tx| matches!(tx, TransactionType::Declare(_))));
+        assert!(
+            block
+                .transactions
+                .into_iter()
+                .any(|tx| matches!(tx, TransactionType::Declare(_)))
+        );
     }
 
     #[test]

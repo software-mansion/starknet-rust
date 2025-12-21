@@ -1,15 +1,15 @@
 use alloc::{format, string::*, vec::*};
 use semver::Version;
-use serde::{de::Visitor, ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor, ser::SerializeSeq};
 use serde_json_pythonic::to_string_pythonic;
 use serde_with::serde_as;
-use starknet_rust_crypto::{poseidon_hash_many, PoseidonHasher};
+use starknet_rust_crypto::{PoseidonHasher, poseidon_hash_many};
 
 use crate::{
     serde::unsigned_field_element::UfeHex,
     types::{EntryPointsByType, Felt, FlattenedSierraClass, SierraEntryPoint},
     utils::{
-        cairo_short_string_to_felt, normalize_address, starknet_keccak, CairoShortStringToFeltError,
+        CairoShortStringToFeltError, cairo_short_string_to_felt, normalize_address, starknet_keccak,
     },
 };
 
@@ -801,15 +801,16 @@ impl CompiledClass {
                     };
                     let is_used = visited_pc_after != visited_pc_before;
 
-                    if let Some(visited_pc_before) = visited_pc_before {
-                        if is_used && visited_pc_before != *bytecode_offset {
-                            return Err(ComputeClassHashError::InvalidBytecodeSegment(
-                                InvalidBytecodeSegmentError {
-                                    visited_pc: visited_pc_before,
-                                    segment_start: *bytecode_offset,
-                                },
-                            ));
-                        }
+                    if let Some(visited_pc_before) = visited_pc_before
+                        && is_used
+                        && visited_pc_before != *bytecode_offset
+                    {
+                        return Err(ComputeClassHashError::InvalidBytecodeSegment(
+                            InvalidBytecodeSegmentError {
+                                visited_pc: visited_pc_before,
+                                segment_start: *bytecode_offset,
+                            },
+                        ));
                     }
 
                     res.push(BytecodeSegment {

@@ -1,11 +1,11 @@
 use starknet_types_core::felt::Felt;
 
 use starknet_rust_crypto::{
-    blake2s_hash, blake2s_hash_many, blake2s_hash_single, poseidon_hash, poseidon_hash_many,
-    poseidon_hash_single, rfc6979_generate_k, sign, verify, Blake2Hasher, PoseidonHasher,
-    SignError, VerifyError,
+    Blake2Hasher, PoseidonHasher, SignError, VerifyError, blake2s_hash, blake2s_hash_many,
+    blake2s_hash_single, poseidon_hash, poseidon_hash_many, poseidon_hash_single,
+    rfc6979_generate_k, sign, verify,
 };
-pub use starknet_rust_crypto::{pedersen_hash, ExtendedSignature, Signature};
+pub use starknet_rust_crypto::{ExtendedSignature, Signature, pedersen_hash};
 
 mod errors {
     use core::fmt::{Display, Formatter, Result};
@@ -99,7 +99,7 @@ pub fn ecdsa_sign(
                 return Ok(sig);
             }
             Err(SignError::InvalidMessageHash) => {
-                return Err(EcdsaSignError::MessageHashOutOfRange)
+                return Err(EcdsaSignError::MessageHashOutOfRange);
             }
             Err(SignError::InvalidK) => {
                 // Bump seed and retry

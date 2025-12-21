@@ -1,7 +1,7 @@
 use starknet_rust_accounts::{Account, AccountError, ConnectedAccount, ExecutionV3};
 use starknet_rust_core::{
     types::{Call, FeeEstimate, Felt, InvokeTransactionResult, SimulatedTransaction},
-    utils::{get_udc_deployed_address, UdcUniqueSettings, UdcUniqueness},
+    utils::{UdcUniqueSettings, UdcUniqueness, get_udc_deployed_address},
 };
 
 /// The Cairo 0 UDC address: `0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf`.

@@ -7,9 +7,9 @@ use starknet_rust_providers::StreamUpdateData;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::{
+    StreamUpdateType,
     error::{SubscriptionReceiveError, UnsubscribeError},
     stream::{UnsubscribeResult, WriteAction},
-    StreamUpdateType,
 };
 
 /// A subscription for retrieving updates from `starknet_subscribeNewHeads` stream.
