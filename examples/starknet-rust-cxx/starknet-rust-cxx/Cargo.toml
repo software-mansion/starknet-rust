@@ -2,7 +2,7 @@
 name = "starknet-rust-cxx"
 version = "0.1.0"
 authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
-edition = "2021"
+edition.workspace = true
 
 [dependencies]
 cxx = "1.0"
