@@ -7,10 +7,10 @@ use starknet_rust_core::{
 use std::sync::Arc;
 
 use super::{
+    L1Address,
     contract::{CompressedLegacyContractClass, CompressedSierraClass},
     serde_impls::u64_hex,
     transaction::{DataAvailabilityMode, ResourceBoundsMapping},
-    L1Address,
 };
 
 /// 2 ^ 128 + 1

@@ -1,4 +1,4 @@
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 
 /// Revision of SNIP-12.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

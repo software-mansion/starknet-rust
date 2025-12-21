@@ -1,7 +1,7 @@
 use alloc::{borrow::ToOwned, format, string::*};
 use core::str::FromStr;
 
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 
 use super::error::TypedDataError;
 
