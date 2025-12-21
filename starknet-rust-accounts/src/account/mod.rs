@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use starknet_rust_core::types::{
-    contract::ComputeClassHashError, BlockId, BlockTag, Call, Felt, FlattenedSierraClass,
+    BlockId, BlockTag, Call, Felt, FlattenedSierraClass, contract::ComputeClassHashError,
 };
 use starknet_rust_providers::{Provider, ProviderError};
 use starknet_rust_signers::SignerInteractivityContext;

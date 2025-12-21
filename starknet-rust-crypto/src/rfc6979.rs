@@ -1,6 +1,6 @@
 use crypto_bigint::{ArrayEncoding, ByteArray, Integer, U256};
 use hmac::digest::Digest;
-use sha2::digest::{crypto_common::BlockSizeUser, FixedOutputReset, HashMarker};
+use sha2::digest::{FixedOutputReset, HashMarker, crypto_common::BlockSizeUser};
 use starknet_types_core::felt::Felt;
 use zeroize::{Zeroize, Zeroizing};
 

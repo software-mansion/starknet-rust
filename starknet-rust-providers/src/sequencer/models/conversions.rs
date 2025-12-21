@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use starknet_rust_core::types::{self as core, contract::legacy as contract_legacy, Felt};
+use starknet_rust_core::types::{self as core, Felt, contract::legacy as contract_legacy};
 
 use super::{
     state_update::{DeclaredContract, DeployedContract, StateDiff, StorageDiff},

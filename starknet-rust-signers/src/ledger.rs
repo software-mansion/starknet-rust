@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use coins_ledger::{
+    APDUAnswer, APDUCommand, Ledger,
     common::{APDUData, APDUResponseCodes},
     transports::LedgerAsync,
-    APDUAnswer, APDUCommand, Ledger,
 };
 use crypto_bigint::{ArrayEncoding, U256};
 use semver::Version;
