@@ -1,8 +1,10 @@
 [package]
 name = "starknet-rust-cxx"
 version = "0.1.0"
-authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
+authors.workspace = true
 edition = "2021"
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 cxx = "1.0"
