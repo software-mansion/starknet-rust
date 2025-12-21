@@ -22,6 +22,11 @@ jobs:
           profile: "minimal"
           override: true
 
+      - name: "Use Rust cache"
+        uses: "Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5" # v2.8.2
+        with:
+          cache-on-failure: true
+
       - name: "Build docs"
         run: |
           RUSTDOCFLAGS="-D warnings -A rustdoc::missing-crate-level-docs" cargo doc --all
