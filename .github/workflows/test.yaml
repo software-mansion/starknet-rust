@@ -25,6 +25,11 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Use Rust cache
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+        with:
+          cache-on-failure: true
+
       - name: Test starknet-rust-crypto with pedersen_no_lookup
         run: |
           cargo test -p starknet-rust-crypto --features pedersen_no_lookup
@@ -57,6 +62,11 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Use Rust cache
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+        with:
+          cache-on-failure: true
+
       - name: Test starknet-rust-crypto with pedersen_no_lookup
         run: |
           cargo test -p starknet-rust-crypto --features pedersen_no_lookup
@@ -83,6 +93,11 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
+
+      - name: Use Rust cache
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+        with:
+          cache-on-failure: true
 
       - name: Add wasm32-unknown-unknown target
         run: |
@@ -131,6 +146,11 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Use Rust cache
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+        with:
+          cache-on-failure: true
+
       - name: Add --target thumbv6m-none-eabi target
         run: |
           rustup target add thumbv6m-none-eabi
@@ -165,6 +185,11 @@ jobs:
         run: |
           rustup toolchain install stable
           rustup default stable
+
+      - name: Use Rust cache
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+        with:
+          cache-on-failure: true
 
       - name: Run starknet-rust-signers tests
         run: |

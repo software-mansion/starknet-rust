@@ -92,6 +92,11 @@ jobs:
           profile: "minimal"
           override: true
 
+      - name: "Use Rust cache"
+        uses: "Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5" # v2.8.2
+        with:
+          cache-on-failure: true
+
       - name: "Build crate"
         run: |
           cargo build --package ${{ needs.crate-info.outputs.crate }} --all-targets
@@ -109,6 +114,11 @@ jobs:
     steps:
       - name: "Checkout source code"
         uses: "actions/checkout@v3"
+
+      - name: "Use Rust cache"
+        uses: "Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5" # v2.8.2
+        with:
+          cache-on-failure: true
 
       - name: "Login to crates.io"
         run: |
