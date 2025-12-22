@@ -5,10 +5,10 @@
 
 **Complete Starknet library in Rust**
 
-![starknet-version-v0.14.0](https://img.shields.io/badge/Starknet_Version-v0.14.0-2ea44f?logo=ethereum)
-[![jsonrpc-spec-v0.10.0-rc.1](https://img.shields.io/badge/JSON--RPC-v0.10.0--rc.1-2ea44f?logo=ethereum)](https://github.com/starkware-libs/starknet-specs/releases/tag/v0.10.0-rc.1)
+![starknet-version-v0.14.1](https://img.shields.io/badge/Starknet_Version-v0.14.1-2ea44f?logo=ethereum)
+[![jsonrpc-spec-v0.10.0](https://img.shields.io/badge/JSON--RPC-v0.10.0-2ea44f?logo=ethereum)](https://github.com/starkware-libs/starknet-specs/releases/tag/v0.10.0)
 [![linting-badge](https://github.com/software-mansion/starknet-rust/actions/workflows/lint.yaml/badge.svg?branch=master)](https://github.com/software-mansion/starknet-rust/actions/workflows/lint.yaml)
-[![crates-badge](https://img.shields.io/crates/v/starknet.svg)](https://crates.io/crates/starknet)
+[![crates-badge](https://img.shields.io/crates/v/starknet-rust.svg)](https://crates.io/crates/starknet-rust)
 
 > _Note that `starknet-rust` is still experimental. Breaking changes will be made before the first stable release. The library is also NOT audited or reviewed for security at the moment. Use at your own risk._
 
