@@ -15,8 +15,8 @@ keywords.workspace = true
 proc-macro = true
 
 [dependencies]
-starknet-rust-core = { version = "0.17.0", path = "../starknet-rust-core" }
-syn = "2.0.15"
+starknet-rust-core.workspace = true
+syn.workspace = true
 
 [features]
 default = []
