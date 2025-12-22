@@ -1,11 +1,11 @@
 [package]
 name = "starknet-rust-curve"
 version = "0.6.0"
-authors = ["Software Mansion", "Jonathan LEI <me@xjonathan.dev>"]
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+license.workspace = true
 edition.workspace = true
-readme = "README.md"
-repository = "https://github.com/software-mansion/starknet-rust"
+readme.workspace = true
+repository.workspace = true
 description = """
 Stark curve
 """

@@ -1,15 +1,15 @@
 [package]
 name = "starknet-rust-wasm"
 version = "0.1.0"
-authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+license.workspace = true
 edition.workspace = true
-readme = "README.md"
-repository = "https://github.com/software-mansion/starknet-rust"
+readme.workspace = true
+repository.workspace = true
 description = """
 Example usage of starknet-rust from WASM
 """
-keywords = ["ethereum", "starknet", "web3"]
+keywords.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
