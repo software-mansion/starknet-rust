@@ -1,7 +1,7 @@
 use crypto_bigint::{Encoding, NonZero, U256};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::StdRng};
 use starknet_rust_core::{
-    crypto::{ecdsa_sign, ecdsa_verify, EcdsaSignError, EcdsaVerifyError, Signature},
+    crypto::{EcdsaSignError, EcdsaVerifyError, Signature, ecdsa_sign, ecdsa_verify},
     types::Felt,
 };
 use starknet_rust_crypto::get_public_key;

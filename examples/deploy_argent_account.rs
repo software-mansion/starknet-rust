@@ -3,8 +3,8 @@ use starknet_rust::{
     core::{chain_id, types::Felt},
     macros::felt,
     providers::{
-        jsonrpc::{HttpTransport, JsonRpcClient},
         Url,
+        jsonrpc::{HttpTransport, JsonRpcClient},
     },
     signers::{LocalWallet, SigningKey},
 };

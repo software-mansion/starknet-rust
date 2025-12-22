@@ -17,9 +17,9 @@ use starknet_rust_core::types::{
 };
 
 use crate::{
-    provider::ProviderImplError,
-    sequencer::{models::conversions::ConversionError, GatewayClientError},
     Provider, ProviderError, ProviderRequestData, ProviderResponseData, SequencerGatewayProvider,
+    provider::ProviderImplError,
+    sequencer::{GatewayClientError, models::conversions::ConversionError},
 };
 
 use super::models::TransactionFinalityStatus;

@@ -4,7 +4,7 @@ use starknet_rust_accounts::{ExecutionEncoding, SingleOwnerAccount};
 use starknet_rust_contract::{ContractFactory, UdcSelector};
 use starknet_rust_core::{
     chain_id,
-    types::{contract::legacy::LegacyContractClass, BlockId, BlockTag, ExecutionResult, Felt},
+    types::{BlockId, BlockTag, ExecutionResult, Felt, contract::legacy::LegacyContractClass},
 };
 use starknet_rust_providers::Provider;
 use starknet_rust_signers::{LocalWallet, SigningKey};

@@ -2,8 +2,8 @@ use alloc::{fmt::Formatter, format};
 
 use crypto_bigint::U256;
 use serde::{
-    de::{Error as DeError, Visitor},
     Deserializer, Serializer,
+    de::{Error as DeError, Visitor},
 };
 use serde_with::{DeserializeAs, SerializeAs};
 

@@ -1,15 +1,15 @@
 use std::time::Duration;
 
-use futures_util::{stream::SplitSink, SinkExt};
-use rand::{thread_rng, RngCore};
+use futures_util::{SinkExt, stream::SplitSink};
+use rand::{RngCore, thread_rng};
 use starknet_rust_core::types::{
+    ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus, SubscriptionId,
     requests::{
         SubscribeEventsRequest, SubscribeNewHeadsRequest, SubscribeNewTransactionReceiptsRequest,
         SubscribeNewTransactionsRequest, SubscribeTransactionStatusRequest, UnsubscribeRequest,
     },
-    ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus, SubscriptionId,
 };
-use starknet_rust_providers::{jsonrpc::JsonRpcRequest, ProviderRequestData, StreamUpdateData};
+use starknet_rust_providers::{ProviderRequestData, StreamUpdateData, jsonrpc::JsonRpcRequest};
 use tokio::{
     net::TcpStream,
     sync::{
@@ -25,8 +25,8 @@ use tungstenite::Message;
 use crate::subscription::EventSubscriptionOptions;
 
 use super::{
-    read::{ReadAcknowledgement, ReadAction},
     CloseResult, SubscriptionResult, UnsubscribeResult,
+    read::{ReadAcknowledgement, ReadAction},
 };
 
 /// An internal type for running the write direction of the WebSocket stream in the background.
@@ -264,10 +264,9 @@ impl StreamWriteDriver {
                         ProviderRequestData::Unsubscribe(UnsubscribeRequest { subscription_id }),
                     )
                     .await
+                    && let Some(result) = result
                 {
-                    if let Some(result) = result {
-                        let _ = result.send(err.into());
-                    }
+                    let _ = result.send(err.into());
                 }
 
                 HandleActionResult::Success

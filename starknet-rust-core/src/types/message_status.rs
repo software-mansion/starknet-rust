@@ -79,12 +79,12 @@ impl<'de> Deserialize<'de> for MessageStatus {
             (TransactionExecutionStatus::Succeeded, Some(_)) => {
                 return Err(serde::de::Error::custom(
                     "field `failure_reason` must not exist unless `execution_status` is `REVERTED`",
-                ))
+                ));
             }
             (TransactionExecutionStatus::Reverted, None) => {
                 return Err(serde::de::Error::custom(
                     "field `failure_reason` must exist when `execution_status` is `REVERTED`",
-                ))
+                ));
             }
         };
 

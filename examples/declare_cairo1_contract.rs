@@ -4,16 +4,16 @@ use starknet_rust::{
     accounts::{Account, ExecutionEncoding, SingleOwnerAccount},
     core::{
         chain_id,
-        types::{contract::SierraClass, Felt},
+        types::{Felt, contract::SierraClass},
     },
     providers::{
-        jsonrpc::{HttpTransport, JsonRpcClient},
         Url,
+        jsonrpc::{HttpTransport, JsonRpcClient},
     },
     signers::{LocalWallet, SigningKey},
 };
 use starknet_rust_accounts::ConnectedAccount;
-use starknet_rust_core::types::{contract::CompiledClass, BlockId, BlockTag};
+use starknet_rust_core::types::{BlockId, BlockTag, contract::CompiledClass};
 use starknet_rust_providers::Provider;
 
 #[tokio::main]

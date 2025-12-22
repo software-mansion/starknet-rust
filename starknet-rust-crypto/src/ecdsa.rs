@@ -1,8 +1,8 @@
 use starknet_rust_curve::curve_params::{ALPHA, BETA, EC_ORDER, GENERATOR};
 
 use crate::{
-    fe_utils::{add_unbounded, bigint_mul_mod_floor, mod_inverse, mul_mod_floor},
     RecoverError, SignError, VerifyError,
+    fe_utils::{add_unbounded, bigint_mul_mod_floor, mod_inverse, mul_mod_floor},
 };
 use starknet_types_core::curve::{AffinePoint, ProjectivePoint};
 use starknet_types_core::felt::Felt;

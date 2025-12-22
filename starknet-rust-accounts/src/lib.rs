@@ -10,8 +10,9 @@ pub use account::{
 
 mod factory;
 pub use factory::{
-    argent::ArgentAccountFactory, open_zeppelin::OpenZeppelinAccountFactory, AccountDeploymentV3,
-    AccountFactory, AccountFactoryError, PreparedAccountDeploymentV3, RawAccountDeploymentV3,
+    AccountDeploymentV3, AccountFactory, AccountFactoryError, PreparedAccountDeploymentV3,
+    RawAccountDeploymentV3, argent::ArgentAccountFactory,
+    open_zeppelin::OpenZeppelinAccountFactory,
 };
 
 /// Module containing types for using an account contract with only one signer.

@@ -2,13 +2,13 @@ use crate::provider::ProviderError;
 
 use log::trace;
 use reqwest::{Client, Error as ReqwestError, StatusCode};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Error as SerdeJsonError;
 use serde_with::serde_as;
 use starknet_rust_core::{
     chain_id,
     serde::unsigned_field_element::UfeHex,
-    types::{contract::CompiledClass, Felt, StarknetError},
+    types::{Felt, StarknetError, contract::CompiledClass},
 };
 use url::Url;
 
@@ -221,8 +221,7 @@ impl SequencerGatewayProvider {
 
         trace!(
             "Sending POST request to sequencer API ({}): {}",
-            url,
-            request_body
+            url, request_body
         );
 
         let mut request = self

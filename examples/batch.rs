@@ -1,10 +1,10 @@
 use starknet_rust::providers::{
-    jsonrpc::{HttpTransport, JsonRpcClient},
     Provider, ProviderRequestData, ProviderResponseData, Url,
+    jsonrpc::{HttpTransport, JsonRpcClient},
 };
 use starknet_rust_core::types::{
-    requests::{BlockNumberRequest, GetBlockTransactionCountRequest},
     BlockId,
+    requests::{BlockNumberRequest, GetBlockTransactionCountRequest},
 };
 
 #[tokio::main]

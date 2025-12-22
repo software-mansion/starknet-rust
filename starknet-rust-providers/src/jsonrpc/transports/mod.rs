@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use auto_impl::auto_impl;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::error::Error;
 
 use crate::{
-    jsonrpc::{JsonRpcMethod, JsonRpcResponse},
     ProviderRequestData,
+    jsonrpc::{JsonRpcMethod, JsonRpcResponse},
 };
 
 mod http;

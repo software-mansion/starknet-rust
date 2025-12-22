@@ -3,11 +3,11 @@ use core::{hash::BuildHasher, marker::PhantomData};
 use alloc::{fmt::Formatter, format};
 
 use indexmap::IndexMap;
-use serde::{de::Visitor, ser::SerializeSeq, Deserialize, Deserializer, Serialize};
-use serde_with::{serde_as, DeserializeAs, SerializeAs};
+use serde::{Deserialize, Deserializer, Serialize, de::Visitor, ser::SerializeSeq};
+use serde_with::{DeserializeAs, SerializeAs, serde_as};
 
 use super::{
-    codegen::OwnedPtr, ContractExecutionError, Felt, MerkleNode, SyncStatus, SyncStatusType, UfeHex,
+    ContractExecutionError, Felt, MerkleNode, SyncStatus, SyncStatusType, UfeHex, codegen::OwnedPtr,
 };
 
 pub(crate) struct NumAsHex;
@@ -367,7 +367,7 @@ mod block_id {
                 BlockIdDe::Tag(BlockTag::PreConfirmed) => {
                     return Err(serde::de::Error::custom(
                         "confirmed block id must not be `pre_confirmed`",
-                    ))
+                    ));
                 }
             })
         }

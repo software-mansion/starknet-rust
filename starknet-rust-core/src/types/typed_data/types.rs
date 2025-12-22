@@ -8,15 +8,15 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    types::{typed_data::CommonTypeReference, Felt},
+    types::{Felt, typed_data::CommonTypeReference},
     utils::starknet_keccak,
 };
 
 use super::{
+    TypeReference,
     error::TypedDataError,
     revision::Revision,
     type_definition::{PresetType, TypeDefinition},
-    TypeReference,
 };
 
 #[cfg(feature = "std")]

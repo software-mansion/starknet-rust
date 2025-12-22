@@ -1,12 +1,12 @@
 use std::{any::Any, error::Error, fmt::Display};
 
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::serde_as;
 use starknet_rust_core::{
     serde::unsigned_field_element::UfeHex,
     types::{
-        requests::*, BlockHashAndNumber, BlockId, BroadcastedDeclareTransaction,
+        BlockHashAndNumber, BlockId, BroadcastedDeclareTransaction,
         BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
         ConfirmedBlockId, ContractClass, ContractErrorData, ContractStorageKeys,
         DeclareTransactionResult, DeployAccountTransactionResult, EventFilter, EventFilterWithPage,
@@ -18,13 +18,13 @@ use starknet_rust_core::{
         SimulationFlagForEstimateFee, StarknetError, StorageKey, StorageProof, SubscriptionId,
         SyncStatusType, Transaction, TransactionExecutionErrorData,
         TransactionReceiptWithBlockInfo, TransactionStatus, TransactionTrace,
-        TransactionTraceWithHash,
+        TransactionTraceWithHash, requests::*,
     },
 };
 
 use crate::{
-    provider::ProviderImplError, Provider, ProviderError, ProviderRequestData,
-    ProviderResponseData, StreamUpdateData,
+    Provider, ProviderError, ProviderRequestData, ProviderResponseData, StreamUpdateData,
+    provider::ProviderImplError,
 };
 
 mod transports;
@@ -529,7 +529,7 @@ where
                     return Err(match TryInto::<StarknetError>::try_into(&error) {
                         Ok(error) => ProviderError::StarknetError(error),
                         Err(_) => JsonRpcClientError::<T::Error>::JsonRpcError(error).into(),
-                    })
+                    });
                 }
             }
         }
@@ -1380,7 +1380,7 @@ impl<'de> Deserialize<'de> for JsonRpcRequest {
                 return Err(serde::de::Error::custom(format!(
                     "unsupported request method: {:?}",
                     raw_request.method
-                )))
+                )));
             }
         };
 
@@ -1504,7 +1504,7 @@ impl<'de> Deserialize<'de> for JsonRpcStreamUpdate {
                 return Err(serde::de::Error::custom(format!(
                     "unsupported request method: {:?}",
                     raw_request.method
-                )))
+                )));
             }
         };
 

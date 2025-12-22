@@ -3,7 +3,7 @@
 use std::{borrow::Cow, sync::Arc};
 
 use async_trait::async_trait;
-use coins_ledger::{transports::LedgerAsync, APDUAnswer, APDUCommand, LedgerError};
+use coins_ledger::{APDUAnswer, APDUCommand, LedgerError, transports::LedgerAsync};
 use semver::Version;
 use speculos_client::{AutomationAction, AutomationRule, Button, DeviceModel, SpeculosClient};
 use starknet_rust_core::types::Felt;

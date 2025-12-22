@@ -1,8 +1,8 @@
 use starknet_rust::{
     core::types::{BlockId, BlockTag},
     providers::{
-        jsonrpc::{HttpTransport, JsonRpcClient},
         Provider, Url,
+        jsonrpc::{HttpTransport, JsonRpcClient},
     },
 };
 

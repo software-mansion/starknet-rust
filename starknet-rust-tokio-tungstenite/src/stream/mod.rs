@@ -7,13 +7,13 @@ use starknet_rust_core::types::{
     SubscriptionId,
 };
 use starknet_rust_providers::{
-    jsonrpc::{JsonRpcError, JsonRpcResponse, JsonRpcStreamUpdate},
     StreamUpdateData,
+    jsonrpc::{JsonRpcError, JsonRpcResponse, JsonRpcStreamUpdate},
 };
 use tokio::{sync::mpsc::UnboundedSender, time::Instant};
 use tokio_tungstenite::connect_async;
 use tokio_util::sync::CancellationToken;
-use tungstenite::{client::IntoClientRequest, Error as TungsteniteError};
+use tungstenite::{Error as TungsteniteError, client::IntoClientRequest};
 
 mod read;
 use read::{ReadAction, StreamReadDriver};
