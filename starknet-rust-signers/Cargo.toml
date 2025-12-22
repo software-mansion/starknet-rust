@@ -12,30 +12,30 @@ Starknet signer implementations
 keywords.workspace = true
 
 [dependencies]
-starknet-rust-core = { version = "0.17.0", path = "../starknet-rust-core" }
-starknet-rust-crypto = { version = "0.9.0", path = "../starknet-rust-crypto" }
-async-trait = "0.1.68"
-auto_impl = "1.0.1"
-thiserror = "1.0.40"
-crypto-bigint = { version = "0.5.1", default-features = false }
-rand = { version = "0.8.5", features = ["std_rng"] }
-coins-bip32 = { version = "0.11.1", optional = true }
-coins-ledger = { version = "0.12.0", default-features = false, optional = true }
-semver = { version = "1.0.23", optional = true }
+starknet-rust-core.workspace = true
+starknet-rust-crypto.workspace = true
+async-trait.workspace = true
+auto_impl.workspace = true
+thiserror.workspace = true
+crypto-bigint.workspace = true
+rand.workspace = true
+coins-bip32 = { workspace = true, optional = true }
+coins-ledger = { workspace = true, optional = true }
+semver = { workspace = true, optional = true }
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-eth-keystore = { version = "0.5.0", default-features = false }
+eth-keystore.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2.9", features = ["js"] }
+getrandom = { workspace = true, features = ["js"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-speculos-client = "0.1.2"
-starknet-rust-signers = { path = ".", features = ["ledger"] }
-tokio = { version = "1.27.0", features = ["full"] }
+speculos-client.workspace = true
+starknet-rust-signers = { workspace = true, features = ["ledger"] }
+tokio = { workspace = true, features = ["full", "macros"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "0.3.50"
+wasm-bindgen-test.workspace = true
 
 [features]
 default = []

@@ -44,7 +44,7 @@ starknet-types-core = { version = "0.2.0", default-features = false, features = 
 test-case = "3.3.1"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "0.3.50"
+wasm-bindgen-test.workspace = true
 
 [[bench]]
 name = "pedersen_hash"
