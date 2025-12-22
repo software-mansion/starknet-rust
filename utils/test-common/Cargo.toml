@@ -7,8 +7,8 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-starknet-rust-providers = { path = "../../starknet-rust-providers" }
-url = "2.3.1"
+starknet-rust-providers.workspace = true
+url.workspace = true
 
 [lints]
 workspace = true
