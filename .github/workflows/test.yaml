@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -35,7 +35,7 @@ jobs:
           cargo test -p starknet-rust-crypto --features pedersen_no_lookup
 
       - name: Run cargo tests
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           timeout_minutes: 30
           max_attempts: 20
@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -72,7 +72,7 @@ jobs:
           cargo test -p starknet-rust-crypto --features pedersen_no_lookup
 
       - name: Run cargo tests
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           timeout_minutes: 30
           max_attempts: 20
@@ -85,7 +85,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -137,7 +137,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -179,7 +179,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install stable Rust toolchain
         run: |
