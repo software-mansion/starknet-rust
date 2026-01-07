@@ -8,15 +8,15 @@ use starknet_rust_tokio_tungstenite::{
 
 async fn create_stream() -> TungsteniteStream {
     TungsteniteStream::connect(
-        "wss://pathfinder.rpc.sepolia.starknet.rs/rpc/v0_9",
+        "wss://pathfinder.rpc.sepolia.starknet.rs/rpc/v0_9", // TODO(#60)
         Duration::from_secs(5),
     )
     .await
     .expect("WebSocket connection failed")
 }
 
-#[ignore]
 #[tokio::test]
+#[ignore = "TODO(#60)"]
 async fn websocket_new_heads_subscription() {
     let stream = create_stream().await;
 
@@ -53,7 +53,7 @@ async fn websocket_new_heads_subscription() {
 }
 
 #[tokio::test]
-#[ignore = "TODO: (#1)"]
+#[ignore = "TODO(#60)"]
 async fn websocket_events_subscription() {
     let stream = create_stream().await;
 
@@ -78,6 +78,7 @@ async fn websocket_events_subscription() {
 }
 
 #[tokio::test]
+#[ignore = "TODO(#60)"]
 async fn websocket_transaction_status_subscription() {
     let stream = create_stream().await;
 
@@ -102,6 +103,7 @@ async fn websocket_transaction_status_subscription() {
 }
 
 #[tokio::test]
+#[ignore = "TODO(#60)"]
 async fn websocket_new_transaction_receipts_subscription() {
     let stream = create_stream().await;
 
@@ -124,6 +126,7 @@ async fn websocket_new_transaction_receipts_subscription() {
 }
 
 #[tokio::test]
+#[ignore = "TODO(#60)"]
 async fn websocket_new_transactions_subscription() {
     let stream = create_stream().await;
 
