@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use futures_util::{stream::SplitStream, StreamExt};
+use futures_util::{StreamExt, stream::SplitStream};
 use starknet_rust_core::types::SubscriptionId;
-use starknet_rust_providers::{jsonrpc::JsonRpcResponse, StreamUpdateData};
+use starknet_rust_providers::{StreamUpdateData, jsonrpc::JsonRpcResponse};
 use tokio::{
     net::TcpStream,
     sync::{

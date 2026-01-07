@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use log::trace;
 use reqwest::{Client, Url};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
-    jsonrpc::{transports::JsonRpcTransport, JsonRpcMethod, JsonRpcResponse},
     ProviderRequestData,
+    jsonrpc::{JsonRpcMethod, JsonRpcResponse, transports::JsonRpcTransport},
 };
 
 /// A [`JsonRpcTransport`] implementation that uses HTTP connections.

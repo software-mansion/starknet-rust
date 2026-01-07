@@ -1,6 +1,6 @@
 use starknet_rust::providers::{
-    jsonrpc::{HttpTransport, JsonRpcClient},
     Provider, Url,
+    jsonrpc::{HttpTransport, JsonRpcClient},
 };
 
 #[tokio::main]

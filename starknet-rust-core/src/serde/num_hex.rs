@@ -1,7 +1,7 @@
 pub mod u64 {
     use alloc::{fmt::Formatter, format};
 
-    use serde::{de::Visitor, Deserializer, Serializer};
+    use serde::{Deserializer, Serializer, de::Visitor};
 
     struct NumHexVisitor;
 
