@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use starknet_rust_core::types::contract::legacy::LegacyContractClass;
 
 pub fn criterion_benchmark(c: &mut Criterion) {

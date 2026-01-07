@@ -6,8 +6,8 @@ use starknet_rust::{
         utils::get_selector_from_name,
     },
     providers::{
-        jsonrpc::{HttpTransport, JsonRpcClient},
         Url,
+        jsonrpc::{HttpTransport, JsonRpcClient},
     },
     signers::{LocalWallet, SigningKey},
 };

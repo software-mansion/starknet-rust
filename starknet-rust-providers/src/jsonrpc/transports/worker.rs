@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use url::Url;
 
 use crate::{
-    jsonrpc::{transports::JsonRpcTransport, JsonRpcMethod, JsonRpcResponse},
     ProviderRequestData,
+    jsonrpc::{JsonRpcMethod, JsonRpcResponse, transports::JsonRpcTransport},
 };
 
 /// A [`JsonRpcTransport`] implementation for the Cloudflare Workers environment.

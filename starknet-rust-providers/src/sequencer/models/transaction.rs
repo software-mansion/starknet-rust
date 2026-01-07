@@ -1,4 +1,4 @@
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 use serde_with::serde_as;
 use starknet_rust_core::{
     serde::unsigned_field_element::{UfeHex, UfePendingBlockHash},
@@ -6,9 +6,9 @@ use starknet_rust_core::{
 };
 
 use super::{
-    serde_impls::{u128_hex, u64_hex, u64_hex_opt},
-    transaction_receipt::{TransactionExecutionStatus, TransactionFinalityStatus},
     TransactionStatus,
+    serde_impls::{u64_hex, u64_hex_opt, u128_hex},
+    transaction_receipt::{TransactionExecutionStatus, TransactionFinalityStatus},
 };
 
 #[derive(Debug, Clone, Deserialize)]

@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use auto_impl::auto_impl;
 use serde::Serialize;
 use starknet_rust_core::types::{
-    requests::*, BlockHashAndNumber, BlockId, BroadcastedDeclareTransaction,
+    BlockHashAndNumber, BlockId, BroadcastedDeclareTransaction,
     BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
     ConfirmedBlockId, ContractClass, ContractStorageKeys, DeclareTransactionResult,
     DeployAccountTransactionResult, EventFilter, EventsPage, FeeEstimate, Felt, FunctionCall,
@@ -11,7 +11,7 @@ use starknet_rust_core::types::{
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
     SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError,
     StorageProof, SubscriptionId, SyncStatusType, Transaction, TransactionReceiptWithBlockInfo,
-    TransactionStatus, TransactionTrace, TransactionTraceWithHash,
+    TransactionStatus, TransactionTrace, TransactionTraceWithHash, requests::*,
 };
 use std::{any::Any, error::Error, fmt::Debug};
 

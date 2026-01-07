@@ -4,25 +4,25 @@ use crate::{
     crypto::compute_hash_on_elements,
     serde::{num_hex::u64 as u64_hex, unsigned_field_element::UfeHex},
     types::{
-        contract::{ComputeClassHashError, JsonError},
         Felt, FunctionStateMutability, LegacyContractAbiEntry, LegacyContractEntryPoint,
         LegacyEntryPointsByType, LegacyEventAbiEntry, LegacyEventAbiType, LegacyFunctionAbiEntry,
         LegacyFunctionAbiType, LegacyStructAbiEntry, LegacyStructAbiType, LegacyStructMember,
         LegacyTypedParameter,
+        contract::{ComputeClassHashError, JsonError},
     },
     utils::{cairo_short_string_to_felt, starknet_keccak},
 };
 
 use serde::{
-    de::Error as DeError, ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer,
+    Deserialize, Deserializer, Serialize, Serializer, de::Error as DeError, ser::SerializeSeq,
 };
 use serde_json_pythonic::to_string_pythonic;
-use serde_with::{serde_as, SerializeAs};
+use serde_with::{SerializeAs, serde_as};
 
 #[cfg(feature = "std")]
-use crate::types::{contract::CompressProgramError, CompressedLegacyContractClass};
+use crate::types::{CompressedLegacyContractClass, contract::CompressProgramError};
 #[cfg(feature = "std")]
-use flate2::{write::GzEncoder, Compression};
+use flate2::{Compression, write::GzEncoder};
 
 const API_VERSION: Felt = Felt::ZERO;
 
@@ -1046,9 +1046,7 @@ mod tests {
             ),
             (
                 include_str!("../../../test-data/contracts/cairo0/artifacts/emoji.txt"),
-                include_str!(
-                    "../../../test-data/contracts/cairo0/artifacts/emoji.hashes.json"
-                ),
+                include_str!("../../../test-data/contracts/cairo0/artifacts/emoji.hashes.json"),
             ),
             (
                 include_str!(
@@ -1066,8 +1064,7 @@ mod tests {
                     "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/braavos_proxy.hashes.json"
                 ),
             ),
-        ]
-        {
+        ] {
             let artifact = serde_json::from_str::<LegacyContractClass>(raw_artifact).unwrap();
             let computed_hash = artifact.class_hash().unwrap();
 
@@ -1090,9 +1087,7 @@ mod tests {
             ),
             (
                 include_str!("../../../test-data/contracts/cairo0/artifacts/emoji.txt"),
-                include_str!(
-                    "../../../test-data/contracts/cairo0/artifacts/emoji.hashes.json"
-                ),
+                include_str!("../../../test-data/contracts/cairo0/artifacts/emoji.hashes.json"),
             ),
             (
                 include_str!(
@@ -1110,8 +1105,7 @@ mod tests {
                     "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/braavos_proxy.hashes.json"
                 ),
             ),
-        ]
-        {
+        ] {
             let artifact = serde_json::from_str::<LegacyContractClass>(raw_artifact).unwrap();
             let computed_hash = artifact.hinted_class_hash().unwrap();
 

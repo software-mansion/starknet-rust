@@ -2,8 +2,8 @@
 pub mod base64 {
     use alloc::{fmt::Formatter, format, vec::*};
 
-    use base64::{engine::general_purpose::STANDARD, Engine};
-    use serde::{de::Visitor, Deserializer, Serializer};
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    use serde::{Deserializer, Serializer, de::Visitor};
 
     struct Base64Visitor;
 

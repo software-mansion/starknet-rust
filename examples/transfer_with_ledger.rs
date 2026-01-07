@@ -7,8 +7,8 @@ use starknet_rust::{
     },
     macros::felt,
     providers::{
-        jsonrpc::{HttpTransport, JsonRpcClient},
         Url,
+        jsonrpc::{HttpTransport, JsonRpcClient},
     },
     signers::LedgerSigner,
 };

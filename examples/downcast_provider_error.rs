@@ -1,6 +1,6 @@
 use starknet_rust_providers::{
-    jsonrpc::{HttpTransport, HttpTransportError, JsonRpcClient, JsonRpcClientError},
     Provider, ProviderError,
+    jsonrpc::{HttpTransport, HttpTransportError, JsonRpcClient, JsonRpcClientError},
 };
 use url::Url;
 

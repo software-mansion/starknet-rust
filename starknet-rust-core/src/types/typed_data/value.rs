@@ -1,7 +1,7 @@
 use alloc::{borrow::ToOwned, string::*, vec::*};
 
 use indexmap::IndexMap;
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 
 #[cfg(feature = "std")]
 type RandomState = std::hash::RandomState;
