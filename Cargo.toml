@@ -1,19 +1,24 @@
 [workspace.package]
 edition = "2024"
+authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/software-mansion/starknet-rust"
+readme = "README.md"
+keywords = ["ethereum", "starknet", "web3"]
 
 [package]
 name = "starknet-rust"
 version = "0.18.0"
-authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+license.workspace = true
 edition.workspace = true
-readme = "README.md"
+readme.workspace = true
 documentation = "https://docs.rs/starknet"
-repository = "https://github.com/software-mansion/starknet-rust"
+repository.workspace = true
 description = """
 Complete Starknet library in Rust™
 """
-keywords = ["ethereum", "starknet", "web3"]
+keywords.workspace = true
 exclude = [".github/**", "images/**"]
 
 [workspace]
