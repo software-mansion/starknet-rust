@@ -1,4 +1,4 @@
-use crypto_bigint::{Encoding, NonZero, U256};
+use crypto_bigint::{NonZero, U256};
 use rand::{Rng, SeedableRng, rngs::StdRng};
 use starknet_rust_core::{
     crypto::{EcdsaSignError, EcdsaVerifyError, Signature, ecdsa_sign, ecdsa_verify},
@@ -36,16 +36,17 @@ pub enum KeystoreError {
 impl SigningKey {
     /// Generates a new key pair from a cryptographically secure RNG.
     pub fn from_random() -> Self {
-        const PRIME: NonZero<U256> = NonZero::from_uint(U256::from_be_hex(
+        let prime: NonZero<U256> = NonZero::new(U256::from_be_hex(
             "0800000000000011000000000000000000000000000000000000000000000001",
-        ));
+        ))
+        .unwrap();
 
         let mut rng = StdRng::from_entropy();
         let mut buffer = [0u8; 32];
         rng.fill(&mut buffer);
 
         let random_u256 = U256::from_be_slice(&buffer);
-        let secret_scalar = random_u256.rem(&PRIME);
+        let secret_scalar = random_u256.rem(&prime);
 
         // It's safe to unwrap here as we're 100% sure it's not out of range
         let secret_scalar = Felt::from_bytes_be_slice(&secret_scalar.to_be_bytes());

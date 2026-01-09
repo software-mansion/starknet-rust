@@ -288,9 +288,8 @@ where
         // The Ledger app prior to version 2.0.0 expects the input to be left shifted by 4 bits:
         let app_version = self.get_version().await?;
         let adjusted_bytes: [u8; 32] = if app_version < Version::new(2, 0, 0) {
-            (U256::from_be_slice(&hash.to_bytes_be()) << 4)
-                .to_be_byte_array()
-                .into()
+            let adjusted_u256: U256 = U256::from_be_slice(&hash.to_bytes_be()) << 4;
+            adjusted_u256.to_be_byte_array().into()
         } else {
             hash.to_bytes_be()
         };

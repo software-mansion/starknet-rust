@@ -1,7 +1,8 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use hex_literal::hex;
 use starknet_rust_crypto::pedersen_hash;
 use starknet_types_core::felt::Felt;
+use std::hint::black_box;
 
 // Benchmark taken from pathfinder for performance comparison:
 // https://github.com/eqlabs/pathfinder/blob/b091cb889e624897dbb0cbec3c1df9a9e411eb1e/crates/pedersen/benches/pedersen.rs

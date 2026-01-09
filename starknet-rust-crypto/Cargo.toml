@@ -14,7 +14,7 @@ exclude = ["test-data/**"]
 
 [dependencies]
 starknet-rust-curve.workspace = true
-crypto-bigint = { workspace = true, features = ["generic-array", "zeroize"] }
+crypto-bigint = { workspace = true, features = ["zeroize", "hybrid-array"] }
 hmac.workspace = true
 num-bigint.workspace = true
 num-integer.workspace = true
