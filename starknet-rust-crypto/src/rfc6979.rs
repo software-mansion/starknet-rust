@@ -1,3 +1,4 @@
+use core::ops::Shr;
 use crypto_bigint::{ArrayEncoding, ByteArray, Integer, U256};
 use hmac::digest::Digest;
 use sha2::digest::{FixedOutputReset, HashMarker, crypto_common::BlockSizeUser};
@@ -55,7 +56,7 @@ pub fn generate_k(message_hash: &Felt, private_key: &Felt, seed: Option<&Felt>) 
 fn generate_k_shifted<D, I>(x: &I, n: &I, h: &ByteArray<I>, data: &[u8]) -> Zeroizing<I>
 where
     D: Default + Digest + BlockSizeUser + FixedOutputReset + HashMarker,
-    I: ArrayEncoding + Integer + Zeroize,
+    I: ArrayEncoding + Integer + Zeroize + Shr<usize, Output = I>,
 {
     let mut x = x.to_be_byte_array();
     let mut hmac_drbg = rfc6979::HmacDrbg::<D>::new(&x, h, data);
@@ -64,7 +65,7 @@ where
     loop {
         let mut bytes = ByteArray::<I>::default();
         hmac_drbg.fill_bytes(&mut bytes);
-        let k = I::from_be_byte_array(bytes) >> 4;
+        let k: I = I::from_be_byte_array(bytes) >> 4usize;
 
         if (!k.is_zero() & k.ct_lt(n)).into() {
             return Zeroizing::new(k);

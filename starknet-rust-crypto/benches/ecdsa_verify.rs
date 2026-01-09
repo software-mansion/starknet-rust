@@ -1,7 +1,8 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use hex_literal::hex;
 use starknet_rust_crypto::verify;
 use starknet_types_core::felt::Felt;
+use std::hint::black_box;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let stark_key = hex!("0565ee8f4203a04fbd5de77c678bc3738538f35c0871e377cdc45fcfa79e6bd9");
