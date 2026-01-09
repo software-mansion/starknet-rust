@@ -13,10 +13,10 @@ use super::{revision::Revision, shortstring};
 /// starknet_keccak("StarkNetDomain(name:felt,version:felt,chainId:felt)")
 /// ```
 const DOMAIN_TYPE_HASH_V0: Felt = Felt::from_raw([
-    454097714883350422,
-    18110465409072164514,
-    49961291536018317,
-    11250613311408382492,
+    454_097_714_883_350_422,
+    18_110_465_409_072_164_514,
+    49_961_291_536_018_317,
+    11_250_613_311_408_382_492,
 ]);
 
 /// SNIP-12 type hash of the domain type of revision 1.
@@ -27,10 +27,10 @@ const DOMAIN_TYPE_HASH_V0: Felt = Felt::from_raw([
 /// starknet_keccak("\"StarknetDomain\"(\"name\":\"shortstring\",\"version\":\"shortstring\",\"chainId\":\"shortstring\",\"revision\":\"shortstring\")")
 /// ```
 const DOMAIN_TYPE_HASH_V1: Felt = Felt::from_raw([
-    45164882192052528,
-    3320515356094353366,
-    7437117071726711362,
-    6953663458211852539,
+    45_164_882_192_052_528,
+    3_320_515_356_094_353_366,
+    7_437_117_071_726_711_362,
+    6_953_663_458_211_852_539,
 ]);
 
 /// SNIP-12 typed data domain separator.

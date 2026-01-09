@@ -16,10 +16,10 @@ use starknet_types_core::felt::Felt;
 /// When a compuated value is greater than or equal to this bound, the modulus is taken to ensure
 /// the resulting value falls under the bound.
 const ELEMENT_UPPER_BOUND: Felt = Felt::from_raw([
-    576459263475450960,
-    18446744073709255680,
-    160989183,
-    18446743986131435553,
+    576_459_263_475_450_960,
+    18_446_744_073_709_255_680,
+    160_989_183,
+    18_446_743_986_131_435_553,
 ]);
 
 /// Stark ECDSA signature.
@@ -228,7 +228,6 @@ pub fn recover(message: &Felt, r: &Felt, s: &Felt, v: &Felt) -> Result<Felt, Rec
     Ok(k.to_affine().unwrap().x())
 }
 
-#[inline(always)]
 fn mul_by_bits(x: &AffinePoint, y: &Felt) -> ProjectivePoint {
     &ProjectivePoint::from_affine(x.x(), x.y()).unwrap() * *y
 }

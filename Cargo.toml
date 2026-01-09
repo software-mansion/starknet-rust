@@ -134,12 +134,12 @@ no_unknown_fields = [
 worker = ["starknet-rust-providers/worker"]
 
 [workspace.lints]
-rustdoc.all = "allow"
+rustdoc.all = "warn"
 
 [workspace.lints.rust]
-missing_debug_implementations = "allow"
-missing_docs = "allow"
-unreachable_pub = "allow"
+missing_debug_implementations = "warn"
+missing_docs = "allow" # Docs related, too much work to maintain right now
+unreachable_pub = "warn"
 unused_must_use = "deny"
 
 
@@ -148,31 +148,22 @@ pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 
 # Allow specific pedantic/nursery lints that are too noisy
-missing_errors_doc = "allow"
-module_name_repetitions = "allow"
 must_use_candidate = "allow"
-missing_panics_doc = "allow"
+mismatching_type_param_order = "allow"
+type_repetition_in_bounds = "allow"
+
+# Lints that we don't want to handle (worth revisiting in the future)
+redundant_pub_crate = "allow"
 too_many_lines = "allow"
-inline_always = "allow"
-similar_names = "allow"
 unsafe_derive_deserialize = "allow"
+future_not_send = "allow"
+
+# Docs related, too much work to maintain right now
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
 too_long_first_doc_paragraph = "allow"
+
+# Casting lints would be nice to have, but too much work to fix right now
 cast_possible_truncation = "allow"
 cast_sign_loss = "allow"
-future_not_send = "allow"
-needless_pass_by_value = "allow"
-struct_field_names = "allow"
-trivially_copy_pass_by_ref = "allow"
-return_self_not_must_use = "allow"
-
-match_wildcard_for_single_variants = "allow"
-manual_let_else = "allow"
 cast_precision_loss = "allow"
-mismatching_type_param_order = "allow"
-default_trait_access = "allow"
-unreadable_literal = "allow"
-redundant_pub_crate = "allow"
-large_digit_groups = "allow"
-needless_for_each = "allow"
-type_repetition_in_bounds = "allow"
-option_if_let_else = "allow"

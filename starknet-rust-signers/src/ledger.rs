@@ -16,7 +16,7 @@ pub use coins_bip32::path::DerivationPath;
 const CLA_STARKNET: u8 = 0x5a;
 
 /// BIP-32 encoding of `2645'`
-const EIP_2645_PURPOSE: u32 = 0x80000a55;
+const EIP_2645_PURPOSE: u32 = 0x8000_0a55;
 
 const EIP_2645_PATH_LENGTH: usize = 6;
 

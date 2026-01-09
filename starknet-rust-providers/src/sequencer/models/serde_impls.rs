@@ -3,14 +3,15 @@ pub(crate) mod u64_hex {
 
     struct U64HexVisitor;
 
-    pub fn serialize<S>(v: &u64, serializer: S) -> Result<S::Ok, S::Error>
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    pub(crate) fn serialize<S>(v: &u64, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         serializer.serialize_str(&format!("{v:#x}"))
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
+    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -39,14 +40,14 @@ pub(crate) mod u128_hex {
 
     struct U128HexVisitor;
 
-    pub fn serialize<S>(v: &u128, serializer: S) -> Result<S::Ok, S::Error>
+    pub(crate) fn serialize<S>(v: &u128, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         serializer.serialize_str(&format!("{v:#x}"))
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<u128, D::Error>
+    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<u128, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -75,7 +76,7 @@ pub(crate) mod u64_hex_opt {
 
     struct U64HexOptVisitor;
 
-    pub fn serialize<S>(v: Option<&u64>, serializer: S) -> Result<S::Ok, S::Error>
+    pub(crate) fn serialize<S>(v: Option<&u64>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -85,7 +86,7 @@ pub(crate) mod u64_hex_opt {
         }
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {

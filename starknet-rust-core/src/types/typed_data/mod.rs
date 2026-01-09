@@ -42,10 +42,10 @@ pub use encoder::{CompositeFieldEncodingIter, Encoder};
 
 /// Cairo short string encoding of `StarkNet Message`.
 const STARKNET_MESSAGE_PREFIX: Felt = Felt::from_raw([
-    257012186512350467,
-    18446744073709551605,
-    10480951322775611302,
-    16156019428408348868,
+    257_012_186_512_350_467,
+    18_446_744_073_709_551_605,
+    10_480_951_322_775_611_302,
+    16_156_019_428_408_348_868,
 ]);
 
 /// SNIP-12 typed data for off-chain signatures.

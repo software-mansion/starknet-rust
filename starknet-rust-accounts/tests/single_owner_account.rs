@@ -12,10 +12,10 @@ use test_common::create_jsonrpc_client;
 
 /// Cairo short string encoding for `SN_SEPOLIA`.
 const CHAIN_ID: Felt = Felt::from_raw([
-    507980251676163170,
-    18446744073709551615,
-    18446744073708869172,
-    1555806712078248243,
+    507_980_251_676_163_170,
+    18_446_744_073_709_551_615,
+    18_446_744_073_708_869_172,
+    1_555_806_712_078_248_243,
 ]);
 
 fn create_sequencer_client() -> SequencerGatewayProvider {
@@ -239,13 +239,13 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + 
             ],
         }])
         .l1_gas(0)
-        .l1_gas_price(1000000000000000)
-        .l2_gas(1000000)
-        .l2_gas_price(10000000000)
+        .l1_gas_price(1_000_000_000_000_000)
+        .l2_gas(1_000_000)
+        .l2_gas_price(10_000_000_000)
         .l1_data_gas(1000)
-        .l1_data_gas_price(100000000000000)
+        .l1_data_gas_price(100_000_000_000_000)
         // This tx costs around 10^6 L2 gas. So a tip of 10^10 is around 10^16 FRI (0.01 STRK).
-        .tip(1_0000000000)
+        .tip(10_000_000_000)
         .send()
         .await
         .unwrap();
@@ -342,11 +342,11 @@ async fn can_declare_cairo1_contract_v3_inner<P: Provider + Send + Sync>(
             Felt::from_hex(&hashes.compiled_class_hash_poseidon).unwrap(),
         )
         .l1_gas(0)
-        .l1_gas_price(1000000000000000)
-        .l2_gas(100000000)
-        .l2_gas_price(10000000000)
+        .l1_gas_price(1_000_000_000_000_000)
+        .l2_gas(100_000_000)
+        .l2_gas_price(10_000_000_000)
         .l1_data_gas(1000)
-        .l1_data_gas_price(100000000000000)
+        .l1_data_gas_price(100_000_000_000_000)
         .send()
         .await
         .unwrap();

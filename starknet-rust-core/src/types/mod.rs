@@ -925,7 +925,7 @@ mod tests {
             )
             .unwrap(),
             version: Felt::ZERO,
-            nonce: 775628,
+            nonce: 775_628,
             contract_address: Felt::from_hex(
                 "0x73314940630fd6dcda0d772d4c972c4e0a9946bef9dabf4ef84eda8ef542b82",
             )
@@ -961,7 +961,7 @@ mod tests {
             )
             .unwrap(),
             version: Felt::ZERO,
-            nonce: 775628,
+            nonce: 775_628,
             contract_address: Felt::from_hex(
                 "0x73314940630fd6dcda0d772d4c972c4e0a9946bef9dabf4ef84eda8ef542b82",
             )
@@ -987,7 +987,7 @@ mod tests {
             )
             .unwrap(),
             version: Felt::ZERO,
-            nonce: 775628,
+            nonce: 775_628,
             contract_address: Felt::from_hex(
                 "0x73314940630fd6dcda0d772d4c972c4e0a9946bef9dabf4ef84eda8ef542b82",
             )

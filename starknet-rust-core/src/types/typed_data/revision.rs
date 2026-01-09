@@ -10,6 +10,7 @@ pub enum Revision {
 }
 
 impl Revision {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub(crate) const fn is_v0(&self) -> bool {
         matches!(self, Self::V0)
     }

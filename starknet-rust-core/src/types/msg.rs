@@ -114,7 +114,7 @@ mod tests {
                 Felt::from_hex("0x2c68af0bb140000").unwrap(),
                 Felt::from_hex("0x0").unwrap(),
             ],
-            nonce: 775628,
+            nonce: 775_628,
         };
 
         let expected_hash =

@@ -581,7 +581,7 @@ mod tests {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_encode_u32() {
         let mut serialized = Vec::<Felt>::new();
-        1234567890u32.encode(&mut serialized).unwrap();
+        1_234_567_890_u32.encode(&mut serialized).unwrap();
         assert_eq!(serialized, vec![Felt::from_str("1234567890").unwrap()]);
     }
 
@@ -589,7 +589,9 @@ mod tests {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_encode_u64() {
         let mut serialized = Vec::<Felt>::new();
-        12345678900000000000u64.encode(&mut serialized).unwrap();
+        12_345_678_900_000_000_000_u64
+            .encode(&mut serialized)
+            .unwrap();
         assert_eq!(
             serialized,
             vec![Felt::from_str("12345678900000000000").unwrap()]
@@ -600,7 +602,7 @@ mod tests {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_encode_u128() {
         let mut serialized = Vec::<Felt>::new();
-        123456789000000000000000000000u128
+        123_456_789_000_000_000_000_000_000_000_u128
             .encode(&mut serialized)
             .unwrap();
         assert_eq!(
@@ -915,7 +917,7 @@ mod tests {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_decode_u32() {
         assert_eq!(
-            1234567890u32,
+            1_234_567_890_u32,
             u32::decode(&[Felt::from_str("1234567890").unwrap()]).unwrap()
         );
     }
@@ -924,7 +926,7 @@ mod tests {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_decode_u64() {
         assert_eq!(
-            12345678900000000000u64,
+            12_345_678_900_000_000_000_u64,
             u64::decode(&[Felt::from_str("12345678900000000000").unwrap()]).unwrap()
         );
     }
@@ -933,7 +935,7 @@ mod tests {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_decode_u128() {
         assert_eq!(
-            123456789000000000000000000000u128,
+            123_456_789_000_000_000_000_000_000_000_u128,
             u128::decode(&[Felt::from_str("123456789000000000000000000000").unwrap()]).unwrap()
         );
     }

@@ -1,6 +1,6 @@
 use starknet_types_core::felt::Felt;
 
-pub fn field_element_from_be_hex(hex: &str) -> Felt {
+pub(crate) fn field_element_from_be_hex(hex: &str) -> Felt {
     let decoded = hex::decode(hex.trim_start_matches("0x")).unwrap();
 
     assert!(decoded.len() <= 32, "hex string too long");

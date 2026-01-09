@@ -213,7 +213,9 @@ mod tests {
 
             // With hasher
             let mut hasher = PoseidonHasher::new();
-            input.iter().for_each(|msg| hasher.update(*msg));
+            for msg in &input {
+                hasher.update(*msg);
+            }
             assert_eq!(hasher.finalize(), hash);
         }
     }

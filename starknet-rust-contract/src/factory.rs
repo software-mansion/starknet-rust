@@ -6,26 +6,26 @@ use starknet_rust_core::{
 
 /// The Cairo 0 UDC address: `0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf`.
 const LEGACY_UDC_ADDRESS: Felt = Felt::from_raw([
-    121672436446604875,
-    9333317513348225193,
-    15685625669053253235,
-    15144800532519055890,
+    121_672_436_446_604_875,
+    9_333_317_513_348_225_193,
+    15_685_625_669_053_253_235,
+    15_144_800_532_519_055_890,
 ]);
 
 /// The Cairo 1 UDC address: `0x02ceed65a4bd731034c01113685c831b01c15d7d432f71afb1cf1634b53a2125`.
 const NEW_UDC_ADDRESS: Felt = Felt::from_raw([
-    505287751652144584,
-    6849092491656713429,
-    14735209673864872887,
-    4208494925911946768,
+    505_287_751_652_144_584,
+    6_849_092_491_656_713_429,
+    14_735_209_673_864_872_887,
+    4_208_494_925_911_946_768,
 ]);
 
 /// Selector for entrypoint `deployContract`.
 const SELECTOR_DEPLOYCONTRACT: Felt = Felt::from_raw([
-    469988280392664069,
-    1439621915307882061,
-    1265649739554438882,
-    18249998464715511309,
+    469_988_280_392_664_069,
+    1_439_621_915_307_882_061,
+    1_265_649_739_554_438_882,
+    18_249_998_464_715_511_309,
 ]);
 
 /// A contract factory that acts as a blueprint for deploying Starknet smart contracts using the

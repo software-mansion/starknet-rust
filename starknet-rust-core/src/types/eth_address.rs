@@ -6,10 +6,10 @@ use starknet_types_core::felt::Felt;
 
 // 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF
 const MAX_L1_ADDRESS: Felt = Felt::from_raw([
-    461478224317121089,
-    18446743936270598144,
-    74766790688767,
-    18406070939574861858,
+    461_478_224_317_121_089,
+    18_446_743_936_270_598_144,
+    74_766_790_688_767,
+    18_406_070_939_574_861_858,
 ]);
 
 /// Ethereum address represented with a 20-byte array.
@@ -140,15 +140,12 @@ impl FromStr for EthAddress {
         let value = s.trim_start_matches("0x");
 
         if value.len() == 40 {
-            match hex::decode(value) {
-                Ok(bytes) => {
-                    Ok(Self {
-                        // It's safe to unwrap here as the length must be 20
-                        inner: bytes.try_into().unwrap(),
-                    })
-                }
-                Err(_) => Err(FromHexError::InvalidHexString),
-            }
+            hex::decode(value).map_or(Err(FromHexError::InvalidHexString), |bytes| {
+                Ok(Self {
+                    // It's safe to unwrap here as the length must be 20
+                    inner: bytes.try_into().unwrap(),
+                })
+            })
         } else {
             Err(FromHexError::UnexpectedLength)
         }

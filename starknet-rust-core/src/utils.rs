@@ -12,18 +12,18 @@ const DEFAULT_L1_ENTRY_POINT_NAME: &str = "__l1_default__";
 
 // 2 ** 251 - 256
 const ADDR_BOUND: NonZeroFelt = NonZeroFelt::from_raw([
-    576459263475590224,
-    18446744073709255680,
-    160989183,
-    18446743986131443745,
+    576_459_263_475_590_224,
+    18_446_744_073_709_255_680,
+    160_989_183,
+    18_446_743_986_131_443_745,
 ]);
 
 // Cairo string of "STARKNET_CONTRACT_ADDRESS"
 const CONTRACT_ADDRESS_PREFIX: Felt = Felt::from_raw([
-    533439743893157637,
-    8635008616843941496,
-    17289941567720117366,
-    3829237882463328880,
+    533_439_743_893_157_637,
+    8_635_008_616_843_941_496,
+    17_289_941_567_720_117_366,
+    3_829_237_882_463_328_880,
 ]);
 
 /// The uniqueness settings for UDC deployments.
@@ -119,7 +119,7 @@ pub fn starknet_keccak(data: &[u8]) -> Felt {
     let mut hash = hasher.finalize();
 
     // Remove the first 6 bits
-    hash[0] &= 0b00000011;
+    hash[0] &= 0b0000_0011;
 
     // Because we know hash is always 32 bytes
     Felt::from_bytes_be(unsafe { &*hash[..].as_ptr().cast::<[u8; 32]>() })

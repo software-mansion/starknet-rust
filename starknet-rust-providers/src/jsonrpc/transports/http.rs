@@ -57,6 +57,7 @@ impl HttpTransport {
 
     /// Consumes the current [`HttpTransport`] instance and returns a new one with the header
     /// appended. Same as calling [`add_header`](fn.add_header).
+    #[must_use]
     pub fn with_header(self, name: String, value: String) -> Self {
         let mut headers = self.headers;
         headers.push((name, value));

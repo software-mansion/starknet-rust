@@ -14,39 +14,39 @@ use starknet_rust_crypto::PoseidonHasher;
 use starknet_rust_providers::{Provider, ProviderError};
 use std::error::Error;
 
-pub mod argent;
-pub mod open_zeppelin;
+pub(crate) mod argent;
+pub(crate) mod open_zeppelin;
 
 /// Cairo string for `deploy_account`
 const PREFIX_DEPLOY_ACCOUNT: Felt = Felt::from_raw([
-    461298303000467581,
-    18446744073709551615,
-    18443211694809419988,
-    3350261884043292318,
+    461_298_303_000_467_581,
+    18_446_744_073_709_551_615,
+    18_443_211_694_809_419_988,
+    3_350_261_884_043_292_318,
 ]);
 
 /// 2 ^ 128 + 3
 const QUERY_VERSION_THREE: Felt = Felt::from_raw([
-    576460752142432688,
-    18446744073709551584,
+    576_460_752_142_432_688,
+    18_446_744_073_709_551_584,
     17407,
-    18446744073700081569,
+    18_446_744_073_700_081_569,
 ]);
 
 /// Cairo string for `STARKNET_CONTRACT_ADDRESS`
 const PREFIX_CONTRACT_ADDRESS: Felt = Felt::from_raw([
-    533439743893157637,
-    8635008616843941496,
-    17289941567720117366,
-    3829237882463328880,
+    533_439_743_893_157_637,
+    8_635_008_616_843_941_496,
+    17_289_941_567_720_117_366,
+    3_829_237_882_463_328_880,
 ]);
 
 // 2 ** 251 - 256
 const ADDR_BOUND: NonZeroFelt = NonZeroFelt::from_raw([
-    576459263475590224,
-    18446744073709255680,
-    160989183,
-    18446743986131443745,
+    576_459_263_475_590_224,
+    18_446_744_073_709_255_680,
+    160_989_183,
+    18_446_743_986_131_443_745,
 ]);
 
 /// Abstraction over different ways of deploying account contracts using the `DEPLOY_ACCOUNT`

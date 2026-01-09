@@ -18,18 +18,18 @@ pub mod legacy;
 
 /// Cairo string for `CONTRACT_CLASS_V0.1.0`
 const PREFIX_CONTRACT_CLASS_V0_1_0: Felt = Felt::from_raw([
-    37302452645455172,
-    18446734822722598327,
-    15539482671244488427,
-    5800711240972404213,
+    37_302_452_645_455_172,
+    18_446_734_822_722_598_327,
+    15_539_482_671_244_488_427,
+    5_800_711_240_972_404_213,
 ]);
 
 /// Cairo string for `COMPILED_CLASS_V1`
 const PREFIX_COMPILED_CLASS_V1: Felt = Felt::from_raw([
-    324306817650036332,
-    18446744073709549462,
-    1609463842841646376,
-    2291010424822318237,
+    324_306_817_650_036_332,
+    18_446_744_073_709_549_462,
+    1_609_463_842_841_646_376,
+    2_291_010_424_822_318_237,
 ]);
 
 /// Cairo contract artifact in a representation identical to the compiler output.
@@ -1054,10 +1054,10 @@ mod tests {
             include_str!("../../../test-data/contracts/cairo2.6/artifacts/trivial_sierra.txt"),
         ] {
             let direct_deser = serde_json::from_str::<SierraClass>(raw_artifact).unwrap();
-            let via_contract_artifact = match serde_json::from_str::<ContractArtifact>(raw_artifact)
-            {
-                Ok(ContractArtifact::SierraClass(class)) => class,
-                _ => panic!("Unexpected result"),
+            let Ok(ContractArtifact::SierraClass(via_contract_artifact)) =
+                serde_json::from_str::<ContractArtifact>(raw_artifact)
+            else {
+                panic!("Unexpected result")
             };
 
             // Class should be identical however it's deserialized
@@ -1080,10 +1080,10 @@ mod tests {
             include_str!("../../../test-data/contracts/cairo2.6/artifacts/trivial_compiled.txt"),
         ] {
             let direct_deser = serde_json::from_str::<CompiledClass>(raw_artifact).unwrap();
-            let via_contract_artifact = match serde_json::from_str::<ContractArtifact>(raw_artifact)
-            {
-                Ok(ContractArtifact::CompiledClass(class)) => class,
-                _ => panic!("Unexpected result"),
+            let Ok(ContractArtifact::CompiledClass(via_contract_artifact)) =
+                serde_json::from_str::<ContractArtifact>(raw_artifact)
+            else {
+                panic!("Unexpected result")
             };
 
             // Class should be identical however it's deserialized

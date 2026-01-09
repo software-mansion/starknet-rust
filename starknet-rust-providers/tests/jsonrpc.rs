@@ -47,7 +47,9 @@ async fn jsonrpc_get_block_with_tx_hashes_with_latest() {
 
     let block = match block {
         MaybePreConfirmedBlockWithTxHashes::Block(block) => block,
-        _ => panic!("unexpected block response type"),
+        MaybePreConfirmedBlockWithTxHashes::PreConfirmedBlock(_) => {
+            panic!("unexpected block response type")
+        }
     };
 
     assert!(block.block_number > 0);
@@ -64,7 +66,9 @@ async fn jsonrpc_get_block_with_tx_hashes_with_l1_accepted() {
 
     let block = match block {
         MaybePreConfirmedBlockWithTxHashes::Block(block) => block,
-        _ => panic!("unexpected block response type"),
+        MaybePreConfirmedBlockWithTxHashes::PreConfirmedBlock(_) => {
+            panic!("unexpected block response type")
+        }
     };
 
     assert!(block.block_number > 0);
@@ -81,7 +85,9 @@ async fn jsonrpc_get_block_with_txs_with_latest() {
 
     let block = match block {
         MaybePreConfirmedBlockWithTxs::Block(block) => block,
-        _ => panic!("unexpected block response type"),
+        MaybePreConfirmedBlockWithTxs::PreConfirmedBlock(_) => {
+            panic!("unexpected block response type")
+        }
     };
 
     assert!(block.block_number > 0);
@@ -98,7 +104,9 @@ async fn jsonrpc_get_block_with_txs_with_l1_accepted() {
 
     let block = match block {
         MaybePreConfirmedBlockWithTxs::Block(block) => block,
-        _ => panic!("unexpected block response type"),
+        MaybePreConfirmedBlockWithTxs::PreConfirmedBlock(_) => {
+            panic!("unexpected block response type")
+        }
     };
 
     assert!(block.block_number > 0);
@@ -115,7 +123,9 @@ async fn jsonrpc_get_block_with_receipts_with_latest() {
 
     let block = match block {
         MaybePreConfirmedBlockWithReceipts::Block(block) => block,
-        _ => panic!("unexpected block response type"),
+        MaybePreConfirmedBlockWithReceipts::PreConfirmedBlock(_) => {
+            panic!("unexpected block response type")
+        }
     };
 
     assert!(block.block_number > 0);
@@ -132,7 +142,9 @@ async fn jsonrpc_get_block_with_receipts_with_l1_accepted() {
 
     let block = match block {
         MaybePreConfirmedBlockWithReceipts::Block(block) => block,
-        _ => panic!("unexpected block response type"),
+        MaybePreConfirmedBlockWithReceipts::PreConfirmedBlock(_) => {
+            panic!("unexpected block response type")
+        }
     };
 
     assert!(block.block_number > 0);
@@ -149,7 +161,7 @@ async fn jsonrpc_get_state_update_with_latest() {
 
     let state_update = match state_update {
         MaybePreConfirmedStateUpdate::Update(value) => value,
-        _ => panic!("unexpected data type"),
+        MaybePreConfirmedStateUpdate::PreConfirmedUpdate(_) => panic!("unexpected data type"),
     };
 
     assert!(state_update.new_root > Felt::ZERO);
@@ -165,7 +177,7 @@ async fn jsonrpc_get_state_update_with_l1_accepted() {
 
     let state_update = match state_update {
         MaybePreConfirmedStateUpdate::Update(value) => value,
-        _ => panic!("unexpected data type"),
+        MaybePreConfirmedStateUpdate::PreConfirmedUpdate(_) => panic!("unexpected data type"),
     };
 
     assert!(state_update.new_root > Felt::ZERO);
@@ -272,9 +284,8 @@ async fn jsonrpc_get_transaction_by_hash_invoke_v1() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::Invoke(InvokeTransaction::V1(tx)) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::Invoke(InvokeTransaction::V1(tx)) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.sender_address > Felt::ZERO);
@@ -292,9 +303,8 @@ async fn jsonrpc_get_transaction_by_hash_l1_handler() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::L1Handler(tx) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::L1Handler(tx) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.entry_point_selector > Felt::ZERO);
@@ -312,9 +322,8 @@ async fn jsonrpc_get_transaction_by_hash_declare_v0() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::Declare(DeclareTransaction::V0(tx)) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::Declare(DeclareTransaction::V0(tx)) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.sender_address > Felt::ZERO);
@@ -332,9 +341,8 @@ async fn jsonrpc_get_transaction_by_hash_declare_v1() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::Declare(DeclareTransaction::V1(tx)) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::Declare(DeclareTransaction::V1(tx)) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.sender_address > Felt::ZERO);
@@ -352,9 +360,8 @@ async fn jsonrpc_get_transaction_by_hash_declare_v2() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::Declare(DeclareTransaction::V2(tx)) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::Declare(DeclareTransaction::V2(tx)) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.sender_address > Felt::ZERO);
@@ -372,9 +379,8 @@ async fn jsonrpc_get_transaction_by_hash_declare_v3() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::Declare(DeclareTransaction::V3(tx)) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::Declare(DeclareTransaction::V3(tx)) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.sender_address > Felt::ZERO);
@@ -395,9 +401,8 @@ async fn jsonrpc_get_transaction_by_hash_deploy_account_v1() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::DeployAccount(DeployAccountTransaction::V1(tx)) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::DeployAccount(DeployAccountTransaction::V1(tx)) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.class_hash > Felt::ZERO);
@@ -415,9 +420,8 @@ async fn jsonrpc_get_transaction_by_hash_deploy_account_v3() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::DeployAccount(DeployAccountTransaction::V3(tx)) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::DeployAccount(DeployAccountTransaction::V3(tx)) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.class_hash > Felt::ZERO);
@@ -432,9 +436,8 @@ async fn jsonrpc_get_transaction_by_block_id_and_index() {
         .await
         .unwrap();
 
-    let tx = match tx {
-        Transaction::Invoke(InvokeTransaction::V3(tx)) => tx,
-        _ => panic!("unexpected tx response type"),
+    let Transaction::Invoke(InvokeTransaction::V3(tx)) = tx else {
+        panic!("unexpected tx response type")
     };
 
     assert!(tx.sender_address > Felt::ZERO);
@@ -471,14 +474,13 @@ async fn jsonrpc_get_transaction_receipt_invoke() {
 
     assert!(receipt.block.is_block());
 
-    let receipt = match receipt.receipt {
-        TransactionReceipt::Invoke(receipt) => receipt,
-        _ => panic!("unexpected receipt response type"),
+    let TransactionReceipt::Invoke(receipt) = receipt.receipt else {
+        panic!("unexpected receipt response type")
     };
 
     match receipt.execution_result {
         ExecutionResult::Succeeded => {}
-        _ => panic!("unexpected execution result"),
+        ExecutionResult::Reverted { .. } => panic!("unexpected execution result"),
     }
 }
 
@@ -496,14 +498,13 @@ async fn jsonrpc_get_transaction_receipt_invoke_reverted() {
 
     assert!(receipt.block.is_block());
 
-    let receipt = match receipt.receipt {
-        TransactionReceipt::Invoke(receipt) => receipt,
-        _ => panic!("unexpected receipt response type"),
+    let TransactionReceipt::Invoke(receipt) = receipt.receipt else {
+        panic!("unexpected receipt response type")
     };
 
     match receipt.execution_result {
         ExecutionResult::Reverted { .. } => {}
-        _ => panic!("unexpected execution result"),
+        ExecutionResult::Succeeded => panic!("unexpected execution result"),
     }
 }
 
@@ -517,21 +518,19 @@ async fn jsonrpc_get_transaction_receipt_l1_handler() {
     let tx = rpc_client.get_transaction_by_hash(tx_hash).await.unwrap();
     let receipt = rpc_client.get_transaction_receipt(tx_hash).await.unwrap();
 
-    let tx = match tx {
-        Transaction::L1Handler(tx) => tx,
-        _ => panic!("unexpected tx type"),
+    let Transaction::L1Handler(tx) = tx else {
+        panic!("unexpected tx type")
     };
 
     assert!(receipt.block.is_block());
 
-    let receipt = match receipt.receipt {
-        TransactionReceipt::L1Handler(receipt) => receipt,
-        _ => panic!("unexpected receipt response type"),
+    let TransactionReceipt::L1Handler(receipt) = receipt.receipt else {
+        panic!("unexpected receipt response type")
     };
 
     match receipt.execution_result {
         ExecutionResult::Succeeded => {}
-        _ => panic!("unexpected execution result"),
+        ExecutionResult::Reverted { .. } => panic!("unexpected execution result"),
     }
 
     assert_eq!(tx.parse_msg_to_l2().unwrap().hash(), receipt.message_hash);
@@ -551,14 +550,13 @@ async fn jsonrpc_get_transaction_receipt_declare() {
 
     assert!(receipt.block.is_block());
 
-    let receipt = match receipt.receipt {
-        TransactionReceipt::Declare(receipt) => receipt,
-        _ => panic!("unexpected receipt response type"),
+    let TransactionReceipt::Declare(receipt) = receipt.receipt else {
+        panic!("unexpected receipt response type")
     };
 
     match receipt.execution_result {
         ExecutionResult::Succeeded => {}
-        _ => panic!("unexpected execution result"),
+        ExecutionResult::Reverted { .. } => panic!("unexpected execution result"),
     }
 }
 
@@ -579,14 +577,13 @@ async fn jsonrpc_get_transaction_receipt_deploy_account() {
 
     assert!(receipt.block.is_block());
 
-    let receipt = match receipt.receipt {
-        TransactionReceipt::DeployAccount(receipt) => receipt,
-        _ => panic!("unexpected receipt response type"),
+    let TransactionReceipt::DeployAccount(receipt) = receipt.receipt else {
+        panic!("unexpected receipt response type")
     };
 
     match receipt.execution_result {
         ExecutionResult::Succeeded => {}
-        _ => panic!("unexpected execution result"),
+        ExecutionResult::Reverted { .. } => panic!("unexpected execution result"),
     }
 }
 
@@ -605,7 +602,7 @@ async fn jsonrpc_get_class_cairo_0() {
 
     let class = match class {
         ContractClass::Legacy(class) => class,
-        _ => panic!("unexpected class type"),
+        ContractClass::Sierra(_) => panic!("unexpected class type"),
     };
 
     assert!(!class.program.is_empty());
@@ -626,7 +623,7 @@ async fn jsonrpc_get_class_cairo_1() {
 
     let class = match class {
         ContractClass::Sierra(class) => class,
-        _ => panic!("unexpected class type"),
+        ContractClass::Legacy(_) => panic!("unexpected class type"),
     };
 
     assert!(!class.sierra_program.is_empty());
@@ -666,7 +663,7 @@ async fn jsonrpc_get_class_at() {
 
     let class = match class {
         ContractClass::Legacy(class) => class,
-        _ => panic!("unexpected class type"),
+        ContractClass::Sierra(_) => panic!("unexpected class type"),
     };
 
     assert!(!class.program.is_empty());
@@ -765,8 +762,8 @@ async fn jsonrpc_estimate_fee() {
                     },
                 },
                 tip: Default::default(),
-                paymaster_data: Default::default(),
-                account_deployment_data: Default::default(),
+                paymaster_data: Vec::default(),
+                account_deployment_data: Vec::default(),
                 nonce_data_availability_mode: DataAvailabilityMode::L1,
                 fee_data_availability_mode: DataAvailabilityMode::L1,
             }),
@@ -927,14 +924,13 @@ async fn jsonrpc_trace_invoke() {
         .await
         .unwrap();
 
-    let trace = match trace {
-        TransactionTrace::Invoke(trace) => trace,
-        _ => panic!("unexpected trace type"),
+    let TransactionTrace::Invoke(trace) = trace else {
+        panic!("unexpected trace type")
     };
 
     match trace.execute_invocation {
         ExecuteInvocation::Success(_) => {}
-        _ => panic!("unexpected execution result"),
+        ExecuteInvocation::Reverted(_) => panic!("unexpected execution result"),
     }
 }
 
@@ -950,14 +946,13 @@ async fn jsonrpc_trace_invoke_reverted() {
         .await
         .unwrap();
 
-    let trace = match trace {
-        TransactionTrace::Invoke(trace) => trace,
-        _ => panic!("unexpected trace type"),
+    let TransactionTrace::Invoke(trace) = trace else {
+        panic!("unexpected trace type")
     };
 
     match trace.execute_invocation {
         ExecuteInvocation::Reverted(_) => {}
-        _ => panic!("unexpected execution result"),
+        ExecuteInvocation::Success(_) => panic!("unexpected execution result"),
     }
 }
 

@@ -173,7 +173,7 @@ impl Encoder {
                 // This is either an enum or struct. Depending on the type of the type reference we
                 // may or may not care which one it is.
 
-                let type_def = self
+                let type_definition = self
                     .types
                     .get_type(name)
                     .ok_or_else(|| TypedDataError::CustomTypeNotFound(name.to_owned()))?;
@@ -194,7 +194,7 @@ impl Encoder {
                     }
                 };
 
-                match type_def {
+                match type_definition {
                     TypeDefinition::Struct(struct_def) => {
                         if type_ref.must_be_enum() {
                             return Err(TypedDataError::UnexpectedStruct(name.to_owned()));
@@ -242,22 +242,22 @@ impl Encoder {
             CommonTypeReference::Felt | CommonTypeReference::ShortString => match value {
                 Value::String(str_value) => {
                     // This is to reimplement the `starknet.js` bug
-                    let decoded_as_raw = match str_value.strip_prefix("0x") {
-                        Some(hexadecimal) => {
-                            if hexadecimal.chars().all(|c| c.is_ascii_hexdigit()) {
-                                Felt::from_hex(str_value).ok()
-                            } else {
-                                None
-                            }
-                        }
-                        None => {
+                    let decoded_as_raw = str_value.strip_prefix("0x").map_or_else(
+                        || {
                             if str_value.chars().all(|c| c.is_ascii_digit()) {
                                 Felt::from_dec_str(str_value).ok()
                             } else {
                                 None
                             }
-                        }
-                    };
+                        },
+                        |hexadecimal| {
+                            if hexadecimal.chars().all(|c| c.is_ascii_hexdigit()) {
+                                Felt::from_hex(str_value).ok()
+                            } else {
+                                None
+                            }
+                        },
+                    );
 
                     match decoded_as_raw {
                         Some(raw) => raw,
@@ -369,11 +369,13 @@ impl Encoder {
                     Value::UnsignedInteger(int_value) => *int_value,
                     // Technically SNIP-12 does not allow strings here but `starknet.js` does, so we
                     // do it here to be compatible.
-                    Value::String(str_value) => match str_value.strip_prefix("0x") {
-                        Some(hex_str) => u128::from_str_radix(hex_str, 16),
-                        None => str_value.parse::<u128>(),
-                    }
-                    .map_err(|_| TypedDataError::InvalidNumber(str_value.to_owned()))?,
+                    Value::String(str_value) => str_value
+                        .strip_prefix("0x")
+                        .map_or_else(
+                            || str_value.parse::<u128>(),
+                            |hex_str| u128::from_str_radix(hex_str, 16),
+                        )
+                        .map_err(|_| TypedDataError::InvalidNumber(str_value.to_owned()))?,
                     Value::SignedInteger(_)
                     | Value::Boolean(_)
                     | Value::Object(_)

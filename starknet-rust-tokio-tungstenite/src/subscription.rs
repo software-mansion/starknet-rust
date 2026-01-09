@@ -162,18 +162,21 @@ impl EventSubscriptionOptions {
     }
 
     /// Sets the contract address to filter events by.
+    #[must_use]
     pub const fn with_from_address(mut self, from_address: Felt) -> Self {
         self.from_address = Some(from_address);
         self
     }
 
     /// Sets the event keys to filter events by.
+    #[must_use]
     pub fn with_keys(mut self, keys: Vec<Vec<Felt>>) -> Self {
         self.keys = Some(keys);
         self
     }
 
     /// Sets the block ID from which to start receiving events.
+    #[must_use]
     pub const fn with_block_id(mut self, block_id: ConfirmedBlockId) -> Self {
         self.block_id = block_id;
         self
