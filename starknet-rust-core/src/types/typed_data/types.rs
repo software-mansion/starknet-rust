@@ -104,16 +104,16 @@ impl Types {
         #[allow(clippy::match_same_arms)]
         match type_ref.common() {
             CommonTypeReference::Custom(name) => {
-                let type_def = self
+                let type_definition = self
                     .get_type(name)
                     .ok_or_else(|| TypedDataError::CustomTypeNotFound(name.to_owned()))?;
 
                 // No need to advance further if the type has already been visited
                 if signatures
-                    .insert(name, SignatureGenerator::UserDefinedType(type_def))
+                    .insert(name, SignatureGenerator::UserDefinedType(type_definition))
                     .is_none()
                 {
-                    self.collect_dep_sigs_from_type_def(signatures, type_def)?;
+                    self.collect_dep_sigs_from_type_def(signatures, type_definition)?;
                 }
             }
             CommonTypeReference::Array(element) => {

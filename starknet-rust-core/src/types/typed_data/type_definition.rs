@@ -433,7 +433,7 @@ mod tests {
                     FullTypeReference::Enum("My Enum".into())
                 );
             }
-            _ => panic!("unexpected definition type"),
+            TypeDefinition::Enum(_) => panic!("unexpected definition type"),
         }
 
         // Comparing on `Value` avoids false positives from formatting.
@@ -469,7 +469,7 @@ mod tests {
                     vec![InlineTypeReference::U128]
                 );
             }
-            _ => panic!("unexpected definition type"),
+            TypeDefinition::Struct(_) => panic!("unexpected definition type"),
         }
 
         // Comparing on `Value` avoids false positives from formatting.

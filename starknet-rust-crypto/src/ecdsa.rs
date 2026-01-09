@@ -228,7 +228,6 @@ pub fn recover(message: &Felt, r: &Felt, s: &Felt, v: &Felt) -> Result<Felt, Rec
     Ok(k.to_affine().unwrap().x())
 }
 
-#[inline(always)]
 fn mul_by_bits(x: &AffinePoint, y: &Felt) -> ProjectivePoint {
     &ProjectivePoint::from_affine(x.x(), x.y()).unwrap() * *y
 }

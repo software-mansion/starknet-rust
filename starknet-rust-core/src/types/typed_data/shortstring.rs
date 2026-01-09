@@ -32,32 +32,34 @@ impl Visitor<'_> for ShortStringVisitor {
         E: serde::de::Error,
     {
         // This is to reimplement the `starknet.js` bug
-        let decoded_as_raw = match v.strip_prefix("0x") {
-            Some(hexadecimal) => {
-                if hexadecimal.chars().all(|c| c.is_ascii_hexdigit()) {
-                    Felt::from_hex(v).ok()
-                } else {
-                    None
-                }
-            }
-            None => {
+        let decoded_as_raw = v.strip_prefix("0x").map_or_else(
+            || {
                 if v.chars().all(|c| c.is_ascii_digit()) {
                     Felt::from_dec_str(v).ok()
                 } else {
                     None
                 }
-            }
-        };
+            },
+            |hexadecimal| {
+                if hexadecimal.chars().all(|c| c.is_ascii_hexdigit()) {
+                    Felt::from_hex(v).ok()
+                } else {
+                    None
+                }
+            },
+        );
 
-        match decoded_as_raw {
-            Some(raw) => Ok(raw),
-            None => cairo_short_string_to_felt(v).map_err(|_| {
-                serde::de::Error::invalid_value(
-                    serde::de::Unexpected::Str(v),
-                    &"valid Cairo short string",
-                )
-            }),
-        }
+        decoded_as_raw.map_or_else(
+            || {
+                cairo_short_string_to_felt(v).map_err(|_| {
+                    serde::de::Error::invalid_value(
+                        serde::de::Unexpected::Str(v),
+                        &"valid Cairo short string",
+                    )
+                })
+            },
+            |raw| Ok(raw),
+        )
     }
 
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>

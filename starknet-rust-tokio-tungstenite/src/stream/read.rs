@@ -157,19 +157,17 @@ impl StreamReadDriver {
         &mut self,
         message: Option<Result<Message, tungstenite::Error>>,
     ) -> HandleMessageResult {
-        let message = if let Some(Ok(message)) = message {
-            message
-        } else {
+        let Some(Ok(message)) = message else {
             return HandleMessageResult::StreamAborted;
         };
 
         match message {
             Message::Text(text) => {
-                let parsed_message =
-                    match serde_json::from_str::<StreamUpdateOrResponse>(text.as_str()) {
-                        Ok(message) => message,
-                        Err(_) => return HandleMessageResult::MalformedMessage,
-                    };
+                let Ok(parsed_message) =
+                    serde_json::from_str::<StreamUpdateOrResponse>(text.as_str())
+                else {
+                    return HandleMessageResult::MalformedMessage;
+                };
 
                 match parsed_message {
                     StreamUpdateOrResponse::StreamUpdate(stream_update) => {

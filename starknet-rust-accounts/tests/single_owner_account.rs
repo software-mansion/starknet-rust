@@ -245,7 +245,7 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + 
         .l1_data_gas(1000)
         .l1_data_gas_price(100000000000000)
         // This tx costs around 10^6 L2 gas. So a tip of 10^10 is around 10^16 FRI (0.01 STRK).
-        .tip(1_0000000000)
+        .tip(10_000_000_000)
         .send()
         .await
         .unwrap();
