@@ -19,7 +19,7 @@ mod read;
 use read::{ReadAction, StreamReadDriver};
 
 mod write;
-pub(crate) use write::WriteAction;
+pub use write::WriteAction;
 use write::{StreamWriteDriver, SubscribeWriteData};
 
 use crate::{
@@ -69,7 +69,7 @@ pub enum StreamUpdateType {
 
 /// Internal type for communicating subscribe action results.
 #[derive(Debug)]
-pub(crate) enum SubscriptionResult {
+pub enum SubscriptionResult {
     Success { id: SubscriptionId },
     JsonRpcError(JsonRpcError),
     TimeoutError,
@@ -78,7 +78,7 @@ pub(crate) enum SubscriptionResult {
 
 /// Internal type for communicating unsubscribe action results.
 #[derive(Debug)]
-pub(crate) enum UnsubscribeResult {
+pub enum UnsubscribeResult {
     Success { success: bool },
     JsonRpcError(JsonRpcError),
     TimeoutError,
@@ -87,7 +87,7 @@ pub(crate) enum UnsubscribeResult {
 
 /// Internal type for communicating close action results.
 #[derive(Debug)]
-pub(crate) enum CloseResult {
+pub enum CloseResult {
     Success,
     TimeoutError,
     TransportError(TungsteniteError),
@@ -264,13 +264,14 @@ impl TungsteniteStream {
             .write_queue
             .send(WriteAction::Close { result: result_tx })
         {
-            Ok(_) => {
+            Ok(()) => {
                 // Unwrapping is safe as results are always sent.
                 match result_rx.await.unwrap() {
                     // Treat these errors as success
                     CloseResult::Success
-                    | CloseResult::TransportError(TungsteniteError::ConnectionClosed)
-                    | CloseResult::TransportError(TungsteniteError::AlreadyClosed) => Ok(()),
+                    | CloseResult::TransportError(
+                        TungsteniteError::ConnectionClosed | TungsteniteError::AlreadyClosed,
+                    ) => Ok(()),
                     CloseResult::TimeoutError => Err(CloseError::Timeout),
                     CloseResult::TransportError(err) => Err(CloseError::Transport(err)),
                 }
@@ -294,7 +295,7 @@ impl TungsteniteStream {
         let connect = connect_async(request.into_client_request()?);
         let (stream, _) = tokio::select! {
             result = connect => result?,
-            _ = tokio::time::sleep(timeout) => {
+            () = tokio::time::sleep(timeout) => {
                 return Err(ConnectError::Timeout);
             }
         };

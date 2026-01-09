@@ -95,7 +95,7 @@ mod ledger {
 mod automation {
     use super::*;
 
-    pub const APPROVE_PUBLIC_KEY: AutomationRule<'static> = AutomationRule {
+    pub(crate) const APPROVE_PUBLIC_KEY: AutomationRule<'static> = AutomationRule {
         text: Some(Cow::Borrowed("Confirm Public Key")),
         regexp: None,
         x: None,

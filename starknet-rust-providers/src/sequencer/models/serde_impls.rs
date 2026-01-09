@@ -75,7 +75,7 @@ pub(crate) mod u64_hex_opt {
 
     struct U64HexOptVisitor;
 
-    pub fn serialize<S>(v: &Option<u64>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(v: Option<&u64>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {

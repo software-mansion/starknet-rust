@@ -120,9 +120,9 @@ impl std::fmt::Display for SubscriptionReceiveError {
 
                 for (ind, item) in expecting.iter().enumerate() {
                     if ind == expecting.len() - 1 {
-                        write!(f, "{item}")?
+                        write!(f, "{item}")?;
                     } else {
-                        write!(f, "{item}, ")?
+                        write!(f, "{item}, ")?;
                     }
                 }
 

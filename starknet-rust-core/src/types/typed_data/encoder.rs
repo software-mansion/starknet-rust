@@ -1,4 +1,4 @@
-use alloc::{borrow::ToOwned, vec::*};
+use alloc::{borrow::ToOwned, vec::Vec};
 use core::str::FromStr;
 use starknet_rust_crypto::{PedersenHasher, PoseidonHasher};
 
@@ -52,12 +52,12 @@ impl Encoder {
     }
 
     /// Gets a reference to the encoder's defined custom types.
-    pub fn types(&self) -> &Types {
+    pub const fn types(&self) -> &Types {
         &self.types
     }
 
     /// Gets the encoder's domain.
-    pub fn domain(&self) -> Domain {
+    pub const fn domain(&self) -> Domain {
         self.domain
     }
 
@@ -620,7 +620,7 @@ impl Encoder {
                 }
             } else {
                 H::hash_two_elements(Felt::ZERO, chunk[0])
-            })
+            });
         }
 
         // TODO: refactor to remove recursion and reuse a single buffer

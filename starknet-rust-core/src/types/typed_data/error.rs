@@ -1,4 +1,4 @@
-use alloc::string::*;
+use alloc::string::String;
 use core::fmt::Display;
 
 use super::{revision::Revision, value::ValueKind};

@@ -1,4 +1,4 @@
-use alloc::{format, string::*, vec::*};
+use alloc::{format, string::String, vec::Vec};
 use semver::Version;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor, ser::SerializeSeq};
 use serde_json_pythonic::to_string_pythonic;
@@ -399,7 +399,7 @@ struct BytecodeSegment {
 }
 
 mod errors {
-    use alloc::string::*;
+    use alloc::string::String;
     use core::fmt::{Display, Formatter, Result};
 
     /// Errors computing a class hash.
@@ -736,7 +736,7 @@ impl CompiledClass {
 
             let mut builtin_hasher = hash_function.stateful();
             for builtin in &entry.builtins {
-                builtin_hasher.update(cairo_short_string_to_felt(builtin)?)
+                builtin_hasher.update(cairo_short_string_to_felt(builtin)?);
             }
 
             hasher.update(builtin_hasher.finalize());
@@ -780,10 +780,10 @@ impl CompiledClass {
                 let mut total_len = 0;
 
                 for item in bytecode_segment_lengths {
-                    let visited_pc_before = if !visited_pcs.is_empty() {
-                        Some(visited_pcs[visited_pcs.len() - 1])
-                    } else {
+                    let visited_pc_before = if visited_pcs.is_empty() {
                         None
+                    } else {
+                        Some(visited_pcs[visited_pcs.len() - 1])
                     };
 
                     let (current_structure, item_len) =
@@ -794,10 +794,10 @@ impl CompiledClass {
                             bytecode_offset,
                         )?;
 
-                    let visited_pc_after = if !visited_pcs.is_empty() {
-                        Some(visited_pcs[visited_pcs.len() - 1])
-                    } else {
+                    let visited_pc_after = if visited_pcs.is_empty() {
                         None
+                    } else {
+                        Some(visited_pcs[visited_pcs.len() - 1])
                     };
                     let is_used = visited_pc_after != visited_pc_before;
 

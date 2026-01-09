@@ -3,7 +3,7 @@ use starknet_rust_crypto::{PedersenHasher, PoseidonHasher, pedersen_hash, poseid
 use crate::{codec::FeltWriter, types::Felt};
 
 /// SNIP-12 revision-dependant hasher that can be used to encode data.
-pub trait TypedDataHasher: FeltWriter + Default {
+pub(super) trait TypedDataHasher: FeltWriter + Default {
     fn update(&mut self, msg: Felt);
 
     fn finalize(self) -> Felt;

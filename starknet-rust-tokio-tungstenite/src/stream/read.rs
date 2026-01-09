@@ -17,7 +17,7 @@ use tungstenite::Message;
 use super::{StreamUpdateOrResponse, SubscriptionIdOrBool, SubscriptionResult, UnsubscribeResult};
 
 /// An internal type for running the read direction of the WebSocket stream in the background.
-pub(crate) struct StreamReadDriver {
+pub(super) struct StreamReadDriver {
     pub registry: HashMap<SubscriptionId, UnboundedSender<StreamUpdateData>>,
     pub pending_subscriptions: HashMap<u64, PendingSubscription>,
     pub pending_unsubscriptions: HashMap<u64, PendingUnsubscription>,
@@ -27,7 +27,7 @@ pub(crate) struct StreamReadDriver {
 }
 
 #[derive(Debug)]
-pub(crate) enum ReadAction {
+pub(super) enum ReadAction {
     Subscribe {
         request_id: u64,
         result: UnboundedSender<SubscriptionResult>,
@@ -43,17 +43,17 @@ pub(crate) enum ReadAction {
 }
 
 #[derive(Debug)]
-pub(crate) enum ReadAcknowledgement {
+pub(super) enum ReadAcknowledgement {
     Acknowledged,
     StreamClosed,
 }
 
-pub(crate) struct PendingSubscription {
+pub(super) struct PendingSubscription {
     result: UnboundedSender<SubscriptionResult>,
     stream: UnboundedSender<StreamUpdateData>,
 }
 
-pub(crate) struct PendingUnsubscription {
+pub(super) struct PendingUnsubscription {
     subscription_id: SubscriptionId,
     result: Option<UnboundedSender<UnsubscribeResult>>,
 }
@@ -77,7 +77,7 @@ enum HandleMessageResult {
 }
 
 impl StreamReadDriver {
-    pub fn drive(self) {
+    pub(super) fn drive(self) {
         tokio::spawn(self.run());
     }
 
@@ -196,22 +196,21 @@ impl StreamReadDriver {
                                 // Response for subscribe requests
                                 match self.pending_subscriptions.remove(&id) {
                                     Some(pending) => {
-                                        match pending.result.send(SubscriptionResult::Success {
-                                            id: subscription_id.clone(),
-                                        }) {
-                                            Ok(_) => {
-                                                self.registry
-                                                    .insert(subscription_id, pending.stream);
-                                            }
-                                            Err(_) => {
-                                                // This failing here means the caller gave up on
-                                                // waiting. We now have a dangling subscription.
-                                                //
-                                                // Ideally, here we request to unsubscribe to avoid
-                                                // useless incoming messages.
-                                                //
-                                                // TODO: cancel subscription here
-                                            }
+                                        if matches!(
+                                            pending.result.send(SubscriptionResult::Success {
+                                                id: subscription_id.clone(),
+                                            }),
+                                            Ok(())
+                                        ) {
+                                            self.registry.insert(subscription_id, pending.stream);
+                                        } else {
+                                            // This failing here means the caller gave up on
+                                            // waiting. We now have a dangling subscription.
+                                            //
+                                            // Ideally, here we request to unsubscribe to avoid
+                                            // useless incoming messages.
+                                            //
+                                            // TODO: cancel subscription here
                                         }
                                     }
                                     None => {
