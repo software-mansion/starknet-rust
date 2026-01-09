@@ -1,7 +1,8 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use hex_literal::hex;
 use starknet_rust_crypto::{poseidon_hash, poseidon_hash_many, poseidon_hash_single};
 use starknet_types_core::felt::Felt;
+use std::hint::black_box;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let e0 = hex!("03d937c035c878245caf64531a5756109c53068da139362728feb561405371cb");

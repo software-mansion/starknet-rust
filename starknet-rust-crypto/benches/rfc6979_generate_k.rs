@@ -1,7 +1,8 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use hex_literal::hex;
 use starknet_rust_crypto::rfc6979_generate_k;
 use starknet_types_core::felt::Felt;
+use std::hint::black_box;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let message_hash = hex!("010b559a3b4dc1b7137d90521cb413b397ff07963214d128a92d65aec7182f68");

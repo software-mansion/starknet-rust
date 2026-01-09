@@ -1,6 +1,7 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use starknet_rust_crypto::{recover, sign};
 use starknet_types_core::felt::Felt;
+use std::hint::black_box;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let private_key =
