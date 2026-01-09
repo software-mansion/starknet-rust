@@ -140,15 +140,12 @@ impl FromStr for EthAddress {
         let value = s.trim_start_matches("0x");
 
         if value.len() == 40 {
-            match hex::decode(value) {
-                Ok(bytes) => {
-                    Ok(Self {
-                        // It's safe to unwrap here as the length must be 20
-                        inner: bytes.try_into().unwrap(),
-                    })
-                }
-                Err(_) => Err(FromHexError::InvalidHexString),
-            }
+            hex::decode(value).map_or(Err(FromHexError::InvalidHexString), |bytes| {
+                Ok(Self {
+                    // It's safe to unwrap here as the length must be 20
+                    inner: bytes.try_into().unwrap(),
+                })
+            })
         } else {
             Err(FromHexError::UnexpectedLength)
         }

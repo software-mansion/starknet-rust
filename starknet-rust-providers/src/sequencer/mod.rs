@@ -147,6 +147,7 @@ impl SequencerGatewayProvider {
 
     /// Consumes the current [`SequencerGatewayProvider`] instance and returns a new one with the
     /// header appended. Same as calling [`add_header`](fn.add_header).
+    #[must_use]
     pub fn with_header(self, name: String, value: String) -> Self {
         let mut headers = self.headers;
         headers.push((name, value));
@@ -571,7 +572,7 @@ mod tests {
             GatewayResponse::SequencerError(err) => {
                 assert_eq!(err.code, ErrorCode::UndeclaredClass);
             }
-            _ => panic!("Unexpected result"),
+            GatewayResponse::Data(_) => panic!("Unexpected result"),
         }
     }
 

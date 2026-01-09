@@ -18,6 +18,7 @@ use super::{
 #[error("unable to convert type")]
 pub struct ConversionError;
 
+#[derive(Debug)]
 pub struct ConfirmedReceiptWithContext {
     pub receipt: ConfirmedTransactionReceipt,
     pub transaction: TransactionType,
@@ -1099,6 +1100,7 @@ fn convert_execution_result(
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 const fn convert_legacy_entry_point(
     value: core::LegacyContractEntryPoint,
 ) -> contract_legacy::RawLegacyEntryPoint {

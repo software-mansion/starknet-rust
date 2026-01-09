@@ -220,6 +220,7 @@ pub struct L1HandlerTransaction {
     pub version: Felt,
 }
 
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

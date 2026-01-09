@@ -210,7 +210,9 @@ mod tests {
             starknet_rust_core::types::MaybePreConfirmedStateUpdate::PreConfirmedUpdate(update) => {
                 assert!(update.old_root.is_none());
             }
-            _ => panic!("Expected PreConfirmedUpdate variant"),
+            starknet_rust_core::types::MaybePreConfirmedStateUpdate::Update(_) => {
+                panic!("Expected PreConfirmedUpdate variant")
+            }
         }
     }
 }

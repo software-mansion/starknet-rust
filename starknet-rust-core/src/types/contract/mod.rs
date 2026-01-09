@@ -1054,10 +1054,10 @@ mod tests {
             include_str!("../../../test-data/contracts/cairo2.6/artifacts/trivial_sierra.txt"),
         ] {
             let direct_deser = serde_json::from_str::<SierraClass>(raw_artifact).unwrap();
-            let via_contract_artifact = match serde_json::from_str::<ContractArtifact>(raw_artifact)
-            {
-                Ok(ContractArtifact::SierraClass(class)) => class,
-                _ => panic!("Unexpected result"),
+            let Ok(ContractArtifact::SierraClass(via_contract_artifact)) =
+                serde_json::from_str::<ContractArtifact>(raw_artifact)
+            else {
+                panic!("Unexpected result")
             };
 
             // Class should be identical however it's deserialized
@@ -1080,10 +1080,10 @@ mod tests {
             include_str!("../../../test-data/contracts/cairo2.6/artifacts/trivial_compiled.txt"),
         ] {
             let direct_deser = serde_json::from_str::<CompiledClass>(raw_artifact).unwrap();
-            let via_contract_artifact = match serde_json::from_str::<ContractArtifact>(raw_artifact)
-            {
-                Ok(ContractArtifact::CompiledClass(class)) => class,
-                _ => panic!("Unexpected result"),
+            let Ok(ContractArtifact::CompiledClass(via_contract_artifact)) =
+                serde_json::from_str::<ContractArtifact>(raw_artifact)
+            else {
+                panic!("Unexpected result")
             };
 
             // Class should be identical however it's deserialized

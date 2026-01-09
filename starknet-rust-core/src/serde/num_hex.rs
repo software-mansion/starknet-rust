@@ -5,6 +5,7 @@ pub(crate) mod u64 {
 
     struct NumHexVisitor;
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub(crate) fn serialize<S>(value: &u64, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

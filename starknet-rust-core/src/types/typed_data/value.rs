@@ -142,7 +142,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
         A: serde::de::MapAccess<'de>,
     {
         let mut fields =
-            IndexMap::with_capacity_and_hasher(DEFAULT_INDEXMAP_CAPACITY, Default::default());
+            IndexMap::with_capacity_and_hasher(DEFAULT_INDEXMAP_CAPACITY, RandomState::default());
         while let Some((key, value)) = map.next_entry()? {
             fields.insert(key, value);
         }

@@ -222,9 +222,8 @@ mod tests {
 
         let block: Block = serde_json::from_str(raw).unwrap();
 
-        let tx = match &block.transactions[2] {
-            TransactionType::Declare(tx) => tx,
-            _ => panic!("Unexpected tx type"),
+        let TransactionType::Declare(tx) = &block.transactions[2] else {
+            panic!("Unexpected tx type")
         };
 
         assert_eq!(
@@ -243,9 +242,8 @@ mod tests {
 
         let block: Block = serde_json::from_str(raw).unwrap();
 
-        let tx = match &block.transactions[0] {
-            TransactionType::L1Handler(tx) => tx,
-            _ => panic!("Unexpected tx type"),
+        let TransactionType::L1Handler(tx) = &block.transactions[0] else {
+            panic!("Unexpected tx type")
         };
 
         assert_eq!(
@@ -280,9 +278,8 @@ mod tests {
 
         let block: Block = serde_json::from_str(raw).unwrap();
 
-        let tx = match &block.transactions[22] {
-            TransactionType::L1Handler(tx) => tx,
-            _ => panic!("Unexpected tx type"),
+        let TransactionType::L1Handler(tx) = &block.transactions[22] else {
+            panic!("Unexpected tx type")
         };
 
         assert!(tx.nonce.is_none());
@@ -298,9 +295,8 @@ mod tests {
 
         let block: Block = serde_json::from_str(raw).unwrap();
 
-        let tx = match &block.transactions[16] {
-            TransactionType::InvokeFunction(tx) => tx,
-            _ => panic!("Unexpected tx type"),
+        let TransactionType::InvokeFunction(tx) = &block.transactions[16] else {
+            panic!("Unexpected tx type")
         };
 
         assert!(tx.entry_point_selector.is_none());
@@ -315,9 +311,8 @@ mod tests {
 
         let block: Block = serde_json::from_str(raw).unwrap();
 
-        let tx = match &block.transactions[1] {
-            TransactionType::DeployAccount(tx) => tx,
-            _ => panic!("Unexpected tx type"),
+        let TransactionType::DeployAccount(tx) = &block.transactions[1] else {
+            panic!("Unexpected tx type")
         };
 
         assert_eq!(tx.signature.len(), 2);

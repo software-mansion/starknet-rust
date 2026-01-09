@@ -711,9 +711,8 @@ impl<'de> Deserialize<'de> for LegacyParentLocation {
             }
 
             let remark = array.pop().unwrap();
-            let remark = match remark {
-                serde_json::Value::String(remark) => remark,
-                _ => return Err(serde::de::Error::custom("unexpected value type")),
+            let serde_json::Value::String(remark) = remark else {
+                return Err(serde::de::Error::custom("unexpected value type"));
             };
 
             let location = array.pop().unwrap();
@@ -1013,11 +1012,11 @@ mod tests {
             ),
         ] {
             let direct_deser = serde_json::from_str::<LegacyContractClass>(raw_artifact).unwrap();
-            let deser_via_contract_artifact =
-                match serde_json::from_str::<ContractArtifact>(raw_artifact).unwrap() {
-                    ContractArtifact::LegacyClass(class) => class,
-                    _ => panic!("unexpected artifact type"),
-                };
+            let ContractArtifact::LegacyClass(deser_via_contract_artifact) =
+                serde_json::from_str::<ContractArtifact>(raw_artifact).unwrap()
+            else {
+                panic!("unexpected artifact type")
+            };
 
             // Class should be identical however it's deserialized
             assert_eq!(

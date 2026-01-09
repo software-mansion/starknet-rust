@@ -14,8 +14,8 @@ use starknet_rust_crypto::PoseidonHasher;
 use starknet_rust_providers::{Provider, ProviderError};
 use std::error::Error;
 
-pub mod argent;
-pub mod open_zeppelin;
+pub(crate) mod argent;
+pub(crate) mod open_zeppelin;
 
 /// Cairo string for `deploy_account`
 const PREFIX_DEPLOY_ACCOUNT: Felt = Felt::from_raw([

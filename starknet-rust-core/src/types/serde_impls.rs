@@ -92,12 +92,14 @@ impl Visitor<'_> for NumAsHexVisitorU64 {
     where
         E: serde::de::Error,
     {
-        match v.try_into() {
-            Ok(value) => self.visit_u64(value),
-            Err(_) => Err(serde::de::Error::custom(format!(
-                "value cannot be negative: {v}"
-            ))),
-        }
+        v.try_into().map_or_else(
+            |_| {
+                Err(serde::de::Error::custom(format!(
+                    "value cannot be negative: {v}"
+                )))
+            },
+            |value| self.visit_u64(value),
+        )
     }
 
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
@@ -257,12 +259,10 @@ where
             node: MerkleNode,
         }
 
-        let mut map = match seq.size_hint() {
-            Some(hint) => {
-                IndexMap::<Felt, MerkleNode, R>::with_capacity_and_hasher(hint, R::default())
-            }
-            None => IndexMap::with_hasher(R::default()),
-        };
+        let mut map = seq.size_hint().map_or_else(
+            || IndexMap::with_hasher(R::default()),
+            |hint| IndexMap::<Felt, MerkleNode, R>::with_capacity_and_hasher(hint, R::default()),
+        );
 
         while let Some(element) = seq.next_element::<Raw>()? {
             map.insert(element.node_hash, element.node);

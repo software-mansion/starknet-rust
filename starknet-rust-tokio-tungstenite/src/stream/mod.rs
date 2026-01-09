@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use futures_util::StreamExt;
@@ -19,7 +20,7 @@ mod read;
 use read::{ReadAction, StreamReadDriver};
 
 mod write;
-pub use write::WriteAction;
+pub(crate) use write::WriteAction;
 use write::{StreamWriteDriver, SubscribeWriteData};
 
 use crate::{
@@ -127,6 +128,7 @@ impl TungsteniteStreamBuilder {
     /// Sets a new timeout value.
     ///
     /// The timeout is applied to connection establishment and sending messages.
+    #[must_use]
     pub const fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
@@ -142,6 +144,7 @@ impl TungsteniteStreamBuilder {
     /// Sets a new keep-alive interval value.
     ///
     /// The stream sends out heartbeat messages at the rate defined by this interval.
+    #[must_use]
     pub const fn keepalive_interval(mut self, keepalive_interval: Duration) -> Self {
         self.keepalive_interval = keepalive_interval;
         self
@@ -321,9 +324,9 @@ impl TungsteniteStream {
         .drive();
 
         StreamReadDriver {
-            registry: Default::default(),
-            pending_subscriptions: Default::default(),
-            pending_unsubscriptions: Default::default(),
+            registry: HashMap::default(),
+            pending_subscriptions: HashMap::default(),
+            pending_unsubscriptions: HashMap::default(),
             stream: read,
             read_queue: registration_rx,
             disconnection: disconnection_token,
