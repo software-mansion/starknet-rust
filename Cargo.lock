@@ -2328,7 +2328,6 @@ dependencies = [
  "starknet-rust-accounts",
  "starknet-rust-contract",
  "starknet-rust-core",
- "starknet-rust-core-derive",
  "starknet-rust-macros",
  "starknet-rust-providers",
  "starknet-rust-signers",
@@ -2354,25 +2353,19 @@ dependencies = [
  "test-common",
  "thiserror 1.0.63",
  "tokio",
- "url",
 ]
 
 [[package]]
 name = "starknet-rust-contract"
 version = "0.17.0"
 dependencies = [
- "rand 0.8.5",
- "serde",
  "serde_json",
- "serde_with",
  "starknet-rust-accounts",
  "starknet-rust-core",
  "starknet-rust-providers",
  "starknet-rust-signers",
  "test-common",
- "thiserror 1.0.63",
  "tokio",
- "url",
 ]
 
 [[package]]

@@ -110,7 +110,6 @@ all-features = true
 
 [dependencies]
 starknet-rust-core.workspace = true
-starknet-rust-core-derive = { workspace = true, features = ["import_from_starknet"] }
 starknet-rust-providers.workspace = true
 starknet-rust-contract.workspace = true
 starknet-rust-signers.workspace = true

@@ -16,16 +16,11 @@ exclude = ["test-data/**"]
 starknet-rust-core = { workspace = true, features = ["std"] }
 starknet-rust-providers = { workspace = true, features = ["std"] }
 starknet-rust-accounts = { workspace = true, features = ["std"] }
-serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde_with.workspace = true
-thiserror.workspace = true
 
 [dev-dependencies]
-rand = { workspace = true, features=["std_rng"] }
 starknet-rust-signers.workspace = true
 tokio = { workspace = true, features = ["full"] }
-url.workspace = true
 test-common.workspace = true
 
 [features]
