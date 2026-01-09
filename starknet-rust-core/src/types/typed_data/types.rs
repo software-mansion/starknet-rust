@@ -1,7 +1,7 @@
 use alloc::{
     borrow::{Cow, ToOwned},
     collections::BTreeMap,
-    string::*,
+    string::String,
 };
 
 use indexmap::IndexMap;
@@ -44,7 +44,10 @@ enum SignatureGenerator<'a> {
 
 impl Types {
     /// Initializes a new instance of `Types`.
-    pub fn new(revision: Revision, types: IndexMap<String, TypeDefinition, RandomState>) -> Self {
+    pub const fn new(
+        revision: Revision,
+        types: IndexMap<String, TypeDefinition, RandomState>,
+    ) -> Self {
         Self {
             revision,
             user_defined_types: types,
@@ -215,7 +218,7 @@ impl SignatureGenerator<'_> {
 
                     if field_iter.peek().is_some() {
                         signature.push(',');
-                    };
+                    }
                 }
 
                 signature.push(')');
@@ -246,8 +249,8 @@ impl SignatureGenerator<'_> {
                             revision,
                         );
                         if tuple_type_iter.peek().is_some() {
-                            signature.push(',')
-                        };
+                            signature.push(',');
+                        }
                     }
 
                     signature.push_str(if variant_iter.peek().is_some() {
@@ -349,7 +352,7 @@ impl<'de> Deserialize<'de> for Types {
 mod tests {
     use super::*;
 
-    const VALID_V1_DATA: &str = r###"{
+    const VALID_V1_DATA: &str = r#"{
   "StarknetDomain": [
     { "name": "name", "type": "shortstring" },
     { "name": "version", "type": "shortstring" },
@@ -365,12 +368,12 @@ mod tests {
     { "name": "Some Selector", "type": "selector" },
     { "name": "Some Contract Address", "type": "ContractAddress" }
   ]
-}"###;
+}"#;
 
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_revision_0_serde() {
-        let raw = r###"{
+        let raw = r#"{
   "StarkNetDomain": [
     { "name": "name", "type": "felt" },
     { "name": "version", "type": "felt" },
@@ -385,7 +388,7 @@ mod tests {
     { "name": "Some Selector", "type": "selector" },
     { "name": "Some Contract Address", "type": "ContractAddress" }
   ]
-}"###;
+}"#;
 
         let types = serde_json::from_str::<Types>(raw).unwrap();
         assert_eq!(types.revision, Revision::V0);

@@ -1,4 +1,4 @@
-use alloc::{borrow::ToOwned, format, string::*};
+use alloc::{borrow::ToOwned, format, string::String};
 use core::str::FromStr;
 
 use serde::{Deserialize, Serialize, de::Visitor};

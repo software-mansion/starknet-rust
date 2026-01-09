@@ -1,4 +1,4 @@
-use alloc::{borrow::ToOwned, string::*, vec::*};
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize, de::Visitor};
@@ -179,14 +179,14 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_value_serde() {
-        let raw = r###"{
+        let raw = r#"{
   "Name": "some name",
   "Some Array": [1, 2, 3, 4],
   "Some Object": {
     "Some Selector": "transfer",
     "Some Contract Address": "0x0123"
   }
-}"###;
+}"#;
 
         let value = serde_json::from_str::<Value>(raw).unwrap();
 

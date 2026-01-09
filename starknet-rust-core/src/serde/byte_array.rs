@@ -1,6 +1,6 @@
 /// Serializing and deserializing [`Vec<u8>`] with base64 encoding.
 pub mod base64 {
-    use alloc::{fmt::Formatter, format, vec::*};
+    use alloc::{fmt::Formatter, format, vec::Vec};
 
     use base64::{Engine, engine::general_purpose::STANDARD};
     use serde::{Deserializer, Serializer, de::Visitor};

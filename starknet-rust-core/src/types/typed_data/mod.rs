@@ -170,7 +170,7 @@ impl<'de> Deserialize<'de> for TypedData {
 mod tests {
     use super::*;
 
-    const VALID_V0_DATA: &str = r###"{
+    const VALID_V0_DATA: &str = r#"{
   "types": {
     "StarkNetDomain": [
       { "name": "name", "type": "felt" },
@@ -201,9 +201,9 @@ mod tests {
       "Some Contract Address": "0x0123"
     }
   }
-}"###;
+}"#;
 
-    const VALID_V1_DATA: &str = r###"{
+    const VALID_V1_DATA: &str = r#"{
   "types": {
     "StarknetDomain": [
       { "name": "name", "type": "shortstring" },
@@ -236,7 +236,7 @@ mod tests {
       "Some Contract Address": "0x0123"
     }
   }
-}"###;
+}"#;
 
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -265,7 +265,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_inconsistent_revision_deser() {
-        let raw = r###"{
+        let raw = r#"{
   "types": {
     "StarkNetDomain": [
       { "name": "name", "type": "felt" },
@@ -297,7 +297,7 @@ mod tests {
       "Some Contract Address": "0x0123"
     }
   }
-}"###;
+}"#;
 
         assert_eq!(
             serde_json::from_str::<TypedData>(raw)
@@ -338,7 +338,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_message_hash_v1_with_basic_types() {
-        let raw = r###"{
+        let raw = r#"{
   "types": {
     "StarknetDomain": [
       { "name": "name", "type": "shortstring" },
@@ -372,7 +372,7 @@ mod tests {
     "Short2": "0x123",
     "Short3": "hello"
   }
-}"###;
+}"#;
 
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
@@ -388,7 +388,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_message_hash_v1_with_preset() {
-        let raw = r###"{
+        let raw = r#"{
   "types": {
     "StarknetDomain": [
       { "name": "name", "type": "shortstring" },
@@ -429,7 +429,7 @@ mod tests {
       }
     }
   }
-}"###;
+}"#;
 
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_message_hash_v1_with_simple_enum() {
-        let raw = r###"{
+        let raw = r#"{
   "types": {
     "StarknetDomain": [
       { "name": "name", "type": "shortstring" },
@@ -474,7 +474,7 @@ mod tests {
       "Variant 2": ["tuple element"]
     }
   }
-}"###;
+}"#;
 
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
@@ -494,7 +494,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_message_hash_v1_with_enum_nested() {
-        let raw = r###"{
+        let raw = r#"{
   "types": {
     "StarknetDomain": [
       { "name": "name", "type": "shortstring" },
@@ -539,7 +539,7 @@ mod tests {
       ]
     }
   }
-}"###;
+}"#;
 
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
@@ -556,7 +556,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_message_hash_v1_with_merkletree() {
-        let raw = r###"{
+        let raw = r#"{
   "types": {
     "StarknetDomain": [
       { "name": "name", "type": "shortstring" },
@@ -603,7 +603,7 @@ mod tests {
       }
     ]
   }
-}"###;
+}"#;
 
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 

@@ -508,21 +508,20 @@ where
             }
         };
 
-        let tip = match self.tip {
-            Some(tip) => tip,
-            None => {
-                // Need to estimate tip from median. Maybe a full block has already been fetched?
-                let block = match full_block {
-                    Some(block) => block,
-                    None => self
-                        .factory
-                        .provider()
-                        .get_block_with_txs(self.factory.block_id())
-                        .await
-                        .map_err(AccountFactoryError::Provider)?,
-                };
-                block.median_tip()
-            }
+        let tip = if let Some(tip) = self.tip {
+            tip
+        } else {
+            // Need to estimate tip from median. Maybe a full block has already been fetched?
+            let block = match full_block {
+                Some(block) => block,
+                None => self
+                    .factory
+                    .provider()
+                    .get_block_with_txs(self.factory.block_id())
+                    .await
+                    .map_err(AccountFactoryError::Provider)?,
+            };
+            block.median_tip()
         };
 
         Ok(PreparedAccountDeploymentV3 {

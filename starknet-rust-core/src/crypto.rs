@@ -103,12 +103,9 @@ pub fn ecdsa_sign(
             }
             Err(SignError::InvalidK) => {
                 // Bump seed and retry
-                seed = match seed {
-                    Some(prev_seed) => Some(prev_seed + Felt::ONE),
-                    None => Some(Felt::ONE),
-                };
+                seed = seed.map_or(Some(Felt::ONE), |prev_seed| Some(prev_seed + Felt::ONE));
             }
-        };
+        }
     }
 }
 
@@ -162,14 +159,14 @@ impl HashFunction {
     }
 
     /// Creates a new Poseidon hash function.
-    pub fn poseidon() -> Self {
+    pub const fn poseidon() -> Self {
         Self {
             inner: HashFunctionInner::Poseidon,
         }
     }
 
     /// Creates a new Blake2s hash function.
-    pub fn blake2s() -> Self {
+    pub const fn blake2s() -> Self {
         Self {
             inner: HashFunctionInner::Blake2s,
         }
@@ -284,7 +281,7 @@ mod tests {
         ) {
             Err(EcdsaSignError::MessageHashOutOfRange) => {}
             _ => panic!("Should throw error on out of range message hash"),
-        };
+        }
     }
 
     #[test]

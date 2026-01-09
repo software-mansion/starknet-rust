@@ -75,7 +75,7 @@ impl Visitor<'_> for ShortStringVisitor {
     }
 }
 
-pub fn serialize<S>(value: &Felt, serializer: S) -> Result<S::Ok, S::Error>
+pub(super) fn serialize<S>(value: &Felt, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -95,7 +95,7 @@ where
     }
 }
 
-pub fn deserialize<'de, D>(deserializer: D) -> Result<Felt, D::Error>
+pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<Felt, D::Error>
 where
     D: serde::Deserializer<'de>,
 {

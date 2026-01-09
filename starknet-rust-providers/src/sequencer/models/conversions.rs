@@ -3,16 +3,22 @@ use std::sync::Arc;
 use starknet_rust_core::types::{self as core, Felt, contract::legacy as contract_legacy};
 
 use super::{
+    Block, BlockId, BlockStatus, CompressedLegacyContractClass, ConfirmedTransactionReceipt,
+    DeclareTransaction, DeclareTransactionRequest, DeclareV3TransactionRequest,
+    DeployAccountTransaction, DeployAccountTransactionRequest, DeployAccountV3TransactionRequest,
+    DeployTransaction, DeployedClass, EntryPointType, Event, InvokeFunctionTransaction,
+    InvokeFunctionTransactionRequest, InvokeFunctionV3TransactionRequest, L1HandlerTransaction,
+    L2ToL1Message, StateUpdate, TransactionExecutionStatus, TransactionFinalityStatus,
+    TransactionInfo, TransactionStatusInfo, TransactionType, contract,
     state_update::{DeclaredContract, DeployedContract, StateDiff, StorageDiff},
     transaction::{DataAvailabilityMode, ResourceBounds, ResourceBoundsMapping},
-    *,
 };
 
 #[derive(Debug, thiserror::Error)]
 #[error("unable to convert type")]
 pub struct ConversionError;
 
-pub(crate) struct ConfirmedReceiptWithContext {
+pub struct ConfirmedReceiptWithContext {
     pub receipt: ConfirmedTransactionReceipt,
     pub transaction: TransactionType,
     pub finality: BlockStatus,
@@ -62,7 +68,7 @@ impl TryFrom<Block> for core::MaybePreConfirmedBlockWithTxHashes {
                     transactions: value
                         .transactions
                         .iter()
-                        .map(|tx| tx.transaction_hash())
+                        .map(super::transaction::TransactionType::transaction_hash)
                         .collect(),
                 }))
             }
@@ -111,7 +117,7 @@ impl TryFrom<Block> for core::MaybePreConfirmedBlockWithTxs {
                     transactions: value
                         .transactions
                         .into_iter()
-                        .map(|tx| tx.try_into())
+                        .map(std::convert::TryInto::try_into)
                         .collect::<Result<_, _>>()?,
                 }))
             }
@@ -504,27 +510,27 @@ impl From<StateDiff> for core::StateDiff {
                 .into_iter()
                 .map(|(key, value)| core::ContractStorageDiffItem {
                     address: key,
-                    storage_entries: value.into_iter().map(|item| item.into()).collect(),
+                    storage_entries: value.into_iter().map(std::convert::Into::into).collect(),
                 })
                 .collect(),
             deprecated_declared_classes: value.old_declared_contracts,
             declared_classes: value
                 .declared_classes
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             migrated_compiled_classes: value
                 .migrated_compiled_classes
-                .map(|classes| classes.into_iter().map(|item| item.into()).collect()),
+                .map(|classes| classes.into_iter().map(std::convert::Into::into).collect()),
             deployed_contracts: value
                 .deployed_contracts
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             replaced_classes: value
                 .replaced_classes
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             nonces: value
                 .nonces
@@ -587,10 +593,7 @@ impl TryFrom<TransactionInfo> for core::Transaction {
     type Error = ConversionError;
 
     fn try_from(value: TransactionInfo) -> Result<Self, Self::Error> {
-        match value.r#type {
-            Some(tx) => tx.try_into(),
-            None => Err(ConversionError),
-        }
+        value.r#type.map_or(Err(ConversionError), TryInto::try_into)
     }
 }
 
@@ -747,7 +750,7 @@ impl From<core::CompressedLegacyContractClass> for CompressedLegacyContractClass
             },
             abi: value
                 .abi
-                .map(|abi| abi.into_iter().map(|item| item.into()).collect()),
+                .map(|abi| abi.into_iter().map(std::convert::Into::into).collect()),
         }
     }
 }
@@ -867,13 +870,13 @@ impl TryFrom<ConfirmedReceiptWithContext> for core::DeclareTransactionReceipt {
                 .receipt
                 .l2_to_l1_messages
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             events: value
                 .receipt
                 .events
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             execution_resources: value
                 .receipt
@@ -904,13 +907,13 @@ impl TryFrom<ConfirmedReceiptWithContext> for core::DeployTransactionReceipt {
                 .receipt
                 .l2_to_l1_messages
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             events: value
                 .receipt
                 .events
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             contract_address: match value.transaction {
                 TransactionType::Deploy(inner) => inner.contract_address,
@@ -945,13 +948,13 @@ impl TryFrom<ConfirmedReceiptWithContext> for core::DeployAccountTransactionRece
                 .receipt
                 .l2_to_l1_messages
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             events: value
                 .receipt
                 .events
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             contract_address: match value.transaction {
                 TransactionType::DeployAccount(inner) => {
@@ -988,13 +991,13 @@ impl TryFrom<ConfirmedReceiptWithContext> for core::InvokeTransactionReceipt {
                 .receipt
                 .l2_to_l1_messages
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             events: value
                 .receipt
                 .events
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             execution_resources: value
                 .receipt
@@ -1034,13 +1037,13 @@ impl TryFrom<ConfirmedReceiptWithContext> for core::L1HandlerTransactionReceipt 
                 .receipt
                 .l2_to_l1_messages
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             events: value
                 .receipt
                 .events
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
             execution_resources: value
                 .receipt

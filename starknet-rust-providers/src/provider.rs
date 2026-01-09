@@ -11,7 +11,24 @@ use starknet_rust_core::types::{
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
     SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError,
     StorageProof, SubscriptionId, SyncStatusType, Transaction, TransactionReceiptWithBlockInfo,
-    TransactionStatus, TransactionTrace, TransactionTraceWithHash, requests::*,
+    TransactionStatus, TransactionTrace, TransactionTraceWithHash,
+    requests::{
+        AddDeclareTransactionRequest, AddDeployAccountTransactionRequest,
+        AddInvokeTransactionRequest, BlockHashAndNumberRequest, BlockNumberRequest, CallRequest,
+        ChainIdRequest, EstimateFeeRequest, EstimateMessageFeeRequest,
+        GetBlockTransactionCountRequest, GetBlockWithReceiptsRequest, GetBlockWithTxHashesRequest,
+        GetBlockWithTxsRequest, GetClassAtRequest, GetClassHashAtRequest, GetClassRequest,
+        GetEventsRequest, GetMessagesStatusRequest, GetNonceRequest, GetStateUpdateRequest,
+        GetStorageAtRequest, GetStorageProofRequest, GetTransactionByBlockIdAndIndexRequest,
+        GetTransactionByHashRequest, GetTransactionReceiptRequest, GetTransactionStatusRequest,
+        SimulateTransactionsRequest, SpecVersionRequest, SubscribeEventsRequest,
+        SubscribeNewHeadsRequest, SubscribeNewTransactionReceiptsRequest,
+        SubscribeNewTransactionsRequest, SubscribeTransactionStatusRequest,
+        SubscriptionEventsRequest, SubscriptionNewHeadsRequest,
+        SubscriptionNewTransactionReceiptsRequest, SubscriptionNewTransactionRequest,
+        SubscriptionReorgRequest, SubscriptionTransactionStatusRequest, SyncingRequest,
+        TraceBlockTransactionsRequest, TraceTransactionRequest, UnsubscribeRequest,
+    },
 };
 use std::{any::Any, error::Error, fmt::Debug};
 
@@ -574,7 +591,7 @@ pub enum StreamUpdateData {
 
 impl StreamUpdateData {
     /// Gets a reference to the subscription ID the update corresponds to.
-    pub fn subscription_id(&self) -> &SubscriptionId {
+    pub const fn subscription_id(&self) -> &SubscriptionId {
         match self {
             Self::SubscriptionNewHeads(update) => &update.subscription_id,
             Self::SubscriptionEvents(update) => &update.subscription_id,

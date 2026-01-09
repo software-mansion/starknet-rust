@@ -1,4 +1,4 @@
-use alloc::vec::*;
+use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 use crate::types::Felt;

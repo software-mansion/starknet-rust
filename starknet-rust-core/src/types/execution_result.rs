@@ -1,4 +1,4 @@
-use alloc::string::*;
+use alloc::string::String;
 
 use serde::{Deserialize, Serialize};
 
@@ -50,12 +50,12 @@ impl Serialize for ExecutionResult {
         struct Raw<'a> {
             execution_status: &'a TransactionExecutionStatus,
             #[serde(skip_serializing_if = "Option::is_none")]
-            revert_reason: &'a Option<&'a str>,
+            revert_reason: Option<&'a str>,
         }
 
         let raw = Raw {
             execution_status: &self.status(),
-            revert_reason: &self.revert_reason(),
+            revert_reason: self.revert_reason(),
         };
 
         Raw::serialize(&raw, serializer)

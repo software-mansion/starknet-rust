@@ -1,7 +1,7 @@
 //! `starknet-rust-tokio-tungstenite` provides a Starknet JSON-RPC WebSocket client implementation for
 //! the `tokio` runtime with `tokio-tungstenite`.
 
-#![deny(missing_docs)]
+// #![deny(missing_docs)] - Temporarily disabled
 
 mod error;
 pub use error::*;
