@@ -18,7 +18,36 @@ use starknet_rust_core::{
         SimulationFlagForEstimateFee, StarknetError, StorageKey, StorageProof, SubscriptionId,
         SyncStatusType, Transaction, TransactionExecutionErrorData,
         TransactionReceiptWithBlockInfo, TransactionStatus, TransactionTrace,
-        TransactionTraceWithHash, requests::*,
+        TransactionTraceWithHash,
+        requests::{
+            AddDeclareTransactionRequest, AddDeclareTransactionRequestRef,
+            AddDeployAccountTransactionRequest, AddDeployAccountTransactionRequestRef,
+            AddInvokeTransactionRequest, AddInvokeTransactionRequestRef, BlockHashAndNumberRequest,
+            BlockNumberRequest, CallRequest, CallRequestRef, ChainIdRequest, EstimateFeeRequest,
+            EstimateFeeRequestRef, EstimateMessageFeeRequest, EstimateMessageFeeRequestRef,
+            GetBlockTransactionCountRequest, GetBlockTransactionCountRequestRef,
+            GetBlockWithReceiptsRequest, GetBlockWithReceiptsRequestRef,
+            GetBlockWithTxHashesRequest, GetBlockWithTxHashesRequestRef, GetBlockWithTxsRequest,
+            GetBlockWithTxsRequestRef, GetClassAtRequest, GetClassAtRequestRef,
+            GetClassHashAtRequest, GetClassHashAtRequestRef, GetClassRequest, GetClassRequestRef,
+            GetEventsRequest, GetEventsRequestRef, GetMessagesStatusRequest,
+            GetMessagesStatusRequestRef, GetNonceRequest, GetNonceRequestRef,
+            GetStateUpdateRequest, GetStateUpdateRequestRef, GetStorageAtRequest,
+            GetStorageAtRequestRef, GetStorageProofRequest, GetStorageProofRequestRef,
+            GetTransactionByBlockIdAndIndexRequest, GetTransactionByBlockIdAndIndexRequestRef,
+            GetTransactionByHashRequest, GetTransactionByHashRequestRef,
+            GetTransactionReceiptRequest, GetTransactionReceiptRequestRef,
+            GetTransactionStatusRequest, GetTransactionStatusRequestRef,
+            SimulateTransactionsRequest, SimulateTransactionsRequestRef, SpecVersionRequest,
+            SubscribeEventsRequest, SubscribeNewHeadsRequest,
+            SubscribeNewTransactionReceiptsRequest, SubscribeNewTransactionsRequest,
+            SubscribeTransactionStatusRequest, SubscriptionEventsRequest,
+            SubscriptionNewHeadsRequest, SubscriptionNewTransactionReceiptsRequest,
+            SubscriptionNewTransactionRequest, SubscriptionReorgRequest,
+            SubscriptionTransactionStatusRequest, SyncingRequest, TraceBlockTransactionsRequest,
+            TraceBlockTransactionsRequestRef, TraceTransactionRequest, TraceTransactionRequestRef,
+            UnsubscribeRequest,
+        },
     },
 };
 
@@ -289,12 +318,11 @@ where
             .map_err(JsonRpcClientError::TransportError)?
         {
             JsonRpcResponse::Success { result, .. } => Ok(result),
-            JsonRpcResponse::Error { error, .. } => {
-                Err(match TryInto::<StarknetError>::try_into(&error) {
-                    Ok(error) => ProviderError::StarknetError(error),
-                    Err(_) => JsonRpcClientError::<T::Error>::JsonRpcError(error).into(),
-                })
-            }
+            JsonRpcResponse::Error { error, .. } => Err(TryInto::<StarknetError>::try_into(&error)
+                .map_or_else(
+                    |_| JsonRpcClientError::<T::Error>::JsonRpcError(error).into(),
+                    ProviderError::StarknetError,
+                )),
         }
     }
 
@@ -526,10 +554,10 @@ where
                 }
                 // TODO: add context on index of request causing the error
                 JsonRpcResponse::Error { error, .. } => {
-                    return Err(match TryInto::<StarknetError>::try_into(&error) {
-                        Ok(error) => ProviderError::StarknetError(error),
-                        Err(_) => JsonRpcClientError::<T::Error>::JsonRpcError(error).into(),
-                    });
+                    return Err(TryInto::<StarknetError>::try_into(&error).map_or_else(
+                        |_| JsonRpcClientError::<T::Error>::JsonRpcError(error).into(),
+                        ProviderError::StarknetError,
+                    ));
                 }
             }
         }

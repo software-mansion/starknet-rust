@@ -30,7 +30,7 @@ use super::{
 };
 
 /// An internal type for running the write direction of the WebSocket stream in the background.
-pub(crate) struct StreamWriteDriver {
+pub(super) struct StreamWriteDriver {
     pub timeout: Duration,
     pub keepalive_interval: Duration,
     pub ping_deadline: Instant,
@@ -41,7 +41,7 @@ pub(crate) struct StreamWriteDriver {
 }
 
 #[derive(Debug)]
-pub(crate) enum WriteAction {
+pub enum WriteAction {
     Subscribe {
         data: SubscribeWriteData,
         result: UnboundedSender<SubscriptionResult>,
@@ -57,7 +57,7 @@ pub(crate) enum WriteAction {
 }
 
 #[derive(Debug)]
-pub(crate) enum SubscribeWriteData {
+pub enum SubscribeWriteData {
     NewHeads {
         block_id: ConfirmedBlockId,
     },
@@ -91,7 +91,7 @@ enum SendError {
 }
 
 impl StreamWriteDriver {
-    pub fn drive(self) {
+    pub(super) fn drive(self) {
         tokio::spawn(self.run());
     }
 
@@ -110,11 +110,11 @@ impl StreamWriteDriver {
                         break;
                     }
                 }
-                _ = tokio::time::sleep_until(self.ping_deadline) => {
+                () = tokio::time::sleep_until(self.ping_deadline) => {
                     self.ping_deadline += self.keepalive_interval;
                     tokio::select! {
                         _ = self.sink.send(Message::Ping(b"Hello".as_slice().into())) => {},
-                        _ = tokio::time::sleep(self.timeout) => {},
+                        () = tokio::time::sleep(self.timeout) => {},
                     };
                 }
             }
@@ -134,7 +134,7 @@ impl StreamWriteDriver {
             }) => {
                 let (ack_tx, ack_rx) = tokio::sync::oneshot::channel::<ReadAcknowledgement>();
 
-                let req_id = thread_rng().next_u32() as u64;
+                let req_id = u64::from(thread_rng().next_u32());
                 if self
                     .read_queue
                     .send(ReadAction::Subscribe {
@@ -224,7 +224,7 @@ impl StreamWriteDriver {
             }) => {
                 let (ack_tx, ack_rx) = tokio::sync::oneshot::channel::<ReadAcknowledgement>();
 
-                let req_id = thread_rng().next_u32() as u64;
+                let req_id = u64::from(thread_rng().next_u32());
                 if self
                     .read_queue
                     .send(ReadAction::Unsubscribe {
@@ -285,7 +285,7 @@ impl StreamWriteDriver {
                             return HandleActionResult::Success;
                         }
                     }
-                    _ = tokio::time::sleep(self.timeout) => {
+                    () = tokio::time::sleep(self.timeout) => {
                         let _ = result.send(CloseResult::TimeoutError);
                         return HandleActionResult::Success;
                     }
@@ -310,7 +310,7 @@ impl StreamWriteDriver {
                 if !*close_sent {
                     tokio::select! {
                         _ = self.sink.send(Message::Close(None)) => {},
-                        _ = tokio::time::sleep(self.timeout) => {},
+                        () = tokio::time::sleep(self.timeout) => {},
                     };
                 }
 
@@ -334,7 +334,7 @@ impl StreamWriteDriver {
 
         tokio::select! {
             result = send => result.map_err(SendError::Transport),
-            _ = tokio::time::sleep(self.timeout) => Err(SendError::Timeout),
+            () = tokio::time::sleep(self.timeout) => Err(SendError::Timeout),
         }
     }
 }

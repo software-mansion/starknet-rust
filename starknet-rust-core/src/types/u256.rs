@@ -62,7 +62,7 @@ impl core::ops::Add<Self> for U256 {
 
 impl core::ops::AddAssign<Self> for U256 {
     fn add_assign(&mut self, rhs: Self) {
-        self.0 = self.0.checked_add(&rhs.0).unwrap()
+        self.0 = self.0.checked_add(&rhs.0).unwrap();
     }
 }
 
@@ -76,7 +76,7 @@ impl core::ops::Sub<Self> for U256 {
 
 impl core::ops::SubAssign<Self> for U256 {
     fn sub_assign(&mut self, rhs: Self) {
-        self.0 = self.0.checked_sub(&rhs.0).unwrap()
+        self.0 = self.0.checked_sub(&rhs.0).unwrap();
     }
 }
 
@@ -90,7 +90,7 @@ impl core::ops::Mul<Self> for U256 {
 
 impl core::ops::MulAssign<Self> for U256 {
     fn mul_assign(&mut self, rhs: Self) {
-        self.0 = self.0.checked_mul(&rhs.0).unwrap()
+        self.0 = self.0.checked_mul(&rhs.0).unwrap();
     }
 }
 
@@ -104,7 +104,7 @@ impl core::ops::Div<Self> for U256 {
 
 impl core::ops::DivAssign<Self> for U256 {
     fn div_assign(&mut self, rhs: Self) {
-        self.0 = self.0.checked_div(&rhs.0).unwrap()
+        self.0 = self.0.checked_div(&rhs.0).unwrap();
     }
 }
 
@@ -118,7 +118,7 @@ impl core::ops::Rem<Self> for U256 {
 
 impl core::ops::RemAssign<Self> for U256 {
     fn rem_assign(&mut self, rhs: Self) {
-        self.0 = self.0.checked_rem(&rhs.0).unwrap()
+        self.0 = self.0.checked_rem(&rhs.0).unwrap();
     }
 }
 

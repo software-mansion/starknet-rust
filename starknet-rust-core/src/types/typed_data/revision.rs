@@ -10,7 +10,7 @@ pub enum Revision {
 }
 
 impl Revision {
-    pub(crate) fn is_v0(&self) -> bool {
+    pub(crate) const fn is_v0(&self) -> bool {
         matches!(self, Self::V0)
     }
 }

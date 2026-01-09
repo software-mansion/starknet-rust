@@ -70,7 +70,7 @@ impl HttpTransport {
 
     /// Adds a custom HTTP header to be sent for requests.
     pub fn add_header(&mut self, name: String, value: String) {
-        self.headers.push((name, value))
+        self.headers.push((name, value));
     }
 }
 
@@ -96,7 +96,7 @@ impl JsonRpcTransport for HttpTransport {
         };
 
         let request_body = serde_json::to_string(&request_body).map_err(Self::Error::Json)?;
-        trace!("Sending request via JSON-RPC: {}", request_body);
+        trace!("Sending request via JSON-RPC: {request_body}");
 
         let mut request = self
             .client
@@ -110,7 +110,7 @@ impl JsonRpcTransport for HttpTransport {
         let response = request.send().await.map_err(Self::Error::Reqwest)?;
 
         let response_body = response.text().await.map_err(Self::Error::Reqwest)?;
-        trace!("Response from JSON-RPC: {}", response_body);
+        trace!("Response from JSON-RPC: {response_body}");
 
         let parsed_response = serde_json::from_str(&response_body).map_err(Self::Error::Json)?;
 
@@ -139,7 +139,7 @@ impl JsonRpcTransport for HttpTransport {
         let request_count = request_bodies.len();
 
         let request_body = serde_json::to_string(&request_bodies).map_err(Self::Error::Json)?;
-        trace!("Sending request via JSON-RPC: {}", request_body);
+        trace!("Sending request via JSON-RPC: {request_body}");
 
         let mut request = self
             .client
@@ -153,7 +153,7 @@ impl JsonRpcTransport for HttpTransport {
         let response = request.send().await.map_err(Self::Error::Reqwest)?;
 
         let response_body = response.text().await.map_err(Self::Error::Reqwest)?;
-        trace!("Response from JSON-RPC: {}", response_body);
+        trace!("Response from JSON-RPC: {response_body}");
 
         let parsed_response: Vec<JsonRpcResponse<serde_json::Value>> =
             serde_json::from_str(&response_body).map_err(Self::Error::Json)?;

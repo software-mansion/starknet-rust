@@ -1,4 +1,4 @@
-use alloc::string::*;
+use alloc::string::String;
 
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

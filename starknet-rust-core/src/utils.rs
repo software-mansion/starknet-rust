@@ -1,4 +1,4 @@
-use alloc::string::*;
+use alloc::string::String;
 
 use crate::crypto::compute_hash_on_elements;
 
@@ -122,7 +122,7 @@ pub fn starknet_keccak(data: &[u8]) -> Felt {
     hash[0] &= 0b00000011;
 
     // Because we know hash is always 32 bytes
-    Felt::from_bytes_be(unsafe { &*(hash[..].as_ptr() as *const [u8; 32]) })
+    Felt::from_bytes_be(unsafe { &*hash[..].as_ptr().cast::<[u8; 32]>() })
 }
 
 /// Calculates the entrypoint selector from a human-readable function name.
@@ -197,7 +197,7 @@ pub fn parse_cairo_short_string(felt: &Felt) -> Result<String, ParseCairoShortSt
                 return Err(ParseCairoShortStringError::UnexpectedNullTerminator);
             }
         } else {
-            buffer.push(byte as char)
+            buffer.push(byte as char);
         }
     }
     Ok(buffer)
@@ -311,7 +311,7 @@ mod tests {
         match get_selector_from_name(func_name) {
             Err(_) => {}
             _ => panic!("Should throw error on non-ASCII name"),
-        };
+        }
     }
 
     #[test]
@@ -450,7 +450,7 @@ mod tests {
             ),
             Felt::from_hex("0x00da27ef7c3869c3a6cc6a0f7bf07a51c3e590825adba8a51cae27d815839eec")
                 .unwrap()
-        )
+        );
     }
 
     #[test]

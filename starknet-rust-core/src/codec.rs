@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, fmt::Formatter, format, string::*, vec::*};
+use alloc::{boxed::Box, fmt::Formatter, format, string::ToString, vec::Vec};
 use core::{fmt::Display, mem::MaybeUninit};
 use starknet_rust_crypto::{Blake2Hasher, PedersenHasher, PoseidonHasher};
 

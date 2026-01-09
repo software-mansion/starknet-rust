@@ -101,14 +101,18 @@ impl<'de> Deserialize<'de> for ReceiptBlock {
     {
         let raw = Raw::deserialize(deserializer)?;
 
-        match raw.block_hash {
-            Some(block_hash) => Ok(Self::Block {
-                block_hash,
-                block_number: raw.block_number,
-            }),
-            None => Ok(Self::PreConfirmed {
-                block_number: raw.block_number,
-            }),
-        }
+        raw.block_hash.map_or_else(
+            || {
+                Ok(Self::PreConfirmed {
+                    block_number: raw.block_number,
+                })
+            },
+            |block_hash| {
+                Ok(Self::Block {
+                    block_hash,
+                    block_number: raw.block_number,
+                })
+            },
+        )
     }
 }
