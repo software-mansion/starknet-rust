@@ -13,19 +13,19 @@ keywords = ["ethereum", "starknet", "web3", "no_std"]
 exclude = ["test-data/**"]
 
 [dependencies]
-starknet-rust-curve = { version = "0.6.0", path = "../starknet-rust-curve" }
-crypto-bigint = { version = "0.5.1", default-features = false, features = ["generic-array", "zeroize"] }
-hmac = { version = "0.12.1", default-features = false }
-num-bigint = { version = "0.4.3", default-features = false }
-num-integer = { version = "0.1.45", default-features = false }
-num-traits = { version = "0.2.18", default-features = false }
-rfc6979 = { version = "0.4.0", default-features = false }
-sha2 = { version = "0.10.6", default-features = false }
-zeroize = { version = "1.6.0", default-features = false }
-hex = { version = "0.4.3", default-features = false, optional = true }
-starknet-types-core = { version = "0.2.0", default-features = false, features = ["curve", "hash"] }
-digest = { version = "0.10.7", default-features = false }
-blake2 = { version = "0.10.6", default-features = false }
+starknet-rust-curve.workspace = true
+crypto-bigint = { workspace = true, features = ["generic-array", "zeroize"] }
+hmac.workspace = true
+num-bigint.workspace = true
+num-integer.workspace = true
+num-traits.workspace = true
+rfc6979.workspace = true
+sha2.workspace = true
+zeroize.workspace = true
+hex = { workspace = true, optional = true }
+starknet-types-core = { workspace = true, features = ["curve", "hash"] }
+digest.workspace = true
+blake2.workspace = true
 
 [features]
 default = ["std", "signature-display"]
@@ -35,16 +35,16 @@ signature-display = ["dep:hex", "alloc"]
 pedersen_no_lookup = []
 
 [dev-dependencies]
-criterion = { version = "0.4.0", default-features = false }
-hex = "0.4.3"
-hex-literal = "0.4.1"
-serde = { version = "1.0.160", features = ["derive"] }
-serde_json = "1.0.96"
-starknet-types-core = { version = "0.2.0", default-features = false, features = ["alloc", "hash"] }
-test-case = "3.3.1"
+criterion.workspace = true
+hex.workspace = true
+hex-literal.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+starknet-types-core = { workspace = true, features = ["alloc", "hash"] }
+test-case.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "0.3.50"
+wasm-bindgen-test.workspace = true
 
 [[bench]]
 name = "pedersen_hash"
