@@ -34,7 +34,7 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_const_for_fn)]
 
-use alloc::{format, string::*, vec::*};
+use alloc::{format, string::String, vec::Vec};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -44,11 +44,11 @@ use crate::serde::byte_array::base64;
 
 use super::{
     serde_impls::{MerkleNodeMap, NumAsHex, OwnedContractExecutionError},
-    *,
+    alloc, Felt, UfeHex, Transaction, LegacyContractAbiEntry, ContractExecutionError, MerkleNode, ExecutionResult, BlockId, ExecuteInvocation, Hash256, EthAddress, TransactionStatus, TransactionTrace, TransactionReceipt, ReceiptBlock, TransactionContent, BroadcastedTransaction, ConfirmedBlockId,
 };
 
 #[cfg(target_has_atomic = "ptr")]
-pub type OwnedPtr<T> = alloc::sync::Arc<T>;
+pub(super) type OwnedPtr<T> = alloc::sync::Arc<T>;
 #[cfg(not(target_has_atomic = "ptr"))]
 pub type OwnedPtr<T> = alloc::boxed::Box<T>;
 
@@ -1899,14 +1899,14 @@ pub enum PriceUnit {
 
 /// Price unit fri.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PriceUnitFri {
+pub(super) enum PriceUnitFri {
     #[serde(rename = "FRI")]
     Fri,
 }
 
 /// Price unit wei.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PriceUnitWei {
+pub(super) enum PriceUnitWei {
     #[serde(rename = "WEI")]
     Wei,
 }

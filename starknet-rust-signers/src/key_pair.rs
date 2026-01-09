@@ -112,7 +112,7 @@ impl SigningKey {
 
     /// Signs a raw hash using ECDSA for a signature.
     pub fn sign(&self, hash: &Felt) -> Result<Signature, EcdsaSignError> {
-        ecdsa_sign(&self.secret_scalar, hash).map(|sig| sig.into())
+        ecdsa_sign(&self.secret_scalar, hash).map(std::convert::Into::into)
     }
 }
 
@@ -207,7 +207,7 @@ mod tests {
         match signing_key.sign(&hash) {
             Err(EcdsaSignError::MessageHashOutOfRange) => {}
             _ => panic!("Should throw error on out of range hash"),
-        };
+        }
     }
 
     #[test]

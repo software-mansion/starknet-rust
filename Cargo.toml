@@ -134,77 +134,33 @@ no_unknown_fields = [
 worker = ["starknet-rust-providers/worker"]
 
 [workspace.lints]
-rust.missing_debug_implementations = "warn"
-rust.missing_docs = "allow"
-rust.unreachable_pub = "allow"
-rust.unused_must_use = "deny"
-rust.rust_2018_idioms = { level = "deny", priority = -1 }
-rustdoc.all = "warn"
+rustdoc.all = "allow"
+
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+missing_docs = "allow"
+unreachable_pub = "warn"
+unused_must_use = "deny"
+
 
 [workspace.lints.clippy]
-# These are some of clippy's nursery (i.e., experimental) lints that we like.
-# By default, nursery lints are allowed. Some of the lints below have made good
-# suggestions which we fixed. The others didn't have any findings, so we can
-# assume they don't have that many false positives. Let's enable them to
-# prevent future problems.
-branches_sharing_code = "warn"
-clear_with_drain = "warn"
-derive_partial_eq_without_eq = "warn"
-empty_line_after_outer_attr = "warn"
-equatable_if_let = "warn"
-imprecise_flops = "warn"
-iter_on_empty_collections = "warn"
-iter_with_drain = "warn"
-large_stack_frames = "warn"
-manual_clamp = "warn"
-mutex_integer = "warn"
-needless_pass_by_ref_mut = "warn"
-nonstandard_macro_braces = "warn"
-or_fun_call = "warn"
-path_buf_push_overwrite = "warn"
-read_zero_byte_vec = "warn"
-redundant_clone = "warn"
-suboptimal_flops = "warn"
-suspicious_operation_groupings = "warn"
-trailing_empty_array = "warn"
-trait_duplication_in_bounds = "warn"
-transmute_undefined_repr = "warn"
-trivial_regex = "warn"
-tuple_array_conversions = "warn"
-uninhabited_references = "warn"
-unused_peekable = "warn"
-unused_rounding = "warn"
-useless_let_if_seq = "warn"
-use_self = "warn"
-# A regression in Rust 1.86.0 seems to have caused false positives in this lint.
-missing_const_for_fn = "allow"
-empty_line_after_doc_comments = "warn"
-iter_on_single_items = "warn"
-match_same_arms = "warn"
-doc_markdown = "warn"
-unnecessary_struct_initialization = "warn"
-string_lit_as_bytes = "warn"
-explicit_into_iter_loop = "warn"
-explicit_iter_loop = "warn"
-type_repetition_in_bounds = "allow"
-manual_string_new = "warn"
-naive_bytecount = "warn"
-needless_bitwise_bool = "warn"
-zero_sized_map_values = "warn"
-single_char_pattern = "warn"
-needless_continue = "warn"
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
 
-# These are nursery lints which have findings. Allow them for now. Some are not
-# quite mature enough for use in our codebase and some we don't really want.
-# Explicitly listing should make it easier to fix in the future.
-as_ptr_cast_mut = "allow"
-cognitive_complexity = "allow"
-collection_is_never_read = "allow"
-debug_assert_with_mut_call = "allow"
-fallible_impl_from = "allow"
+# Allow specific pedantic/nursery lints that are too noisy
+missing_errors_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_panics_doc = "allow"
+too_many_lines = "allow"
+inline_always = "allow"
+similar_names = "allow"
+unsafe_derive_deserialize = "allow"
+too_long_first_doc_paragraph = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
 future_not_send = "allow"
-needless_collect = "allow"
-non_send_fields_in_send_ty = "allow"
-redundant_pub_crate = "allow"
-significant_drop_in_scrutinee = "allow"
-significant_drop_tightening = "allow"
+needless_pass_by_value = "allow"
+struct_field_names = "allow"
+trivially_copy_pass_by_ref = "allow"
+return_self_not_must_use = "allow"

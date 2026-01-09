@@ -1,4 +1,4 @@
-use alloc::{borrow::*, boxed::*, collections::BTreeMap, format, string::*, vec::*};
+use alloc::{borrow::ToOwned, boxed::Box, collections::BTreeMap, format, string::String, vec::Vec};
 
 use crate::{
     crypto::compute_hash_on_elements,
@@ -628,7 +628,7 @@ impl LegacyContractClass {
                 self.abi
                     .clone()
                     .into_iter()
-                    .map(|item| item.into())
+                    .map(std::convert::Into::into)
                     .collect(),
             ),
         })
@@ -643,7 +643,7 @@ impl LegacyProgram {
 
         #[serde_as]
         #[derive(Serialize)]
-        pub struct ProgramWithoutDebugInfo<'a> {
+        pub(crate) struct ProgramWithoutDebugInfo<'a> {
             #[serde(skip_serializing_if = "Option::is_none")]
             attributes: &'a Option<Vec<LegacyAttribute>>,
             builtins: &'a Vec<String>,
@@ -788,13 +788,12 @@ impl SerializeAs<LegacyProgram> for ProgramForHintedHash {
                     (
                         key.to_owned(),
                         LegacyIdentifier {
-                            decorators: value.decorators.to_owned(),
+                            decorators: value.decorators.clone(),
                             cairo_type: value
-                                .cairo_type
-                                .to_owned()
+                                .cairo_type.clone()
                                 .map(|content| content.replace(": ", " : ")),
-                            full_name: value.full_name.to_owned(),
-                            members: value.members.to_owned().map(|map| {
+                            full_name: value.full_name.clone(),
+                            members: value.members.clone().map(|map| {
                                 map.iter()
                                     .map(|(key, value)| {
                                         (
@@ -807,12 +806,12 @@ impl SerializeAs<LegacyProgram> for ProgramForHintedHash {
                                     })
                                     .collect()
                             }),
-                            references: value.references.to_owned(),
+                            references: value.references.clone(),
                             size: value.size,
                             pc: value.pc,
-                            destination: value.destination.to_owned(),
-                            r#type: value.r#type.to_owned(),
-                            value: value.value.to_owned(),
+                            destination: value.destination.clone(),
+                            r#type: value.r#type.clone(),
+                            value: value.value.clone(),
                         },
                     )
                 })
@@ -874,13 +873,13 @@ impl From<RawLegacyEntryPoints> for LegacyEntryPointsByType {
             constructor: value
                 .constructor
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
-            external: value.external.into_iter().map(|item| item.into()).collect(),
+            external: value.external.into_iter().map(std::convert::Into::into).collect(),
             l1_handler: value
                 .l1_handler
                 .into_iter()
-                .map(|item| item.into())
+                .map(std::convert::Into::into)
                 .collect(),
         }
     }
@@ -937,7 +936,7 @@ impl From<RawLegacyStruct> for LegacyStructAbiEntry {
             r#type: LegacyStructAbiType::Struct,
             name: value.name,
             size: value.size,
-            members: value.members.into_iter().map(|item| item.into()).collect(),
+            members: value.members.into_iter().map(std::convert::Into::into).collect(),
         }
     }
 }
@@ -975,7 +974,7 @@ impl From<RawLegacyMember> for LegacyStructMember {
     }
 }
 
-fn should_skip_attributes_for_hinted_hash(value: &Option<Vec<LegacyAttribute>>) -> bool {
+const fn should_skip_attributes_for_hinted_hash(value: &Option<Vec<LegacyAttribute>>) -> bool {
     match value {
         Some(value) => value.is_empty(),
         None => true,

@@ -172,7 +172,7 @@ where
 
 impl<T> LedgerStarknetApp<T> {
     /// Creates Starknet Ledger app handle using an already-initialized transport.
-    pub fn from_transport(transport: T) -> Self {
+    pub const fn from_transport(transport: T) -> Self {
         Self { transport }
     }
 }
@@ -201,7 +201,7 @@ where
             });
         }
 
-        Ok(Version::new(data[0] as u64, data[1] as u64, data[2] as u64))
+        Ok(Version::new(u64::from(data[0]), u64::from(data[1]), u64::from(data[2])))
     }
 
     /// Gets a public key from the app for a particular derivation path, with optional on-device
@@ -353,7 +353,7 @@ impl From<GetPubKeyCommand> for APDUCommand {
         Self {
             cla: CLA_STARKNET,
             ins: 0x01,
-            p1: if value.display { 0x01 } else { 0x00 },
+            p1: u8::from(value.display),
             p2: 0x00,
             data: APDUData::new(&path),
             response_len: None,

@@ -1,10 +1,10 @@
-use alloc::{format, string::*, vec, vec::*};
+use alloc::{format, string::String, vec, vec::Vec};
 use core::str::FromStr;
 
 use serde::{Deserialize, Serialize, de::Unexpected};
 
 use crate::{
-    types::{Felt, typed_data::TypeReference},
+    types::Felt,
     utils::starknet_keccak,
 };
 
@@ -43,7 +43,7 @@ pub struct FieldDefinition {
 
 impl FieldDefinition {
     /// Initializes a new field definition.
-    pub fn new(name: String, r#type: FullTypeReference) -> Self {
+    pub const fn new(name: String, r#type: FullTypeReference) -> Self {
         Self { name, r#type }
     }
 }
@@ -81,7 +81,7 @@ pub trait CompositeType {
 }
 
 /// Internal type for type signature generation for preset types.
-pub(crate) enum PresetType {
+pub(super) enum PresetType {
     U256,
     TokenAmount,
     NftId,
@@ -170,7 +170,7 @@ impl TypeDefinition {
 }
 
 impl PresetType {
-    pub const fn name(&self) -> &'static str {
+    pub(super) const fn name(&self) -> &'static str {
         match self {
             Self::U256 => "u256",
             Self::TokenAmount => "TokenAmount",
@@ -178,7 +178,7 @@ impl PresetType {
         }
     }
 
-    pub const fn type_signature(&self, revision: Revision) -> &'static str {
+    pub(super) const fn type_signature(&self, revision: Revision) -> &'static str {
         match self {
             Self::U256 => match revision {
                 Revision::V0 => "u256(low:u128,high:u128)",
@@ -200,7 +200,7 @@ impl PresetType {
     }
 
     // TODO: make this a const fn
-    pub fn type_hash(&self, revision: Revision) -> Felt {
+    pub(super) fn type_hash(&self, revision: Revision) -> Felt {
         match self {
             Self::U256 => starknet_keccak(self.type_signature(revision).as_bytes()),
             Self::TokenAmount | Self::NftId => starknet_keccak(
@@ -397,7 +397,7 @@ where
         "({})",
         value
             .iter()
-            .map(|field| field.signature_ref_repr())
+            .map(super::type_reference::TypeReference::signature_ref_repr)
             .collect::<Vec<_>>()
             .join(",")
     ))
@@ -411,12 +411,12 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_struct_def_serde() {
-        let raw = r###"[
+        let raw = r#"[
   { "name": "Name", "type": "string" },
   { "name": "Some Array", "type": "u128*" },
   { "name": "Some Object", "type": "My Object" },
   { "name": "Some Enum", "type": "enum", "contains": "My Enum" }
-]"###;
+]"#;
 
         let def = serde_json::from_str::<TypeDefinition>(raw).unwrap();
         match &def {
@@ -449,11 +449,11 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_enum_def_serde() {
-        let raw = r###"[
+        let raw = r#"[
   { "name": "Variant 1", "type": "()" },
   { "name": "Variant 2", "type": "(u128,u128*)" },
   { "name": "Variant N", "type": "(u128)" }
-]"###;
+]"#;
 
         let def = serde_json::from_str::<TypeDefinition>(raw).unwrap();
         match &def {

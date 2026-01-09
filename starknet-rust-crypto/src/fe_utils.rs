@@ -11,18 +11,18 @@ use starknet_types_core::felt::Felt;
 //
 // Contributions are welcome. Please help us get rid of this junk :)
 
-pub fn add_unbounded(augend: &Felt, addend: &Felt) -> BigInt {
+pub(crate) fn add_unbounded(augend: &Felt, addend: &Felt) -> BigInt {
     let augend = BigInt::from_bytes_be(num_bigint::Sign::Plus, &augend.to_bytes_be());
     let addend = BigInt::from_bytes_be(num_bigint::Sign::Plus, &addend.to_bytes_be());
     augend.add(addend)
 }
 
-pub fn mul_mod_floor(multiplicand: &Felt, multiplier: &Felt, modulus: &Felt) -> Felt {
+pub(crate) fn mul_mod_floor(multiplicand: &Felt, multiplier: &Felt, modulus: &Felt) -> Felt {
     let multiplicand = BigInt::from_bytes_be(num_bigint::Sign::Plus, &multiplicand.to_bytes_be());
     bigint_mul_mod_floor(multiplicand, multiplier, modulus)
 }
 
-pub fn bigint_mul_mod_floor(multiplicand: BigInt, multiplier: &Felt, modulus: &Felt) -> Felt {
+pub(crate) fn bigint_mul_mod_floor(multiplicand: BigInt, multiplier: &Felt, modulus: &Felt) -> Felt {
     let multiplier = BigInt::from_bytes_be(num_bigint::Sign::Plus, &multiplier.to_bytes_be());
     let modulus = BigInt::from_bytes_be(num_bigint::Sign::Plus, &modulus.to_bytes_be());
 
@@ -35,16 +35,14 @@ pub fn bigint_mul_mod_floor(multiplicand: BigInt, multiplier: &Felt, modulus: &F
     Felt::from_bytes_be(&result)
 }
 
-pub fn mod_inverse(operand: &Felt, modulus: &Felt) -> Felt {
+pub(crate) fn mod_inverse(operand: &Felt, modulus: &Felt) -> Felt {
     let operand = BigInt::from_bytes_be(num_bigint::Sign::Plus, &operand.to_bytes_be());
     let modulus = BigInt::from_bytes_be(num_bigint::Sign::Plus, &modulus.to_bytes_be());
 
     // Ported from:
     //   https://github.com/dignifiedquire/num-bigint/blob/56576b592fea6341b7e1711a1629e4cc1bfc419c/src/algorithms/mod_inverse.rs#L11
     let extended_gcd = operand.extended_gcd(&modulus);
-    if extended_gcd.gcd != BigInt::one() {
-        panic!("GCD must be one");
-    }
+    assert!(extended_gcd.gcd == BigInt::one(), "GCD must be one");
     let result = if extended_gcd.x < BigInt::zero() {
         extended_gcd.x + modulus
     } else {

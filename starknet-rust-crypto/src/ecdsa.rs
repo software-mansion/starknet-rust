@@ -287,16 +287,16 @@ mod tests {
 
         // Iterating over each element in the JSON
         for (private_key, expected_public_key) in key_map {
-            let private_key = if !private_key.len().is_multiple_of(2) {
-                format!("0{}", private_key.trim_start_matches("0x"))
-            } else {
+            let private_key = if private_key.len().is_multiple_of(2) {
                 private_key.trim_start_matches("0x").to_owned()
+            } else {
+                format!("0{}", private_key.trim_start_matches("0x"))
             };
 
-            let expected_public_key = if !expected_public_key.len().is_multiple_of(2) {
-                format!("0{}", expected_public_key.trim_start_matches("0x"))
-            } else {
+            let expected_public_key = if expected_public_key.len().is_multiple_of(2) {
                 expected_public_key.trim_start_matches("0x").to_owned()
+            } else {
+                format!("0{}", expected_public_key.trim_start_matches("0x"))
             };
 
             // Assertion

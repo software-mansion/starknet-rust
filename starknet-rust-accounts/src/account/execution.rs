@@ -337,21 +337,18 @@ where
             }
         };
 
-        let tip = match self.tip {
-            Some(tip) => tip,
-            None => {
-                // Need to estimate tip from median. Maybe a full block has already been fetched?
-                let block = match full_block {
-                    Some(block) => block,
-                    None => self
-                        .account
-                        .provider()
-                        .get_block_with_txs(self.account.block_id())
-                        .await
-                        .map_err(AccountError::Provider)?,
-                };
-                block.median_tip()
-            }
+        let tip = if let Some(tip) = self.tip { tip } else {
+            // Need to estimate tip from median. Maybe a full block has already been fetched?
+            let block = match full_block {
+                Some(block) => block,
+                None => self
+                    .account
+                    .provider()
+                    .get_block_with_txs(self.account.block_id())
+                    .await
+                    .map_err(AccountError::Provider)?,
+            };
+            block.median_tip()
         };
 
         Ok(PreparedExecutionV3 {

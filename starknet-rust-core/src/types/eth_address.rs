@@ -188,13 +188,13 @@ impl TryFrom<&[u8]> for EthAddress {
     type Error = FromBytesSliceError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        if value.len() != 20 {
-            Err(FromBytesSliceError)
-        } else {
+        if value.len() == 20 {
             // Safe to unwrap as we know length is 20.
             Ok(Self {
                 inner: value.try_into().unwrap(),
             })
+        } else {
+            Err(FromBytesSliceError)
         }
     }
 }
@@ -305,8 +305,6 @@ mod tests {
     fn test_eth_address_from_slice_invalid_slice() {
         let buffer: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6, 7];
 
-        if EthAddress::try_from(&buffer[0..4]).is_ok() {
-            panic!("Expected error, but got Ok");
-        }
+        assert!(EthAddress::try_from(&buffer[0..4]).is_err(), "Expected error, but got Ok");
     }
 }

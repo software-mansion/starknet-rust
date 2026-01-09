@@ -148,7 +148,7 @@ pub struct EventSubscriptionOptions {
 }
 
 #[derive(Debug)]
-pub(crate) struct Subscription {
+pub struct Subscription {
     pub subscription_id: SubscriptionId,
     pub stream: UnboundedReceiver<StreamUpdateData>,
     pub write_queue: UnboundedSender<WriteAction>,
@@ -162,7 +162,7 @@ impl EventSubscriptionOptions {
     }
 
     /// Sets the contract address to filter events by.
-    pub fn with_from_address(mut self, from_address: Felt) -> Self {
+    pub const fn with_from_address(mut self, from_address: Felt) -> Self {
         self.from_address = Some(from_address);
         self
     }
@@ -174,7 +174,7 @@ impl EventSubscriptionOptions {
     }
 
     /// Sets the block ID from which to start receiving events.
-    pub fn with_block_id(mut self, block_id: ConfirmedBlockId) -> Self {
+    pub const fn with_block_id(mut self, block_id: ConfirmedBlockId) -> Self {
         self.block_id = block_id;
         self
     }

@@ -3,7 +3,7 @@ use super::{
         RawLegacyAbiEntry, RawLegacyConstructor, RawLegacyEvent, RawLegacyFunction,
         RawLegacyL1Handler, RawLegacyMember, RawLegacyStruct,
     },
-    *,
+    LegacyContractAbiEntry, LegacyFunctionAbiType, Transaction, TransactionContent, InvokeTransaction, InvokeTransactionContent, L1HandlerTransaction, L1HandlerTransactionContent, DeclareTransaction, DeclareTransactionContent, DeployTransaction, DeployTransactionContent, DeployAccountTransaction, DeployAccountTransactionContent, InvokeTransactionV0, InvokeTransactionV0Content, InvokeTransactionV1, InvokeTransactionV1Content, InvokeTransactionV3, InvokeTransactionV3Content, DeclareTransactionV0, DeclareTransactionV0Content, DeclareTransactionV1, DeclareTransactionV1Content, DeclareTransactionV2, DeclareTransactionV2Content, DeclareTransactionV3, DeclareTransactionV3Content, DeployAccountTransactionV1, DeployAccountTransactionV1Content, DeployAccountTransactionV3, DeployAccountTransactionV3Content,
 };
 
 impl From<LegacyContractAbiEntry> for RawLegacyAbiEntry {

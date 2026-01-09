@@ -1,4 +1,4 @@
-use alloc::{string::*, vec::*};
+use alloc::{string::String, vec::Vec};
 
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -657,7 +657,7 @@ impl MaybePreConfirmedBlockWithTxs {
         let mut tips: Vec<u64> = self
             .transactions()
             .iter()
-            .filter_map(|tx| tx.tip())
+            .filter_map(Transaction::tip)
             .collect();
 
         if tips.is_empty() {
@@ -668,7 +668,7 @@ impl MaybePreConfirmedBlockWithTxs {
             let len = tips.len();
             if len.is_multiple_of(2) {
                 // Even number of tips: average of two middle values
-                (tips[len / 2 - 1] + tips[len / 2]) / 2
+                u64::midpoint(tips[len / 2 - 1], tips[len / 2])
             } else {
                 // Odd number of tips: middle value
                 tips[len / 2]
@@ -729,14 +729,11 @@ impl Transaction {
             Self::Declare(DeclareTransaction::V3(tx)) => Some(tx.tip),
             Self::DeployAccount(DeployAccountTransaction::V3(tx)) => Some(tx.tip),
             // Exhaust all variants to force a compilation error upon adding new variants
-            Self::Invoke(InvokeTransaction::V0(_))
-            | Self::Invoke(InvokeTransaction::V1(_))
-            | Self::L1Handler(_)
-            | Self::Declare(DeclareTransaction::V0(_))
-            | Self::Declare(DeclareTransaction::V1(_))
-            | Self::Declare(DeclareTransaction::V2(_))
-            | Self::Deploy(_)
-            | Self::DeployAccount(DeployAccountTransaction::V1(_)) => None,
+            Self::Invoke(InvokeTransaction::V0(_) | InvokeTransaction::V1(_)) |
+Self::L1Handler(_) |
+Self::Declare(DeclareTransaction::V0(_) | DeclareTransaction::V1(_) |
+DeclareTransaction::V2(_)) | Self::Deploy(_) |
+Self::DeployAccount(DeployAccountTransaction::V1(_)) => None,
         }
     }
 }

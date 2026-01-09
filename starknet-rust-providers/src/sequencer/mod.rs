@@ -15,7 +15,7 @@ use url::Url;
 // Sequencer specific model types. Not exposed by design to discourage sequencer usage.
 #[allow(unused)]
 pub mod models;
-use models::{conversions::ConversionError, *};
+use models::{conversions::ConversionError, TransactionRequest, AddTransactionResult, ContractAddresses, BlockId, Block, StateUpdate, StateUpdateWithBlock, DeployedClass, TransactionStatusInfo, TransactionInfo};
 
 // Allows sequencer gateway to be used as if it's jsonrpc.
 mod provider;
@@ -158,7 +158,7 @@ impl SequencerGatewayProvider {
 
     /// Adds a custom HTTP header to be sent for requests to the sequencer.
     pub fn add_header(&mut self, name: String, value: String) {
-        self.headers.push((name, value))
+        self.headers.push((name, value));
     }
 }
 
@@ -193,7 +193,7 @@ impl SequencerGatewayProvider {
     where
         T: DeserializeOwned,
     {
-        trace!("Sending GET request to sequencer API ({})", url);
+        trace!("Sending GET request to sequencer API ({url})");
 
         let mut request = self.client.get(url);
         for (name, value) in &self.headers {
@@ -206,7 +206,7 @@ impl SequencerGatewayProvider {
         } else {
             let body = res.text().await.map_err(GatewayClientError::Network)?;
 
-            trace!("Response from sequencer API: {}", body);
+            trace!("Response from sequencer API: {body}");
 
             Ok(serde_json::from_str(&body).map_err(GatewayClientError::Serde)?)
         }
@@ -220,8 +220,7 @@ impl SequencerGatewayProvider {
         let request_body = serde_json::to_string(body).map_err(GatewayClientError::Serde)?;
 
         trace!(
-            "Sending POST request to sequencer API ({}): {}",
-            url, request_body
+            "Sending POST request to sequencer API ({url}): {request_body}"
         );
 
         let mut request = self
@@ -239,7 +238,7 @@ impl SequencerGatewayProvider {
         } else {
             let body = res.text().await.map_err(GatewayClientError::Network)?;
 
-            trace!("Response from sequencer API: {}", body);
+            trace!("Response from sequencer API: {body}");
 
             Ok(serde_json::from_str(&body).map_err(GatewayClientError::Serde)?)
         }
@@ -541,7 +540,7 @@ fn append_block_id(url: &mut Url, block_identifier: BlockId) {
             url.query_pairs_mut().append_pair("blockNumber", "pending");
         }
         BlockId::Latest => (), // latest block is implicit
-    };
+    }
 }
 
 #[cfg(test)]
