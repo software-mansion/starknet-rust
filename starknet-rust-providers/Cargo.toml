@@ -20,7 +20,7 @@ ethereum-types.workspace = true
 flate2.workspace = true
 log.workspace = true
 url.workspace = true
-reqwest = { workspace = true, features = ["rustls-tls"] }
+reqwest.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true

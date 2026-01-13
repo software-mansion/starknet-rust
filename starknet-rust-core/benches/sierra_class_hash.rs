@@ -1,5 +1,6 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use starknet_rust_core::types::contract::SierraClass;
+use std::hint::black_box;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let contract_artifact: SierraClass = serde_json::from_str(include_str!(
