@@ -7,22 +7,18 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-cxx = "1.0"
+cxx.workspace = true
 
-# Using path dependency here to make development easier. However, you probably want to fetch the
-# crate from GitHub instead (because the `starknet-rust-core` crate isn't being published to crates.io
-# regularly like `starknet-rust-crypto` at the moment), which means changing the next line to:
-#
-# starknet-rust-core = { git = "https://github.com/software-mansion/starknet-rust" }
-starknet-rust-core = { path = "../../../starknet-rust-core" }
+# Using workspace dependency here to make development easier.
+starknet-rust-core.workspace = true
 
 # Same as above.
 # 
 # This entry is needed to enable the `signature-display` feature of `starknet-rust-crypto`.
-starknet-rust-crypto = { path = "../../../starknet-rust-crypto", default-features = false, features = ["signature-display"] }
+starknet-rust-crypto = { workspace = true, features = ["signature-display"] }
 
 [build-dependencies]
-cxx-build = "1.0"
+cxx-build.workspace = true
 
 [lib]
 crate-type = ["staticlib"]
