@@ -22,10 +22,7 @@ pub fn generate_k(message_hash: &Felt, private_key: &Felt, seed: Option<&Felt>) 
     let message_hash = U256::from_be_slice(&message_hash.to_bytes_be()).to_be_byte_array();
     let private_key = U256::from_be_slice(&private_key.to_bytes_be());
 
-    let seed_bytes = match seed {
-        Some(seed) => seed.to_bytes_be(),
-        None => [0u8; 32],
-    };
+    let seed_bytes = seed.map_or([0u8; 32], Felt::to_bytes_be);
 
     let mut first_non_zero_index = 32;
     for (ind, element) in seed_bytes.iter().enumerate() {

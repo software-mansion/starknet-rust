@@ -1,9 +1,18 @@
 use super::{
+    DeclareTransaction, DeclareTransactionContent, DeclareTransactionV0,
+    DeclareTransactionV0Content, DeclareTransactionV1, DeclareTransactionV1Content,
+    DeclareTransactionV2, DeclareTransactionV2Content, DeclareTransactionV3,
+    DeclareTransactionV3Content, DeployAccountTransaction, DeployAccountTransactionContent,
+    DeployAccountTransactionV1, DeployAccountTransactionV1Content, DeployAccountTransactionV3,
+    DeployAccountTransactionV3Content, DeployTransaction, DeployTransactionContent,
+    InvokeTransaction, InvokeTransactionContent, InvokeTransactionV0, InvokeTransactionV0Content,
+    InvokeTransactionV1, InvokeTransactionV1Content, InvokeTransactionV3,
+    InvokeTransactionV3Content, L1HandlerTransaction, L1HandlerTransactionContent,
+    LegacyContractAbiEntry, LegacyFunctionAbiType, Transaction, TransactionContent,
     contract::legacy::{
         RawLegacyAbiEntry, RawLegacyConstructor, RawLegacyEvent, RawLegacyFunction,
         RawLegacyL1Handler, RawLegacyMember, RawLegacyStruct,
     },
-    *,
 };
 
 impl From<LegacyContractAbiEntry> for RawLegacyAbiEntry {

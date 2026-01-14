@@ -84,11 +84,11 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_implicit_v0_domain_serde() {
-        let raw = r###"{
+        let raw = r#"{
   "name": "Starknet Example",
   "version": "1",
   "chainId": "SN_MAIN"
-}"###;
+}"#;
 
         let domain = serde_json::from_str::<Domain>(raw).unwrap();
         assert_eq!(domain.revision, Revision::V0);
@@ -106,12 +106,12 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_explicit_v0_domain_deser() {
-        let raw = r###"{
+        let raw = r#"{
   "name": "Starknet Example",
   "version": 1,
   "chainId": "SN_MAIN",
   "revision": "0"
-}"###;
+}"#;
 
         let domain = serde_json::from_str::<Domain>(raw).unwrap();
         assert_eq!(domain.revision, Revision::V0);
@@ -123,12 +123,12 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_explicit_v1_domain_serde() {
-        let raw = r###"{
+        let raw = r#"{
   "name": "Starknet Example",
   "version": "1",
   "chainId": "SN_MAIN",
   "revision": "1"
-}"###;
+}"#;
 
         let domain = serde_json::from_str::<Domain>(raw).unwrap();
         assert_eq!(domain.revision, Revision::V1);
@@ -146,11 +146,11 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_v0_domain_hash() {
-        let raw = r###"{
+        let raw = r#"{
   "name": "Starknet Example",
   "version": "1",
   "chainId": "SN_MAIN"
-}"###;
+}"#;
 
         let domain = serde_json::from_str::<Domain>(raw).unwrap();
         assert_eq!(
@@ -164,12 +164,12 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_v1_domain_hash() {
-        let raw = r###"{
+        let raw = r#"{
   "name": "Starknet Example",
   "version": "1",
   "chainId": "SN_MAIN",
   "revision": "1"
-}"###;
+}"#;
 
         let domain = serde_json::from_str::<Domain>(raw).unwrap();
         assert_eq!(

@@ -29,7 +29,7 @@ async fn can_get_nonce_with_sequencer() {
         create_sequencer_client(),
         "0x0372943f16a6036bed8ccc986d43ad3859ea05db327b49966198e04645ad2efd",
     )
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -38,7 +38,7 @@ async fn can_get_nonce_with_jsonrpc() {
         create_jsonrpc_client(),
         "0x000cf23cc9f3de0b3f8e6922659efe0fd6001c4bbf2162a509230f7e8f22cfe3",
     )
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -47,7 +47,7 @@ async fn can_estimate_invoke_v3_fee_with_jsonrpc() {
         create_jsonrpc_client(),
         "0x030bf8c9cf629c85160aca40bf2e203cccebf74f2440a346627e7df3f9ab65fd",
     )
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -56,7 +56,7 @@ async fn can_parse_fee_estimation_error_with_jsonrpc() {
         create_jsonrpc_client(),
         "0x03f6c60df7b086599c4fa565955d30d60a75ee4f84020adc10d4a8abcc3284e7",
     )
-    .await
+    .await;
 }
 
 // The `simulate`-related test cases are temporarily removed until it's supported in [Provider]
@@ -68,7 +68,7 @@ async fn can_execute_eth_transfer_invoke_v3_with_jsonrpc() {
         create_jsonrpc_client(),
         "0x03a08ecef30eaef46780a5167eac194d7cf0407356dccdc7393f851dfc164fd6",
     )
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -77,7 +77,7 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_with_jsonrpc() {
         create_jsonrpc_client(),
         "0x04a3189bdbc8716f416f7d54d9bf0d0f55ffb454bb89c547118d023a652277dd",
     )
-    .await
+    .await;
 }
 
 #[ignore = "TODO(#1)"]
@@ -87,7 +87,7 @@ async fn can_estimate_declare_v3_fee_with_jsonrpc() {
         create_jsonrpc_client(),
         "0x0678f1879560e7e7e260989ba4911ee170a71c3f25b2467dd2046099aeba92aa",
     )
-    .await
+    .await;
 }
 
 #[ignore = "TODO(#1)"]
@@ -97,7 +97,7 @@ async fn can_declare_cairo1_contract_v3_with_jsonrpc() {
         create_jsonrpc_client(),
         "0x06aac79bb6c90e1e41c33cd20c67c0281c4a95f01b4e15ad0c3b53fcc6010cf8",
     )
-    .await
+    .await;
 }
 
 async fn can_get_nonce_inner<P: Provider + Send + Sync>(provider: P, address: &str) {

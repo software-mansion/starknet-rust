@@ -1,11 +1,11 @@
-pub mod u64 {
+pub(crate) mod u64 {
     use alloc::{fmt::Formatter, format};
 
     use serde::{Deserializer, Serializer, de::Visitor};
 
     struct NumHexVisitor;
 
-    pub fn serialize<S>(value: &u64, serializer: S) -> Result<S::Ok, S::Error>
+    pub(crate) fn serialize<S>(value: &u64, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -16,7 +16,7 @@ pub mod u64 {
         }
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
+    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
     where
         D: Deserializer<'de>,
     {

@@ -74,13 +74,13 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
     let impl_block = match input.data {
         syn::Data::Struct(data) => {
             let field_impls = data.fields.iter().enumerate().map(|(ind_field, field)| {
-                let field_ident = match &field.ident {
-                    Some(field_ident) => quote! { self.#field_ident },
-                    None => {
+                let field_ident = field.ident.as_ref().map_or_else(
+                    || {
                         let ind_field = syn::Index::from(ind_field);
                         quote! { self.#ind_field }
-                    }
-                };
+                    },
+                    |field_ident| quote! { self.#field_ident },
+                );
                 let field_type = &field.ty;
 
                 quote! {

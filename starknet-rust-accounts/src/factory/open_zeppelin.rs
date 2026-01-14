@@ -39,7 +39,7 @@ where
     }
 
     /// Sets a new block ID to run queries against.
-    pub fn set_block_id(&mut self, block_id: BlockId) -> &Self {
+    pub const fn set_block_id(&mut self, block_id: BlockId) -> &Self {
         self.block_id = block_id;
         self
     }

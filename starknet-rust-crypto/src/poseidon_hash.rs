@@ -74,20 +74,18 @@ pub fn poseidon_hash_many<'a, I: IntoIterator<Item = &'a Felt>>(msgs: I) -> Felt
     let mut iter = msgs.into_iter();
 
     loop {
-        match iter.next() {
-            Some(v) => state[0] += *v,
-            None => {
-                state[0] += Felt::ONE;
-                break;
-            }
+        if let Some(v) = iter.next() {
+            state[0] += *v;
+        } else {
+            state[0] += Felt::ONE;
+            break;
         }
 
-        match iter.next() {
-            Some(v) => state[1] += *v,
-            None => {
-                state[1] += Felt::ONE;
-                break;
-            }
+        if let Some(v) = iter.next() {
+            state[1] += *v;
+        } else {
+            state[1] += Felt::ONE;
+            break;
         }
 
         Poseidon::hades_permutation(&mut state);
@@ -99,7 +97,7 @@ pub fn poseidon_hash_many<'a, I: IntoIterator<Item = &'a Felt>>(msgs: I) -> Felt
 
 /// Poseidon permutation function.                                                            
 pub fn poseidon_permute_comp(state: &mut [Felt; 3]) {
-    Poseidon::hades_permutation(state)
+    Poseidon::hades_permutation(state);
 }
 
 #[cfg(test)]

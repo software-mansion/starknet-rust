@@ -10,7 +10,7 @@ use super::{
     ContractExecutionError, Felt, MerkleNode, SyncStatus, SyncStatusType, UfeHex, codegen::OwnedPtr,
 };
 
-pub(crate) struct NumAsHex;
+pub(super) struct NumAsHex;
 
 struct NumAsHexVisitorU64;
 struct NumAsHexVisitorU128;
@@ -153,17 +153,19 @@ impl<'de> Deserialize<'de> for SyncStatusType {
         D: Deserializer<'de>,
     {
         match SyncStatusTypeDe::deserialize(deserializer)? {
-            SyncStatusTypeDe::Boolean(value) => match value {
-                true => Err(serde::de::Error::custom("invalid boolean value")),
-
-                false => Ok(Self::NotSyncing),
-            },
+            SyncStatusTypeDe::Boolean(value) => {
+                if value {
+                    Err(serde::de::Error::custom("invalid boolean value"))
+                } else {
+                    Ok(Self::NotSyncing)
+                }
+            }
             SyncStatusTypeDe::SyncStatus(value) => Ok(Self::Syncing(value)),
         }
     }
 }
 
-pub(crate) struct OwnedContractExecutionError;
+pub(super) struct OwnedContractExecutionError;
 
 impl SerializeAs<OwnedPtr<ContractExecutionError>> for OwnedContractExecutionError {
     fn serialize_as<S>(
@@ -188,7 +190,7 @@ impl<'de> DeserializeAs<'de, OwnedPtr<ContractExecutionError>> for OwnedContract
     }
 }
 
-pub(crate) struct MerkleNodeMap;
+pub(super) struct MerkleNodeMap;
 
 struct MerkleNodeMapVisitor<R> {
     phantom: PhantomData<R>,
@@ -501,7 +503,12 @@ mod transaction_status {
 // Deriving the Serialize trait directly results in duplicate fields since the variants also write
 // the tag fields when individually serialized.
 mod enum_ser_impls {
-    use super::super::*;
+    use super::super::{
+        BroadcastedTransaction, DeclareTransaction, DeclareTransactionContent,
+        DeployAccountTransaction, DeployAccountTransactionContent, ExecuteInvocation,
+        InvokeTransaction, InvokeTransactionContent, Serialize, Transaction, TransactionContent,
+        TransactionReceipt, TransactionTrace,
+    };
 
     impl Serialize for Transaction {
         fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

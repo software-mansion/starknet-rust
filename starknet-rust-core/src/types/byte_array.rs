@@ -1,4 +1,7 @@
-use alloc::{string::*, vec::*};
+use alloc::{
+    string::{FromUtf8Error, String},
+    vec::Vec,
+};
 
 use num_traits::ToPrimitive;
 
@@ -16,13 +19,13 @@ pub struct ByteArray(Vec<u8>);
 
 impl ByteArray {
     /// Returns the number of bytes in the array, also referred to as its 'length'.
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.0.len()
     }
 
     /// Returns `true` if the array contains no bytes.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }

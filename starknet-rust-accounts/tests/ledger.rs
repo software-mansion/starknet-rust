@@ -88,7 +88,7 @@ mod ledger {
 mod automation {
     use super::*;
 
-    pub const ENABLE_BLIND_SIGN: AutomationRule<'static> = AutomationRule {
+    pub(crate) const ENABLE_BLIND_SIGN: AutomationRule<'static> = AutomationRule {
         text: None,
         regexp: Some(Cow::Borrowed("^(S)?tarknet$")),
         x: None,
@@ -185,7 +185,7 @@ mod automation {
     };
 
     /// Must be used with [`ENABLE_BLIND_SIGN`].
-    pub const APPROVE_BLIND_SIGN_HASH: AutomationRule<'static> = AutomationRule {
+    pub(crate) const APPROVE_BLIND_SIGN_HASH: AutomationRule<'static> = AutomationRule {
         text: None,
         regexp: Some(Cow::Borrowed("^Cancel$")),
         x: None,
