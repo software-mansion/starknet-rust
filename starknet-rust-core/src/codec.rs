@@ -9,9 +9,9 @@ use crate::types::{Felt, U256};
 pub use starknet_rust_core_derive::{Decode, Encode};
 
 const I128_MIN: Felt =
-    Felt::from_hex_unchecked("0x0800000000000010ffffffffffffffff80000000000000000000000000000001");
+    Felt::from_hex_unwrap("0x0800000000000010ffffffffffffffff80000000000000000000000000000001");
 const I128_MAX: Felt =
-    Felt::from_hex_unchecked("0x000000000000000000000000000000007fffffffffffffffffffffffffffffff");
+    Felt::from_hex_unwrap("0x000000000000000000000000000000007fffffffffffffffffffffffffffffff");
 
 /// Any type where [`Felt`]s can be written into. This would typically be [`Vec<Felt>`], but can
 /// also be something like a stateful hasher.
@@ -615,55 +615,55 @@ mod tests {
         for (raw, felt) in [
             (
                 0i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0000000000000000000000000000000000000000000000000000000000000000",
                 ),
             ),
             (
                 -1i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0800000000000011000000000000000000000000000000000000000000000000",
                 ),
             ),
             (
                 1i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0000000000000000000000000000000000000000000000000000000000000001",
                 ),
             ),
             (
                 10000i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0000000000000000000000000000000000000000000000000000000000002710",
                 ),
             ),
             (
                 -10000i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0800000000000010ffffffffffffffffffffffffffffffffffffffffffffd8f1",
                 ),
             ),
             (
                 i128::MIN,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0800000000000010ffffffffffffffff80000000000000000000000000000001",
                 ),
             ),
             (
                 i128::MIN + 1,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0800000000000010ffffffffffffffff80000000000000000000000000000002",
                 ),
             ),
             (
                 i128::MAX,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x000000000000000000000000000000007fffffffffffffffffffffffffffffff",
                 ),
             ),
             (
                 i128::MAX - 1,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x000000000000000000000000000000007ffffffffffffffffffffffffffffffe",
                 ),
             ),
@@ -944,55 +944,55 @@ mod tests {
         for (raw, felt) in [
             (
                 0i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0000000000000000000000000000000000000000000000000000000000000000",
                 ),
             ),
             (
                 -1i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0800000000000011000000000000000000000000000000000000000000000000",
                 ),
             ),
             (
                 1i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0000000000000000000000000000000000000000000000000000000000000001",
                 ),
             ),
             (
                 10000i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0000000000000000000000000000000000000000000000000000000000002710",
                 ),
             ),
             (
                 -10000i128,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0800000000000010ffffffffffffffffffffffffffffffffffffffffffffd8f1",
                 ),
             ),
             (
                 i128::MIN,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0800000000000010ffffffffffffffff80000000000000000000000000000001",
                 ),
             ),
             (
                 i128::MIN + 1,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x0800000000000010ffffffffffffffff80000000000000000000000000000002",
                 ),
             ),
             (
                 i128::MAX,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x000000000000000000000000000000007fffffffffffffffffffffffffffffff",
                 ),
             ),
             (
                 i128::MAX - 1,
-                Felt::from_hex_unchecked(
+                Felt::from_hex_unwrap(
                     "0x000000000000000000000000000000007ffffffffffffffffffffffffffffffe",
                 ),
             ),
