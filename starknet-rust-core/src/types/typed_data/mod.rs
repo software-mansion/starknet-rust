@@ -313,9 +313,8 @@ mod tests {
         let data = serde_json::from_str::<TypedData>(VALID_V0_DATA).unwrap();
 
         assert_eq!(
-            data.message_hash(Felt::from_hex_unchecked("0x1234"))
-                .unwrap(),
-            Felt::from_hex_unchecked(
+            data.message_hash(Felt::from_hex_unwrap("0x1234")).unwrap(),
+            Felt::from_hex_unwrap(
                 "0x0778d68fe2baf73ee78a6711c29bad4722680984c1553a8035c8cb3feb5310c9"
             )
         );
@@ -327,9 +326,8 @@ mod tests {
         let data = serde_json::from_str::<TypedData>(VALID_V1_DATA).unwrap();
 
         assert_eq!(
-            data.message_hash(Felt::from_hex_unchecked("0x1234"))
-                .unwrap(),
-            Felt::from_hex_unchecked(
+            data.message_hash(Felt::from_hex_unwrap("0x1234")).unwrap(),
+            Felt::from_hex_unwrap(
                 "0x045bca39274d2b7fdf7dc7c4ecf75f6549f614ce44359cc62ec106f4e5cc87b4"
             )
         );
@@ -377,9 +375,8 @@ mod tests {
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
         assert_eq!(
-            data.message_hash(Felt::from_hex_unchecked("0x1234"))
-                .unwrap(),
-            Felt::from_hex_unchecked(
+            data.message_hash(Felt::from_hex_unwrap("0x1234")).unwrap(),
+            Felt::from_hex_unwrap(
                 "0x0795c7e03a0ef83c4e3dee6942ef64d4126a91cafbda207356dae1de3bed4063"
             )
         );
@@ -434,9 +431,8 @@ mod tests {
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
         assert_eq!(
-            data.message_hash(Felt::from_hex_unchecked("0x1234"))
-                .unwrap(),
-            Felt::from_hex_unchecked(
+            data.message_hash(Felt::from_hex_unwrap("0x1234")).unwrap(),
+            Felt::from_hex_unwrap(
                 "0x068b85f4061d8155c0445f7e3c6bae1e7641b88b1d3b7c034c0b4f6c30eb5049"
             )
         );
@@ -479,13 +475,12 @@ mod tests {
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
         assert_eq!(
-            data.message_hash(Felt::from_hex_unchecked("0x1234"))
-                .unwrap(),
+            data.message_hash(Felt::from_hex_unwrap("0x1234")).unwrap(),
             // This expected hash was generated with starknet.js v6.24.1, due to the expectation
             // that the following fixes, despite being merged, would never be released:
             // - https://github.com/starknet-io/starknet.js/pull/1281
             // - https://github.com/starknet-io/starknet.js/pull/1288
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x05cb0569ef378e0c17c07c13cb86bc6e067f824ccffd79fd49d875ecc0296124"
             )
         );
@@ -544,10 +539,9 @@ mod tests {
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
         assert_eq!(
-            data.message_hash(Felt::from_hex_unchecked("0x1234"))
-                .unwrap(),
+            data.message_hash(Felt::from_hex_unwrap("0x1234")).unwrap(),
             // This expected hash was generated with starknet.js v6.24.1
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x0470e6107a4d464e16d8f77ff673c06f6fbfe107fef1e496e53b10d3744afd42"
             )
         );
@@ -608,9 +602,8 @@ mod tests {
         let data = serde_json::from_str::<TypedData>(raw).unwrap();
 
         assert_eq!(
-            data.message_hash(Felt::from_hex_unchecked("0x1234"))
-                .unwrap(),
-            Felt::from_hex_unchecked(
+            data.message_hash(Felt::from_hex_unwrap("0x1234")).unwrap(),
+            Felt::from_hex_unwrap(
                 "0x064bd27eb802de8c83ff1437394c142bbe771530a248c548fab27ac3bcd2a503"
             )
         );
