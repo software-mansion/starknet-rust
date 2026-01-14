@@ -59,9 +59,9 @@ mod tests {
         ];
 
         for (in1, in2, expected_hash) in test_data {
-            let in1 = Felt::from_hex_unchecked(in1);
-            let in2 = Felt::from_hex_unchecked(in2);
-            let expected_hash = Felt::from_hex_unchecked(expected_hash);
+            let in1 = Felt::from_hex_unwrap(in1);
+            let in2 = Felt::from_hex_unwrap(in2);
+            let expected_hash = Felt::from_hex_unwrap(expected_hash);
 
             assert_eq!(pedersen_hash(&in1, &in2), expected_hash);
         }

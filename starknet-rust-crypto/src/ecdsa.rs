@@ -209,6 +209,7 @@ mod tests {
     use alloc::collections::BTreeMap;
     #[cfg(feature = "std")]
     use std::collections::BTreeMap;
+    use std::str::FromStr;
 
     use super::*;
 
@@ -218,10 +219,10 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_get_public_key_1() {
-        let private_key = Felt::from_hex_unchecked(
+        let private_key = Felt::from_hex_unwrap(
             "0x03c1e9550e66958296d11b60f8e8e7a7ad990d07fa65d5f7652c4a6c87d4e3cc",
         );
-        let expected_public_key = Felt::from_hex_unchecked(
+        let expected_public_key = Felt::from_hex_unwrap(
             "0x077a3b314db07c45076d11f62b6f9e748a39790441823307743cf00d6597ea43",
         );
 
@@ -231,10 +232,10 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_get_public_key_2() {
-        let private_key = Felt::from_hex_unchecked(
+        let private_key = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000012",
         );
-        let expected_public_key = Felt::from_hex_unchecked(
+        let expected_public_key = Felt::from_hex_unwrap(
             "0x019661066e96a8b9f06a1d136881ee924dfb6a885239caa5fd3f87a54c6b25c4",
         );
 
@@ -258,8 +259,8 @@ mod tests {
         for (private_key, expected_public_key) in key_map {
             // Assertion
             assert_eq!(
-                get_public_key(&Felt::from_hex_unchecked(&private_key)),
-                Felt::from_hex_unchecked(&expected_public_key)
+                get_public_key(&Felt::from_str(&private_key).unwrap()),
+                Felt::from_str(&expected_public_key).unwrap()
             );
         }
     }
@@ -267,16 +268,16 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_verify_valid_message() {
-        let stark_key = Felt::from_hex_unchecked(
+        let stark_key = Felt::from_hex_unwrap(
             "0x01ef15c18599971b7beced415a40f0c7deacfd9b0d1819e03d723d8bc943cfca",
         );
-        let msg_hash = Felt::from_hex_unchecked(
+        let msg_hash = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000002",
         );
-        let r_bytes = Felt::from_hex_unchecked(
+        let r_bytes = Felt::from_hex_unwrap(
             "0x0411494b501a98abd8262b0da1351e17899a0c4ef23dd2f96fec5ba847310b20",
         );
-        let s_bytes = Felt::from_hex_unchecked(
+        let s_bytes = Felt::from_hex_unwrap(
             "0x0405c3191ab3883ef2b763af35bc5f5d15b3b4e99461d70e84c654a351a7c81b",
         );
 
@@ -286,16 +287,16 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_verify_invalid_message() {
-        let stark_key = Felt::from_hex_unchecked(
+        let stark_key = Felt::from_hex_unwrap(
             "0x077a4b314db07c45076d11f62b6f9e748a39790441823307743cf00d6597ea43",
         );
-        let msg_hash = Felt::from_hex_unchecked(
+        let msg_hash = Felt::from_hex_unwrap(
             "0x0397e76d1667c4454bfb83514e120583af836f8e32a516765497823eabe16a3f",
         );
-        let r_bytes = Felt::from_hex_unchecked(
+        let r_bytes = Felt::from_hex_unwrap(
             "0x0173fd03d8b008ee7432977ac27d1e9d1a1f6c98b1a2f05fa84a21c84c44e882",
         );
-        let s_bytes = Felt::from_hex_unchecked(
+        let s_bytes = Felt::from_hex_unwrap(
             "0x01f2c44a7798f55192f153b4c48ea5c1241fbb69e6132cc8a0da9c5b62a4286e",
         );
 
@@ -305,16 +306,16 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_verify_invalid_public_key() {
-        let stark_key = Felt::from_hex_unchecked(
+        let stark_key = Felt::from_hex_unwrap(
             "0x03ee9bffffffffff26ffffffff60ffffffffffffffffffffffffffff004accff",
         );
-        let msg_hash = Felt::from_hex_unchecked(
+        let msg_hash = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000002",
         );
-        let r_bytes = Felt::from_hex_unchecked(
+        let r_bytes = Felt::from_hex_unwrap(
             "0x0411494b501a98abd8262b0da1351e17899a0c4ef23dd2f96fec5ba847310b20",
         );
-        let s_bytes = Felt::from_hex_unchecked(
+        let s_bytes = Felt::from_hex_unwrap(
             "0x0405c3191ab3883ef2b763af35bc5f5d15b3b4e99461d70e84c654a351a7c81b",
         );
 
@@ -327,13 +328,13 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_sign() {
-        let private_key = Felt::from_hex_unchecked(
+        let private_key = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000001",
         );
-        let message = Felt::from_hex_unchecked(
+        let message = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000002",
         );
-        let k = Felt::from_hex_unchecked(
+        let k = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000003",
         );
 
@@ -346,13 +347,13 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_recover() {
-        let private_key = Felt::from_hex_unchecked(
+        let private_key = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000001",
         );
-        let message = Felt::from_hex_unchecked(
+        let message = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000002",
         );
-        let k = Felt::from_hex_unchecked(
+        let k = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000003",
         );
 
@@ -365,16 +366,16 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_recover_invalid_r() {
-        let message = Felt::from_hex_unchecked(
+        let message = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000002",
         );
-        let r = Felt::from_hex_unchecked(
+        let r = Felt::from_hex_unwrap(
             "0x03ee9bffffffffff26ffffffff60ffffffffffffffffffffffffffff004accff",
         );
-        let s = Felt::from_hex_unchecked(
+        let s = Felt::from_hex_unwrap(
             "0x0405c3191ab3883ef2b763af35bc5f5d15b3b4e99461d70e84c654a351a7c81b",
         );
-        let v = Felt::from_hex_unchecked(
+        let v = Felt::from_hex_unwrap(
             "0x0000000000000000000000000000000000000000000000000000000000000000",
         );
 

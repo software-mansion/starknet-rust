@@ -61,7 +61,7 @@ mod ledger {
 
         assert_eq!(
             public_key.scalar(),
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x07427aa749c4fc98a5bf76f037eb3c61e7b4793b576a72d45a4b52c5ded997f2"
             )
         );
@@ -85,7 +85,7 @@ mod ledger {
 
         assert_eq!(
             public_key.scalar(),
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x07427aa749c4fc98a5bf76f037eb3c61e7b4793b576a72d45a4b52c5ded997f2"
             )
         );

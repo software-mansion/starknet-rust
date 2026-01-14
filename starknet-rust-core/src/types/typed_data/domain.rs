@@ -155,7 +155,7 @@ mod tests {
         let domain = serde_json::from_str::<Domain>(raw).unwrap();
         assert_eq!(
             domain.encoded_hash(),
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x04f8ee4d303cd69ce9c78edadf62442865c89a1eec01fa413e126a058a69c28a"
             )
         );
@@ -174,7 +174,7 @@ mod tests {
         let domain = serde_json::from_str::<Domain>(raw).unwrap();
         assert_eq!(
             domain.encoded_hash(),
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x03bfc3e1ff0f5c85c05bb8073a64a40b038eed00a449bc337c8cd2758f634640"
             )
         );
