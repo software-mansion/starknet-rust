@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
-use syn::{punctuated::Pair, Generics, Path, Token, Type, WhereClause};
+use syn::{Generics, Path, Token, Type, WhereClause, punctuated::Pair};
 
 // Adapted from https://github.com/serde-rs/serde/blob/1d7899d671c6f6155b63a39fa6001c9c48260821/serde_derive/src/bound.rs#L91
 
-pub struct GenericsVisitor<'ast> {
+pub(crate) struct GenericsVisitor<'ast> {
     existing_generics: Generics,
 
     // Set of all generic type parameters on the current struct.
@@ -21,7 +21,7 @@ pub struct GenericsVisitor<'ast> {
 }
 
 impl<'ast> GenericsVisitor<'ast> {
-    pub fn new(existing_generics: &Generics) -> Self {
+    pub(crate) fn new(existing_generics: &Generics) -> Self {
         Self {
             existing_generics: existing_generics.clone(),
             all_type_params: existing_generics
@@ -33,7 +33,7 @@ impl<'ast> GenericsVisitor<'ast> {
         }
     }
 
-    pub fn extend_where_clause(self, where_clause: &mut WhereClause, bound: &Path) {
+    pub(crate) fn extend_where_clause(self, where_clause: &mut WhereClause, bound: &Path) {
         where_clause.predicates.extend(
             self.existing_generics
                 .type_params()
@@ -61,14 +61,14 @@ impl<'ast> GenericsVisitor<'ast> {
         );
     }
 
-    pub fn visit_field(&mut self, field: &'ast syn::Field) {
-        if let syn::Type::Path(ty) = ungroup(&field.ty) {
-            if let Some(Pair::Punctuated(t, _)) = ty.path.segments.pairs().next() {
-                if self.all_type_params.contains(&t.ident) {
-                    self.associated_type_usage.push(ty);
-                }
-            }
+    pub(crate) fn visit_field(&mut self, field: &'ast syn::Field) {
+        if let syn::Type::Path(ty) = ungroup(&field.ty)
+            && let Some(Pair::Punctuated(t, _)) = ty.path.segments.pairs().next()
+            && self.all_type_params.contains(&t.ident)
+        {
+            self.associated_type_usage.push(ty);
         }
+
         self.visit_type(&field.ty);
     }
 
@@ -174,7 +174,8 @@ impl<'ast> GenericsVisitor<'ast> {
     //         mac: T!(),
     //         marker: PhantomData<T>,
     //     }
-    fn visit_macro(&self, _mac: &'ast syn::Macro) {}
+    #[expect(clippy::unused_self)]
+    const fn visit_macro(&self, _mac: &'ast syn::Macro) {}
 }
 
 fn ungroup(mut ty: &Type) -> &Type {
