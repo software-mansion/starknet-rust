@@ -6,9 +6,8 @@ use crate::ExecutionEncoder;
 
 use starknet_rust_core::types::{
     BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3, BroadcastedTransaction, Call,
-    DataAvailabilityMode,
-    FeeEstimate, Felt, InvokeTransactionResult, ResourceBounds, ResourceBoundsMapping,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
+    DataAvailabilityMode, FeeEstimate, Felt, InvokeTransactionResult, ResourceBounds,
+    ResourceBoundsMapping, SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
 };
 use starknet_rust_crypto::PoseidonHasher;
 use starknet_rust_providers::Provider;

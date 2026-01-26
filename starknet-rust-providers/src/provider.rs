@@ -9,10 +9,9 @@ use starknet_rust_core::types::{
     Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
-    SimulateTransactionsResult, SimulatedTransaction, SimulationFlag,
-    SimulationFlagForEstimateFee, StarknetError, StorageProof, SubscriptionId, SyncStatusType,
-    TraceBlockTransactionsResult, Transaction, TransactionReceiptWithBlockInfo, TransactionStatus,
-    TransactionTrace,
+    SimulateTransactionsResult, SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
+    StarknetError, StorageProof, SubscriptionId, SyncStatusType, TraceBlockTransactionsResult,
+    Transaction, TransactionReceiptWithBlockInfo, TransactionStatus, TransactionTrace,
     requests::{
         AddDeclareTransactionRequest, AddDeployAccountTransactionRequest,
         AddInvokeTransactionRequest, BlockHashAndNumberRequest, BlockNumberRequest, CallRequest,

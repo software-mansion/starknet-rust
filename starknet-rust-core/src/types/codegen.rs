@@ -3,7 +3,7 @@
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#4a300fa30fa408fb682b43cb3486f6adfd004461
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#2fa12b7f4f1226a75b91316f954f6daca373967e
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -37,6 +37,7 @@
 #![allow(clippy::wildcard_imports)]
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::collapsible_if)]
+#![allow(clippy::use_self)]
 #![allow(unreachable_pub)]
 
 use alloc::{format, string::*, vec::*};
@@ -2267,7 +2268,9 @@ impl core::fmt::Display for StarknetError {
             Self::UnsupportedTxVersion => write!(f, "UnsupportedTxVersion"),
             Self::UnsupportedContractClassVersion => write!(f, "UnsupportedContractClassVersion"),
             Self::UnexpectedError(e) => write!(f, "UnexpectedError: {e:?}"),
-            Self::ReplacementTransactionUnderpriced => write!(f, "ReplacementTransactionUnderpriced"),
+            Self::ReplacementTransactionUnderpriced => {
+                write!(f, "ReplacementTransactionUnderpriced")
+            }
             Self::FeeBelowMinimum => write!(f, "FeeBelowMinimum"),
             Self::NoTraceAvailable(e) => write!(f, "NoTraceAvailable: {e:?}"),
             Self::InvalidSubscriptionId => write!(f, "InvalidSubscriptionId"),
