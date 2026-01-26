@@ -7,9 +7,9 @@ use starknet_rust_core::types::{
     Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StorageProof,
-    SyncStatusType, Transaction, TransactionReceiptWithBlockInfo, TransactionStatus,
-    TransactionTrace, TransactionTraceWithHash,
+    SimulateTransactionsResult, SimulationFlag, SimulationFlagForEstimateFee, StorageProof,
+    SyncStatusType, TraceBlockTransactionsResult, Transaction, TransactionReceiptWithBlockInfo,
+    TransactionStatus, TransactionTrace,
 };
 
 use crate::{
@@ -686,7 +686,7 @@ impl Provider for AnyProvider {
         block_id: B,
         transactions: T,
         simulation_flags: S,
-    ) -> Result<Vec<SimulatedTransaction>, ProviderError>
+    ) -> Result<SimulateTransactionsResult, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
         T: AsRef<[BroadcastedTransaction]> + Send + Sync,
@@ -717,7 +717,7 @@ impl Provider for AnyProvider {
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
-    ) -> Result<Vec<TransactionTraceWithHash>, ProviderError>
+    ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
     {

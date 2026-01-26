@@ -14,11 +14,10 @@ use starknet_rust_core::{
         InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
         MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
         MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
-        NoTraceAvailableErrorData, ResultPageRequest, SimulatedTransaction, SimulationFlag,
+        NoTraceAvailableErrorData, ResultPageRequest, SimulateTransactionsResult, SimulationFlag,
         SimulationFlagForEstimateFee, StarknetError, StorageKey, StorageProof, SubscriptionId,
-        SyncStatusType, Transaction, TransactionExecutionErrorData,
+        SyncStatusType, TraceBlockTransactionsResult, Transaction, TransactionExecutionErrorData,
         TransactionReceiptWithBlockInfo, TransactionStatus, TransactionTrace,
-        TransactionTraceWithHash,
         requests::{
             AddDeclareTransactionRequest, AddDeclareTransactionRequestRef,
             AddDeployAccountTransactionRequest, AddDeployAccountTransactionRequestRef,
@@ -504,13 +503,13 @@ where
                         }
                         ProviderRequestData::SimulateTransactions(_) => {
                             ProviderResponseData::SimulateTransactions(
-                                Vec::<SimulatedTransaction>::deserialize(result)
+                                SimulateTransactionsResult::deserialize(result)
                                     .map_err(JsonRpcClientError::<T::Error>::JsonError)?,
                             )
                         }
                         ProviderRequestData::TraceBlockTransactions(_) => {
                             ProviderResponseData::TraceBlockTransactions(
-                                Vec::<TransactionTraceWithHash>::deserialize(result)
+                                TraceBlockTransactionsResult::deserialize(result)
                                     .map_err(JsonRpcClientError::<T::Error>::JsonError)?,
                             )
                         }
@@ -711,6 +710,7 @@ where
             JsonRpcMethod::GetTransactionStatus,
             GetTransactionStatusRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags: None,
             },
         )
         .await
@@ -728,6 +728,7 @@ where
             JsonRpcMethod::GetTransactionByHash,
             GetTransactionByHashRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags: None,
             },
         )
         .await
@@ -747,6 +748,7 @@ where
             GetTransactionByBlockIdAndIndexRequestRef {
                 block_id: block_id.as_ref(),
                 index: &index,
+                response_flags: None,
             },
         )
         .await
@@ -764,6 +766,7 @@ where
             JsonRpcMethod::GetTransactionReceipt,
             GetTransactionReceiptRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags: None,
             },
         )
         .await
@@ -1084,7 +1087,7 @@ where
         block_id: B,
         transactions: TX,
         simulation_flags: S,
-    ) -> Result<Vec<SimulatedTransaction>, ProviderError>
+    ) -> Result<SimulateTransactionsResult, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
         TX: AsRef<[BroadcastedTransaction]> + Send + Sync,
@@ -1105,7 +1108,7 @@ where
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
-    ) -> Result<Vec<TransactionTraceWithHash>, ProviderError>
+    ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
     {
@@ -1113,6 +1116,7 @@ where
             JsonRpcMethod::TraceBlockTransactions,
             TraceBlockTransactionsRequestRef {
                 block_id: block_id.as_ref(),
+                trace_flags: None,
             },
         )
         .await

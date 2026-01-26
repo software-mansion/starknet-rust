@@ -9,9 +9,10 @@ use starknet_rust_core::types::{
     Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError,
-    StorageProof, SubscriptionId, SyncStatusType, Transaction, TransactionReceiptWithBlockInfo,
-    TransactionStatus, TransactionTrace, TransactionTraceWithHash,
+    SimulateTransactionsResult, SimulatedTransaction, SimulationFlag,
+    SimulationFlagForEstimateFee, StarknetError, StorageProof, SubscriptionId, SyncStatusType,
+    TraceBlockTransactionsResult, Transaction, TransactionReceiptWithBlockInfo, TransactionStatus,
+    TransactionTrace,
     requests::{
         AddDeclareTransactionRequest, AddDeployAccountTransactionRequest,
         AddInvokeTransactionRequest, BlockHashAndNumberRequest, BlockNumberRequest, CallRequest,
@@ -294,7 +295,7 @@ pub trait Provider {
         block_id: B,
         transactions: T,
         simulation_flags: S,
-    ) -> Result<Vec<SimulatedTransaction>, ProviderError>
+    ) -> Result<SimulateTransactionsResult, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
         T: AsRef<[BroadcastedTransaction]> + Send + Sync,
@@ -304,7 +305,7 @@ pub trait Provider {
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
-    ) -> Result<Vec<TransactionTraceWithHash>, ProviderError>
+    ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync;
 
@@ -353,7 +354,7 @@ pub trait Provider {
         T: AsRef<BroadcastedTransaction> + Send + Sync,
         S: AsRef<[SimulationFlag]> + Send + Sync,
     {
-        let mut result = self
+        let result = self
             .simulate_transactions(
                 block_id,
                 [transaction.as_ref().to_owned()],
@@ -361,9 +362,12 @@ pub trait Provider {
             )
             .await?;
 
-        if result.len() == 1 {
-            // Unwrapping here is safe becuase we already checked length
-            Ok(result.pop().unwrap())
+        if result.simulated_transactions.len() == 1 {
+            Ok(result
+                .simulated_transactions
+                .into_iter()
+                .next()
+                .expect("length checked"))
         } else {
             Err(ProviderError::ArrayLengthMismatch)
         }
@@ -553,9 +557,9 @@ pub enum ProviderResponseData {
     /// Response data for `starknet_traceTransaction`.
     TraceTransaction(TransactionTrace),
     /// Response data for `starknet_simulateTransactions`.
-    SimulateTransactions(Vec<SimulatedTransaction>),
+    SimulateTransactions(SimulateTransactionsResult),
     /// Response data for `starknet_traceBlockTransactions`.
-    TraceBlockTransactions(Vec<TransactionTraceWithHash>),
+    TraceBlockTransactions(TraceBlockTransactionsResult),
     /// Response data for `starknet_subscribeNewHeads`.
     SubscribeNewHeads(SubscriptionId),
     /// Response data for `starknet_subscribeEvents`.

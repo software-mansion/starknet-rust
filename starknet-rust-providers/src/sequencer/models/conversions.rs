@@ -396,6 +396,7 @@ impl TryFrom<InvokeFunctionTransaction> for core::InvokeTransaction {
                     .fee_data_availability_mode
                     .ok_or(ConversionError)?
                     .into(),
+                proof_facts: None,
             }))
         } else {
             Err(ConversionError)
@@ -647,7 +648,7 @@ impl TryFrom<TransactionFinalityStatus> for core::TransactionFinalityStatus {
 
 impl From<core::BroadcastedInvokeTransaction> for InvokeFunctionTransactionRequest {
     fn from(value: core::BroadcastedInvokeTransaction) -> Self {
-        Self::V3(value.into())
+        Self::V3(value.broadcasted_invoke_txn_v3.into())
     }
 }
 

@@ -207,6 +207,7 @@ impl StreamWriteDriver {
                                 SubscribeNewTransactionsRequest {
                                     finality_status,
                                     sender_address,
+                                    tags: None,
                                 },
                             ),
                         },
