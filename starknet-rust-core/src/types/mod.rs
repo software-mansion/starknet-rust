@@ -34,7 +34,9 @@ pub use codegen::{
     EmittedEventWithFinality, EntryPointType, EntryPointsByType, Event, EventFilter,
     EventFilterWithPage, EventsChunk, ExecutionResources, FeeEstimate, FeePayment,
     FlattenedSierraClass, FunctionCall, FunctionInvocation, FunctionStateMutability, GlobalRoots,
-    InnerCallExecutionResources, InnerContractExecutionError, InvokeTransactionReceipt,
+    InitialReads, InitialReadsClassHashEntry, InitialReadsDeclaredContractEntry,
+    InitialReadsNonceEntry, InitialReadsStorageEntry, InnerCallExecutionResources,
+    InnerContractExecutionError, InvokeTransactionReceipt,
     InvokeTransactionTrace, InvokeTransactionV0, InvokeTransactionV0Content, InvokeTransactionV1,
     InvokeTransactionV1Content, InvokeTransactionV3, InvokeTransactionV3Content,
     L1DataAvailabilityMode, L1HandlerTransaction, L1HandlerTransactionContent,
@@ -47,11 +49,12 @@ pub use codegen::{
     PreConfirmedBlockWithTxHashes, PreConfirmedBlockWithTxs, PreConfirmedStateUpdate, PriceUnit,
     ReorgData, ReplacedClassItem, ResourceBounds, ResourceBoundsMapping, ResourcePrice,
     ResultPageRequest, RevertedInvocation, SequencerTransactionStatus, SierraEntryPoint,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError, StateDiff,
-    StateUpdate, StorageEntry, StorageKey, StorageProof, SubscriptionId, SyncStatus,
-    TransactionExecutionErrorData, TransactionExecutionStatus, TransactionFinalityStatus,
-    TransactionReceiptWithBlockInfo, TransactionTraceWithHash, TransactionWithL2Status,
-    TransactionWithReceipt,
+    SimulatedTransaction, SimulateTransactionsResult, SimulationFlag,
+    SimulationFlagForEstimateFee, StarknetError, StateDiff, StateUpdate, StorageEntry, StorageKey,
+    StorageProof, SubscriptionId, SubscriptionTag, SyncStatus, TraceBlockTransactionsResult,
+    TraceFlag, TransactionExecutionErrorData, TransactionExecutionStatus, TransactionFinalityStatus,
+    TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionTraceWithHash,
+    TransactionWithL2Status, TransactionWithReceipt,
 };
 
 /// Module containing the [`U256`] type.
@@ -179,6 +182,16 @@ pub struct EventsPage {
     /// use `contains_key` as a check for the last page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation_token: Option<String>,
+}
+
+/// Address filter for events.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AddressFilter {
+    /// A single contract address.
+    Single(Felt),
+    /// A list of contract addresses.
+    Multiple(Vec<Felt>),
 }
 
 /// Response for broadcasting an `INVOKE` transaction.

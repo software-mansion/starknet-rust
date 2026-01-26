@@ -1,11 +1,9 @@
-#![allow(clippy::collapsible_if)]
-#![allow(clippy::unreadable_literal)]
 // AUTO-GENERATED CODE. DO NOT EDIT
 // To change the code generated, modify the codegen tool instead:
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#3ac8f62c0838753cda0e8ebefd4741a1e352186c
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#0a115a1aa762ea671532f9b0a68999ef921778c9
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -13,6 +11,7 @@
 // - `SUBSCRIPTION_BLOCK_TAG`
 
 // Code generation requested but not implemented for these types:
+// - `ADDRESS_FILTER`
 // - `BLOCK_ID`
 // - `BROADCASTED_TXN`
 // - `CONFIRMED_BLOCK_ID`
@@ -31,11 +30,12 @@
 // - `TXN`
 // - `TXN_CONTENT`
 // - `TXN_RECEIPT`
+
 #![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_const_for_fn)]
 
-use alloc::{format, string::String, vec::Vec};
+use alloc::{format, string::*, vec::*};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -44,15 +44,12 @@ use serde_with::serde_as;
 use crate::serde::byte_array::base64;
 
 use super::{
-    BlockId, BroadcastedTransaction, ConfirmedBlockId, ContractExecutionError, EthAddress,
-    ExecuteInvocation, ExecutionResult, Felt, Hash256, LegacyContractAbiEntry, MerkleNode,
-    ReceiptBlock, Transaction, TransactionContent, TransactionReceipt, TransactionStatus,
-    TransactionTrace, UfeHex, alloc,
     serde_impls::{MerkleNodeMap, NumAsHex, OwnedContractExecutionError},
+    *,
 };
 
 #[cfg(target_has_atomic = "ptr")]
-pub(super) type OwnedPtr<T> = alloc::sync::Arc<T>;
+pub type OwnedPtr<T> = alloc::sync::Arc<T>;
 #[cfg(not(target_has_atomic = "ptr"))]
 pub type OwnedPtr<T> = alloc::boxed::Box<T>;
 
@@ -68,7 +65,6 @@ const QUERY_VERSION_OFFSET: Felt = Felt::from_raw([
     18446744073700081665,
 ]);
 
-pub type BroadcastedInvokeTransaction = BroadcastedInvokeTransactionV3;
 pub type BroadcastedDeployAccountTransaction = BroadcastedDeployAccountTransactionV3;
 pub type BroadcastedDeclareTransaction = BroadcastedDeclareTransactionV3;
 
@@ -415,6 +411,17 @@ pub struct BroadcastedDeployAccountTransactionV3 {
     pub is_query: bool,
 }
 
+/// Broadcasted invoke transaction.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct BroadcastedInvokeTransaction {
+    #[serde(flatten)]
+    pub broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3,
+    /// Optional proof for the transaction
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub proof: Option<Vec<u64>>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BroadcastedInvokeTransactionV3 {
     /// Sender address
@@ -438,6 +445,8 @@ pub struct BroadcastedInvokeTransactionV3 {
     pub nonce_data_availability_mode: DataAvailabilityMode,
     /// The storage domain of the account's balance from which fee will be charged
     pub fee_data_availability_mode: DataAvailabilityMode,
+    /// Optional proof facts for the transaction
+    pub proof_facts: Option<Vec<Felt>>,
     /// If set to `true`, uses a query-only transaction version that's invalid for execution
     pub is_query: bool,
 }
@@ -1045,10 +1054,9 @@ pub struct EventFilter {
     /// To block
     #[serde(skip_serializing_if = "Option::is_none")]
     pub to_block: Option<BlockId>,
-    /// From contract
+    /// A contract address or a list of addresses from which events should originate
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde_as(as = "Option<UfeHex>")]
-    pub address: Option<Felt>,
+    pub address: Option<AddressFilter>,
     /// The keys to filter over
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<Vec<Vec<UfeHex>>>")]
@@ -1190,7 +1198,7 @@ pub struct FunctionInvocation {
     #[serde_as(as = "Vec<UfeHex>")]
     pub result: Vec<Felt>,
     /// The calls made by this invocation
-    pub calls: Vec<Self>,
+    pub calls: Vec<FunctionInvocation>,
     /// The events emitted in this invocation
     pub events: Vec<OrderedEvent>,
     /// The messages sent by this invocation to L1
@@ -1220,6 +1228,71 @@ pub struct GlobalRoots {
     /// parameter)
     #[serde_as(as = "UfeHex")]
     pub block_hash: Felt,
+}
+
+/// Initial reads.
+///
+/// The set of state values fetched from the underlying state reader during execution. This is a
+/// complete witness sufficient to reconstruct the cached state needed for re-execution.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct InitialReads {
+    /// Storage entries that were read during simulation: (contract_address, storage_key) -> value
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage: Option<Vec<InitialReadsStorageEntry>>,
+    /// Contract nonces that were read during simulation: contract_address -> nonce
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nonces: Option<Vec<InitialReadsNonceEntry>>,
+    /// Contract class hashes that were read during simulation: contract_address -> class_hash
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class_hashes: Option<Vec<InitialReadsClassHashEntry>>,
+    /// Class declaration status that was read during simulation: class_hash -> is_declared
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub declared_contracts: Option<Vec<InitialReadsDeclaredContractEntry>>,
+}
+
+/// Initial reads class hash entry.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct InitialReadsClassHashEntry {
+    #[serde_as(as = "UfeHex")]
+    pub contract_address: Felt,
+    #[serde_as(as = "UfeHex")]
+    pub class_hash: Felt,
+}
+
+/// Initial reads declared contract entry.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct InitialReadsDeclaredContractEntry {
+    #[serde_as(as = "UfeHex")]
+    pub class_hash: Felt,
+    pub is_declared: bool,
+}
+
+/// Initial reads nonce entry.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct InitialReadsNonceEntry {
+    #[serde_as(as = "UfeHex")]
+    pub contract_address: Felt,
+    #[serde_as(as = "UfeHex")]
+    pub nonce: Felt,
+}
+
+/// Initial reads storage entry.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct InitialReadsStorageEntry {
+    #[serde_as(as = "UfeHex")]
+    pub contract_address: Felt,
+    pub key: StorageKey,
+    #[serde_as(as = "UfeHex")]
+    pub value: Felt,
 }
 
 /// Execution resources.
@@ -1382,6 +1455,8 @@ pub struct InvokeTransactionV3 {
     pub nonce_data_availability_mode: DataAvailabilityMode,
     /// The storage domain of the account's balance from which fee will be charged
     pub fee_data_availability_mode: DataAvailabilityMode,
+    /// Optional proof facts for the transaction
+    pub proof_facts: Option<Vec<Felt>>,
 }
 
 /// Invoke transaction v3.
@@ -1410,6 +1485,8 @@ pub struct InvokeTransactionV3Content {
     pub nonce_data_availability_mode: DataAvailabilityMode,
     /// The storage domain of the account's balance from which fee will be charged
     pub fee_data_availability_mode: DataAvailabilityMode,
+    /// Optional proof facts for the transaction
+    pub proof_facts: Option<Vec<Felt>>,
 }
 
 /// L1 da mode.
@@ -1903,14 +1980,14 @@ pub enum PriceUnit {
 
 /// Price unit fri.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub(super) enum PriceUnitFri {
+pub enum PriceUnitFri {
     #[serde(rename = "FRI")]
     Fri,
 }
 
 /// Price unit wei.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub(super) enum PriceUnitWei {
+pub enum PriceUnitWei {
     #[serde(rename = "WEI")]
     Wei,
 }
@@ -2033,6 +2110,20 @@ pub struct SierraEntryPoint {
     pub function_idx: u64,
 }
 
+/// Simulate transactions result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct SimulateTransactionsResult {
+    /// The execution trace and consumed resources of the required transactions
+    pub simulated_transactions: Vec<SimulatedTransaction>,
+    /// The set of state values fetched from the underlying state reader during execution for all
+    /// transactions in the simulation. This provides a complete witness sufficient to reconstruct
+    /// the cached state needed for re-execution. Only included when return_initial_reads is present
+    /// in simulation_flags.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_reads: Option<InitialReads>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct SimulatedTransaction {
@@ -2045,13 +2136,18 @@ pub struct SimulatedTransaction {
 /// Flags that indicate how to simulate a given transaction. By default, the sequencer behavior is
 /// replicated locally (enough funds are expected to be in the account, and fee will be deducted
 /// from the balance before the simulation of the next transaction). To skip the fee charge, use the
-/// skip_fee_charge flag.
+/// skip_fee_charge flag. When return_initial_reads is present, the node returns the minimal set of
+/// concrete state values fetched from the underlying state reader during execution for all
+/// transactions in the simulation. This provides a complete witness sufficient to reconstruct the
+/// cached state needed for re-execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SimulationFlag {
     #[serde(rename = "SKIP_VALIDATE")]
     SkipValidate,
     #[serde(rename = "SKIP_FEE_CHARGE")]
     SkipFeeCharge,
+    #[serde(rename = "RETURN_INITIAL_READS")]
+    ReturnInitialReads,
 }
 
 /// Flags that indicate how to simulate a given transaction. By default, the sequencer behavior is
@@ -2167,9 +2263,7 @@ impl core::fmt::Display for StarknetError {
             Self::UnsupportedTxVersion => write!(f, "UnsupportedTxVersion"),
             Self::UnsupportedContractClassVersion => write!(f, "UnsupportedContractClassVersion"),
             Self::UnexpectedError(e) => write!(f, "UnexpectedError: {e:?}"),
-            Self::ReplacementTransactionUnderpriced => {
-                write!(f, "ReplacementTransactionUnderpriced")
-            }
+            Self::ReplacementTransactionUnderpriced => write!(f, "ReplacementTransactionUnderpriced"),
             Self::FeeBelowMinimum => write!(f, "FeeBelowMinimum"),
             Self::NoTraceAvailable(e) => write!(f, "NoTraceAvailable: {e:?}"),
             Self::InvalidSubscriptionId => write!(f, "InvalidSubscriptionId"),
@@ -2346,6 +2440,15 @@ pub struct StorageProof {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SubscriptionId(pub String);
 
+/// Tags that control what additional fields are included in subscription responses.
+/// Include_proof_facts: include proof_facts field when available (only for invoke transactions with
+/// version 3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SubscriptionTag {
+    #[serde(rename = "INCLUDE_PROOF_FACTS")]
+    IncludeProofFacts,
+}
+
 /// Sync status.
 ///
 /// An object describing the node synchronization status.
@@ -2368,6 +2471,31 @@ pub struct SyncStatus {
     pub highest_block_hash: Felt,
     /// The number (height) of the estimated highest block to be synchronized
     pub highest_block_num: u64,
+}
+
+/// Trace block transactions result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct TraceBlockTransactionsResult {
+    /// The traces of all transactions in the block
+    pub traces: Vec<TransactionTraceWithHash>,
+    /// The set of state values fetched from the underlying state reader during execution for all
+    /// transactions in the block. This provides a complete witness sufficient to reconstruct the
+    /// cached state needed for re-execution. Only included when return_initial_reads is present in
+    /// trace_flags.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_reads: Option<InitialReads>,
+}
+
+/// Flags that indicate what additional information should be included in the trace. When
+/// return_initial_reads is present, the node returns the minimal set of concrete state values
+/// fetched from the underlying state reader during execution for all transactions in the block.
+/// This provides a complete witness sufficient to reconstruct the cached state needed for
+/// re-execution.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TraceFlag {
+    #[serde(rename = "RETURN_INITIAL_READS")]
+    ReturnInitialReads,
 }
 
 /// More data about the execution failure.
@@ -2411,6 +2539,15 @@ pub struct TransactionReceiptWithBlockInfo {
     pub receipt: TransactionReceipt,
     #[serde(flatten)]
     pub block: ReceiptBlock,
+}
+
+/// Flags that control what additional fields are included in transaction responses.
+/// Include_proof_facts: include proof_facts field when available (only for transactions submitted
+/// through the gateway with proof facts).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TransactionResponseFlag {
+    #[serde(rename = "INCLUDE_PROOF_FACTS")]
+    IncludeProofFacts,
 }
 
 /// A single pair of transaction hash and corresponding trace.
@@ -2745,6 +2882,8 @@ pub struct GetTransactionByBlockIdAndIndexRequest {
     /// The hash of the requested block, or number (height) of the requested block, or a block tag
     pub block_id: BlockId,
     pub index: u64,
+    /// Flags that control what additional fields are included in the response
+    pub response_flags: Option<Vec<TransactionResponseFlag>>,
 }
 
 /// Reference version of [GetTransactionByBlockIdAndIndexRequest].
@@ -2752,42 +2891,52 @@ pub struct GetTransactionByBlockIdAndIndexRequest {
 pub struct GetTransactionByBlockIdAndIndexRequestRef<'a> {
     pub block_id: &'a BlockId,
     pub index: &'a u64,
+    pub response_flags: Option<&'a [TransactionResponseFlag]>,
 }
 
 /// Request for method starknet_getTransactionByHash
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTransactionByHashRequest {
     pub transaction_hash: Felt,
+    /// Flags that control what additional fields are included in the response
+    pub response_flags: Option<Vec<TransactionResponseFlag>>,
 }
 
 /// Reference version of [GetTransactionByHashRequest].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTransactionByHashRequestRef<'a> {
     pub transaction_hash: &'a Felt,
+    pub response_flags: Option<&'a [TransactionResponseFlag]>,
 }
 
 /// Request for method starknet_getTransactionReceipt
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTransactionReceiptRequest {
     pub transaction_hash: Felt,
+    /// Flags that control what additional fields are included in the response
+    pub response_flags: Option<Vec<TransactionResponseFlag>>,
 }
 
 /// Reference version of [GetTransactionReceiptRequest].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTransactionReceiptRequestRef<'a> {
     pub transaction_hash: &'a Felt,
+    pub response_flags: Option<&'a [TransactionResponseFlag]>,
 }
 
 /// Request for method starknet_getTransactionStatus
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTransactionStatusRequest {
     pub transaction_hash: Felt,
+    /// Flags that control what additional fields are included in transaction responses
+    pub response_flags: Option<Vec<TransactionResponseFlag>>,
 }
 
 /// Reference version of [GetTransactionStatusRequest].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTransactionStatusRequestRef<'a> {
     pub transaction_hash: &'a Felt,
+    pub response_flags: Option<&'a [TransactionResponseFlag]>,
 }
 
 /// Request for method starknet_simulateTransactions
@@ -2863,6 +3012,7 @@ pub struct SubscribeNewTransactionReceiptsRequestRef<'a> {
 pub struct SubscribeNewTransactionsRequest {
     pub finality_status: Option<Vec<L2TransactionStatus>>,
     pub sender_address: Option<Vec<Felt>>,
+    pub tags: Option<Vec<SubscriptionTag>>,
 }
 
 /// Reference version of [SubscribeNewTransactionsRequest].
@@ -2870,6 +3020,7 @@ pub struct SubscribeNewTransactionsRequest {
 pub struct SubscribeNewTransactionsRequestRef<'a> {
     pub finality_status: Option<&'a [L2TransactionStatus]>,
     pub sender_address: Option<&'a [Felt]>,
+    pub tags: Option<&'a [SubscriptionTag]>,
 }
 
 /// Request for method starknet_subscribeTransactionStatus
@@ -2979,12 +3130,15 @@ pub struct SyncingRequest;
 pub struct TraceBlockTransactionsRequest {
     /// The hash of the requested block, or number (height) of the requested block, or a block tag
     pub block_id: ConfirmedBlockId,
+    /// Flags that indicate what additional information should be included in the trace
+    pub trace_flags: Option<Vec<TraceFlag>>,
 }
 
 /// Reference version of [TraceBlockTransactionsRequest].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraceBlockTransactionsRequestRef<'a> {
     pub block_id: &'a ConfirmedBlockId,
+    pub trace_flags: Option<&'a [TraceFlag]>,
 }
 
 /// Request for method starknet_traceTransaction
@@ -3268,6 +3422,9 @@ impl Serialize for BroadcastedInvokeTransactionV3 {
             pub account_deployment_data: &'a [Felt],
             pub nonce_data_availability_mode: &'a DataAvailabilityMode,
             pub fee_data_availability_mode: &'a DataAvailabilityMode,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            pub proof_facts: Option<Vec<Felt>>,
         }
 
         let r#type = "INVOKE";
@@ -3291,6 +3448,7 @@ impl Serialize for BroadcastedInvokeTransactionV3 {
             account_deployment_data: &self.account_deployment_data,
             nonce_data_availability_mode: &self.nonce_data_availability_mode,
             fee_data_availability_mode: &self.fee_data_availability_mode,
+            proof_facts: self.proof_facts.clone(),
         };
 
         Tagged::serialize(&tagged, serializer)
@@ -3323,6 +3481,9 @@ impl<'de> Deserialize<'de> for BroadcastedInvokeTransactionV3 {
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            pub proof_facts: Option<Vec<Felt>>,
         }
 
         let tagged = Tagged::deserialize(deserializer)?;
@@ -3352,6 +3513,7 @@ impl<'de> Deserialize<'de> for BroadcastedInvokeTransactionV3 {
             account_deployment_data: tagged.account_deployment_data,
             nonce_data_availability_mode: tagged.nonce_data_availability_mode,
             fee_data_availability_mode: tagged.fee_data_availability_mode,
+            proof_facts: tagged.proof_facts,
             is_query,
         })
     }
@@ -5580,6 +5742,9 @@ impl Serialize for InvokeTransactionV3 {
             pub account_deployment_data: &'a [Felt],
             pub nonce_data_availability_mode: &'a DataAvailabilityMode,
             pub fee_data_availability_mode: &'a DataAvailabilityMode,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            pub proof_facts: Option<Vec<Felt>>,
         }
 
         let r#type = "INVOKE";
@@ -5600,6 +5765,7 @@ impl Serialize for InvokeTransactionV3 {
             account_deployment_data: &self.account_deployment_data,
             nonce_data_availability_mode: &self.nonce_data_availability_mode,
             fee_data_availability_mode: &self.fee_data_availability_mode,
+            proof_facts: self.proof_facts.clone(),
         };
 
         Tagged::serialize(&tagged, serializer)
@@ -5634,6 +5800,9 @@ impl<'de> Deserialize<'de> for InvokeTransactionV3 {
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            pub proof_facts: Option<Vec<Felt>>,
         }
 
         let tagged = Tagged::deserialize(deserializer)?;
@@ -5662,6 +5831,7 @@ impl<'de> Deserialize<'de> for InvokeTransactionV3 {
             account_deployment_data: tagged.account_deployment_data,
             nonce_data_availability_mode: tagged.nonce_data_availability_mode,
             fee_data_availability_mode: tagged.fee_data_availability_mode,
+            proof_facts: tagged.proof_facts,
         })
     }
 }
@@ -5691,6 +5861,9 @@ impl Serialize for InvokeTransactionV3Content {
             pub account_deployment_data: &'a [Felt],
             pub nonce_data_availability_mode: &'a DataAvailabilityMode,
             pub fee_data_availability_mode: &'a DataAvailabilityMode,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            pub proof_facts: Option<Vec<Felt>>,
         }
 
         let r#type = "INVOKE";
@@ -5710,6 +5883,7 @@ impl Serialize for InvokeTransactionV3Content {
             account_deployment_data: &self.account_deployment_data,
             nonce_data_availability_mode: &self.nonce_data_availability_mode,
             fee_data_availability_mode: &self.fee_data_availability_mode,
+            proof_facts: self.proof_facts.clone(),
         };
 
         Tagged::serialize(&tagged, serializer)
@@ -5742,6 +5916,9 @@ impl<'de> Deserialize<'de> for InvokeTransactionV3Content {
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            pub proof_facts: Option<Vec<Felt>>,
         }
 
         let tagged = Tagged::deserialize(deserializer)?;
@@ -5769,6 +5946,7 @@ impl<'de> Deserialize<'de> for InvokeTransactionV3Content {
             account_deployment_data: tagged.account_deployment_data,
             nonce_data_availability_mode: tagged.nonce_data_availability_mode,
             fee_data_availability_mode: tagged.fee_data_availability_mode,
+            proof_facts: tagged.proof_facts,
         })
     }
 }
@@ -8298,6 +8476,8 @@ impl Serialize for GetTransactionByBlockIdAndIndexRequest {
         struct AsObject<'a> {
             block_id: Field0<'a>,
             index: Field1<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field2<'a>>,
         }
 
         #[derive(Serialize)]
@@ -8312,12 +8492,19 @@ impl Serialize for GetTransactionByBlockIdAndIndexRequest {
             pub value: &'a u64,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field2<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: &self.block_id,
                 },
                 index: Field1 { value: &self.index },
+                response_flags: self.response_flags.as_ref().map(|f| Field2 { value: f }),
             },
             serializer,
         )
@@ -8330,6 +8517,8 @@ impl Serialize for GetTransactionByBlockIdAndIndexRequestRef<'_> {
         struct AsObject<'a> {
             block_id: Field0<'a>,
             index: Field1<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field2<'a>>,
         }
 
         #[derive(Serialize)]
@@ -8344,12 +8533,19 @@ impl Serialize for GetTransactionByBlockIdAndIndexRequestRef<'_> {
             pub value: &'a u64,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field2<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: self.block_id,
                 },
                 index: Field1 { value: self.index },
+                response_flags: self.response_flags.as_ref().map(|f| Field2 { value: f }),
             },
             serializer,
         )
@@ -8362,6 +8558,8 @@ impl<'de> Deserialize<'de> for GetTransactionByBlockIdAndIndexRequest {
         struct AsObject {
             block_id: Field0,
             index: Field1,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field2>,
         }
 
         #[derive(Deserialize)]
@@ -8376,9 +8574,26 @@ impl<'de> Deserialize<'de> for GetTransactionByBlockIdAndIndexRequest {
             pub value: u64,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field2 {
+            pub value: Vec<TransactionResponseFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field2 = if element_count > 2 {
+                Some(
+                    serde_json::from_value::<Field2>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field1 = serde_json::from_value::<Field1>(
                 elements
                     .pop()
@@ -8395,11 +8610,13 @@ impl<'de> Deserialize<'de> for GetTransactionByBlockIdAndIndexRequest {
             Ok(Self {
                 block_id: field0.value,
                 index: field1.value,
+                response_flags: field2.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 block_id: object.block_id.value,
                 index: object.index.value,
+                response_flags: object.response_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
@@ -8412,6 +8629,8 @@ impl Serialize for GetTransactionByHashRequest {
         #[derive(Serialize)]
         struct AsObject<'a> {
             transaction_hash: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[serde_as]
@@ -8422,11 +8641,18 @@ impl Serialize for GetTransactionByHashRequest {
             pub value: &'a Felt,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 transaction_hash: Field0 {
                     value: &self.transaction_hash,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -8438,6 +8664,8 @@ impl Serialize for GetTransactionByHashRequestRef<'_> {
         #[derive(Serialize)]
         struct AsObject<'a> {
             transaction_hash: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[serde_as]
@@ -8448,11 +8676,18 @@ impl Serialize for GetTransactionByHashRequestRef<'_> {
             pub value: &'a Felt,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 transaction_hash: Field0 {
                     value: self.transaction_hash,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -8464,6 +8699,8 @@ impl<'de> Deserialize<'de> for GetTransactionByHashRequest {
         #[derive(Deserialize)]
         struct AsObject {
             transaction_hash: Field0,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1>,
         }
 
         #[serde_as]
@@ -8474,9 +8711,26 @@ impl<'de> Deserialize<'de> for GetTransactionByHashRequest {
             pub value: Felt,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field1 {
+            pub value: Vec<TransactionResponseFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field1 = if element_count > 1 {
+                Some(
+                    serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field0 = serde_json::from_value::<Field0>(
                 elements
                     .pop()
@@ -8486,10 +8740,12 @@ impl<'de> Deserialize<'de> for GetTransactionByHashRequest {
 
             Ok(Self {
                 transaction_hash: field0.value,
+                response_flags: field1.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 transaction_hash: object.transaction_hash.value,
+                response_flags: object.response_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
@@ -8502,6 +8758,8 @@ impl Serialize for GetTransactionReceiptRequest {
         #[derive(Serialize)]
         struct AsObject<'a> {
             transaction_hash: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[serde_as]
@@ -8512,11 +8770,18 @@ impl Serialize for GetTransactionReceiptRequest {
             pub value: &'a Felt,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 transaction_hash: Field0 {
                     value: &self.transaction_hash,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -8528,6 +8793,8 @@ impl Serialize for GetTransactionReceiptRequestRef<'_> {
         #[derive(Serialize)]
         struct AsObject<'a> {
             transaction_hash: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[serde_as]
@@ -8538,11 +8805,18 @@ impl Serialize for GetTransactionReceiptRequestRef<'_> {
             pub value: &'a Felt,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 transaction_hash: Field0 {
                     value: self.transaction_hash,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -8554,6 +8828,8 @@ impl<'de> Deserialize<'de> for GetTransactionReceiptRequest {
         #[derive(Deserialize)]
         struct AsObject {
             transaction_hash: Field0,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1>,
         }
 
         #[serde_as]
@@ -8564,9 +8840,26 @@ impl<'de> Deserialize<'de> for GetTransactionReceiptRequest {
             pub value: Felt,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field1 {
+            pub value: Vec<TransactionResponseFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field1 = if element_count > 1 {
+                Some(
+                    serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field0 = serde_json::from_value::<Field0>(
                 elements
                     .pop()
@@ -8576,10 +8869,12 @@ impl<'de> Deserialize<'de> for GetTransactionReceiptRequest {
 
             Ok(Self {
                 transaction_hash: field0.value,
+                response_flags: field1.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 transaction_hash: object.transaction_hash.value,
+                response_flags: object.response_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
@@ -8592,6 +8887,8 @@ impl Serialize for GetTransactionStatusRequest {
         #[derive(Serialize)]
         struct AsObject<'a> {
             transaction_hash: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[serde_as]
@@ -8602,11 +8899,18 @@ impl Serialize for GetTransactionStatusRequest {
             pub value: &'a Felt,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 transaction_hash: Field0 {
                     value: &self.transaction_hash,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -8618,6 +8922,8 @@ impl Serialize for GetTransactionStatusRequestRef<'_> {
         #[derive(Serialize)]
         struct AsObject<'a> {
             transaction_hash: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[serde_as]
@@ -8628,11 +8934,18 @@ impl Serialize for GetTransactionStatusRequestRef<'_> {
             pub value: &'a Felt,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 transaction_hash: Field0 {
                     value: self.transaction_hash,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -8644,6 +8957,8 @@ impl<'de> Deserialize<'de> for GetTransactionStatusRequest {
         #[derive(Deserialize)]
         struct AsObject {
             transaction_hash: Field0,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1>,
         }
 
         #[serde_as]
@@ -8654,9 +8969,26 @@ impl<'de> Deserialize<'de> for GetTransactionStatusRequest {
             pub value: Felt,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field1 {
+            pub value: Vec<TransactionResponseFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field1 = if element_count > 1 {
+                Some(
+                    serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field0 = serde_json::from_value::<Field0>(
                 elements
                     .pop()
@@ -8666,10 +8998,12 @@ impl<'de> Deserialize<'de> for GetTransactionStatusRequest {
 
             Ok(Self {
                 transaction_hash: field0.value,
+                response_flags: field1.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 transaction_hash: object.transaction_hash.value,
+                response_flags: object.response_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
@@ -9288,6 +9622,8 @@ impl Serialize for SubscribeNewTransactionsRequest {
             finality_status: Option<Field0<'a>>,
             #[serde(skip_serializing_if = "Option::is_none")]
             sender_address: Option<Field1<'a>>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            tags: Option<Field2<'a>>,
         }
 
         #[derive(Serialize)]
@@ -9304,10 +9640,17 @@ impl Serialize for SubscribeNewTransactionsRequest {
             pub value: &'a [Felt],
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field2<'a> {
+            pub value: &'a [SubscriptionTag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 finality_status: self.finality_status.as_ref().map(|f| Field0 { value: f }),
                 sender_address: self.sender_address.as_ref().map(|f| Field1 { value: f }),
+                tags: self.tags.as_ref().map(|f| Field2 { value: f }),
             },
             serializer,
         )
@@ -9322,6 +9665,8 @@ impl Serialize for SubscribeNewTransactionsRequestRef<'_> {
             finality_status: Option<Field0<'a>>,
             #[serde(skip_serializing_if = "Option::is_none")]
             sender_address: Option<Field1<'a>>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            tags: Option<Field2<'a>>,
         }
 
         #[derive(Serialize)]
@@ -9338,10 +9683,17 @@ impl Serialize for SubscribeNewTransactionsRequestRef<'_> {
             pub value: &'a [Felt],
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field2<'a> {
+            pub value: &'a [SubscriptionTag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 finality_status: self.finality_status.as_ref().map(|f| Field0 { value: f }),
                 sender_address: self.sender_address.as_ref().map(|f| Field1 { value: f }),
+                tags: self.tags.as_ref().map(|f| Field2 { value: f }),
             },
             serializer,
         )
@@ -9356,6 +9708,8 @@ impl<'de> Deserialize<'de> for SubscribeNewTransactionsRequest {
             finality_status: Option<Field0>,
             #[serde(skip_serializing_if = "Option::is_none")]
             sender_address: Option<Field1>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            tags: Option<Field2>,
         }
 
         #[derive(Deserialize)]
@@ -9372,11 +9726,26 @@ impl<'de> Deserialize<'de> for SubscribeNewTransactionsRequest {
             pub value: Vec<Felt>,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field2 {
+            pub value: Vec<SubscriptionTag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
             let element_count = elements.len();
 
+            let field2 = if element_count > 2 {
+                Some(
+                    serde_json::from_value::<Field2>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field1 = if element_count > 1 {
                 Some(
                     serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
@@ -9399,11 +9768,13 @@ impl<'de> Deserialize<'de> for SubscribeNewTransactionsRequest {
             Ok(Self {
                 finality_status: field0.map(|f| f.value),
                 sender_address: field1.map(|f| f.value),
+                tags: field2.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 finality_status: object.finality_status.map(|f| f.value),
                 sender_address: object.sender_address.map(|f| f.value),
+                tags: object.tags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
@@ -10227,6 +10598,8 @@ impl Serialize for TraceBlockTransactionsRequest {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            trace_flags: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -10235,11 +10608,18 @@ impl Serialize for TraceBlockTransactionsRequest {
             pub value: &'a ConfirmedBlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TraceFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: &self.block_id,
                 },
+                trace_flags: self.trace_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -10251,6 +10631,8 @@ impl Serialize for TraceBlockTransactionsRequestRef<'_> {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            trace_flags: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -10259,11 +10641,18 @@ impl Serialize for TraceBlockTransactionsRequestRef<'_> {
             pub value: &'a ConfirmedBlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TraceFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: self.block_id,
                 },
+                trace_flags: self.trace_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -10275,6 +10664,8 @@ impl<'de> Deserialize<'de> for TraceBlockTransactionsRequest {
         #[derive(Deserialize)]
         struct AsObject {
             block_id: Field0,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            trace_flags: Option<Field1>,
         }
 
         #[derive(Deserialize)]
@@ -10283,9 +10674,26 @@ impl<'de> Deserialize<'de> for TraceBlockTransactionsRequest {
             pub value: ConfirmedBlockId,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field1 {
+            pub value: Vec<TraceFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field1 = if element_count > 1 {
+                Some(
+                    serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field0 = serde_json::from_value::<Field0>(
                 elements
                     .pop()
@@ -10295,10 +10703,12 @@ impl<'de> Deserialize<'de> for TraceBlockTransactionsRequest {
 
             Ok(Self {
                 block_id: field0.value,
+                trace_flags: field1.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 block_id: object.block_id.value,
+                trace_flags: object.trace_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
