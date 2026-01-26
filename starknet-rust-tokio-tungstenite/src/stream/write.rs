@@ -121,6 +121,7 @@ impl StreamWriteDriver {
         }
     }
 
+    #[allow(clippy::cognitive_complexity)]
     async fn handle_write_action(
         &mut self,
         action: Option<WriteAction>,

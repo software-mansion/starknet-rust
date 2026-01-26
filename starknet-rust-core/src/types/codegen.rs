@@ -3,7 +3,7 @@
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#0a115a1aa762ea671532f9b0a68999ef921778c9
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#4a300fa30fa408fb682b43cb3486f6adfd004461
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -34,6 +34,10 @@
 #![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_const_for_fn)]
+#![allow(clippy::wildcard_imports)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::collapsible_if)]
+#![allow(unreachable_pub)]
 
 use alloc::{format, string::*, vec::*};
 
