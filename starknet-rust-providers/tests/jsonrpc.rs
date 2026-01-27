@@ -6,8 +6,9 @@ use starknet_rust_core::{
         EventFilter, ExecuteInvocation, ExecutionResult, Felt, FunctionCall, Hash256,
         InvokeTransaction, MaybePreConfirmedBlockWithReceipts, MaybePreConfirmedBlockWithTxHashes,
         MaybePreConfirmedBlockWithTxs, MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds,
-        ResourceBoundsMapping, StarknetError, StorageKey, SyncStatusType, Transaction,
-        TransactionFinalityStatus, TransactionReceipt, TransactionStatus, TransactionTrace,
+        ResourceBoundsMapping, SimulationFlagForEstimateFee, StarknetError, StorageKey,
+        SyncStatusType, Transaction, TransactionFinalityStatus, TransactionReceipt,
+        TransactionStatus, TransactionTrace,
         requests::{CallRequest, GetBlockTransactionCountRequest},
     },
     utils::{get_selector_from_name, get_storage_var_address},
@@ -732,6 +733,14 @@ async fn jsonrpc_call() {
 #[tokio::test]
 async fn jsonrpc_estimate_fee() {
     let rpc_client = create_jsonrpc_client();
+    let sender_address = Felt::from_hex(
+        "0x4f4e29add19afa12c868ba1f4439099f225403ff9a71fe667eebb50e13518d3",
+    )
+    .unwrap();
+    let nonce = rpc_client
+        .get_nonce(BlockId::Tag(BlockTag::PreConfirmed), sender_address)
+        .await
+        .unwrap();
 
     let estimate = rpc_client
         .estimate_fee_single(
@@ -747,11 +756,8 @@ async fn jsonrpc_estimate_fee() {
                         )
                         .unwrap(),
                     ],
-                    sender_address: Felt::from_hex(
-                        "0x4f4e29add19afa12c868ba1f4439099f225403ff9a71fe667eebb50e13518d3",
-                    )
-                    .unwrap(),
-                    nonce: Felt::from_hex("0x7bf5c9").unwrap(),
+                    sender_address,
+                    nonce,
                     calldata: vec![
                         Felt::from_hex("0x2").unwrap(),
                         Felt::from_hex(
@@ -808,7 +814,7 @@ async fn jsonrpc_estimate_fee() {
                 },
                 proof: None,
             }),
-            [],
+            vec![SimulationFlagForEstimateFee::SkipValidate],
             BlockId::Tag(BlockTag::Latest),
         )
         .await
