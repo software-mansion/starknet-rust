@@ -47,14 +47,15 @@ pub use codegen::{
     MigratedCompiledClassItem, MsgFromL1, MsgToL1, NewTransactionStatus, NoTraceAvailableErrorData,
     NonceUpdate, OrderedEvent, OrderedMessage, PreConfirmedBlockWithReceipts,
     PreConfirmedBlockWithTxHashes, PreConfirmedBlockWithTxs, PreConfirmedStateUpdate, PriceUnit,
-    ReorgData, ReplacedClassItem, ResourceBounds, ResourceBoundsMapping, ResourcePrice,
-    ResultPageRequest, RevertedInvocation, SequencerTransactionStatus, SierraEntryPoint,
-    SimulateTransactionsResult, SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
-    StarknetError, StateDiff, StateUpdate, StorageEntry, StorageKey, StorageProof, SubscriptionId,
-    SubscriptionTag, SyncStatus, TraceBlockTransactionsResult, TraceFlag,
-    TransactionExecutionErrorData, TransactionExecutionStatus, TransactionFinalityStatus,
-    TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionTraceWithHash,
-    TransactionWithL2Status, TransactionWithReceipt,
+    PriceUnitFri, PriceUnitWei, ReorgData, ReplacedClassItem, ResourceBounds,
+    ResourceBoundsMapping, ResourcePrice, ResultPageRequest, RevertedInvocation,
+    SequencerTransactionStatus, SierraEntryPoint, SimulateTransactionsResult, SimulatedTransaction,
+    SimulationFlag, SimulationFlagForEstimateFee, StarknetError, StateDiff, StateUpdate,
+    StorageEntry, StorageKey, StorageProof, SubscriptionId, SubscriptionTag, SyncStatus,
+    TraceBlockTransactionsResult, TraceFlag, TransactionExecutionErrorData,
+    TransactionExecutionStatus, TransactionFinalityStatus, TransactionReceiptWithBlockInfo,
+    TransactionResponseFlag, TransactionTraceWithHash, TransactionWithL2Status,
+    TransactionWithReceipt,
 };
 
 /// Module containing the [`U256`] type.

@@ -1,9 +1,11 @@
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::unreadable_literal)]
 // AUTO-GENERATED CODE. DO NOT EDIT
 // To change the code generated, modify the codegen tool instead:
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#2fa12b7f4f1226a75b91316f954f6daca373967e
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#cd8c5642b826a1943d09f41359e33092ebe16077
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -30,17 +32,11 @@
 // - `TXN`
 // - `TXN_CONTENT`
 // - `TXN_RECEIPT`
-
 #![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_const_for_fn)]
-#![allow(clippy::wildcard_imports)]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::collapsible_if)]
-#![allow(clippy::use_self)]
-#![allow(unreachable_pub)]
 
-use alloc::{format, string::*, vec::*};
+use alloc::{format, string::String, vec::Vec};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -49,14 +45,17 @@ use serde_with::serde_as;
 use crate::serde::byte_array::base64;
 
 use super::{
+    AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId, ContractExecutionError,
+    EthAddress, ExecuteInvocation, ExecutionResult, Felt, Hash256, LegacyContractAbiEntry,
+    MerkleNode, ReceiptBlock, Transaction, TransactionContent, TransactionReceipt,
+    TransactionStatus, TransactionTrace, UfeHex, alloc,
     serde_impls::{MerkleNodeMap, NumAsHex, OwnedContractExecutionError},
-    *,
 };
 
 #[cfg(target_has_atomic = "ptr")]
-pub type OwnedPtr<T> = alloc::sync::Arc<T>;
+pub(super) type OwnedPtr<T> = alloc::sync::Arc<T>;
 #[cfg(not(target_has_atomic = "ptr"))]
-pub type OwnedPtr<T> = alloc::boxed::Box<T>;
+pub(super) type OwnedPtr<T> = alloc::boxed::Box<T>;
 
 #[cfg(feature = "std")]
 type RandomState = std::hash::RandomState;
