@@ -239,6 +239,7 @@ async fn jsonrpc_get_transaction_status_succeeded() {
         .get_transaction_status(
             Felt::from_hex("03f786ecc4955a2602c91a291328518ef866cb7f3d50e4b16fd42282952623aa")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -257,6 +258,7 @@ async fn jsonrpc_get_transaction_status_reverted() {
         .get_transaction_status(
             Felt::from_hex("02f00c7f28df2197196440747f97baa63d0851e3b0cfc2efedb6a88a7ef78cb1")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -280,6 +282,7 @@ async fn jsonrpc_get_transaction_by_hash_invoke_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("03f786ecc4955a2602c91a291328518ef866cb7f3d50e4b16fd42282952623aa")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -299,6 +302,7 @@ async fn jsonrpc_get_transaction_by_hash_l1_handler() {
         .get_transaction_by_hash(
             Felt::from_hex("0785c2ada3f53fbc66078d47715c27718f92e6e48b96372b36e5197de69b82b5")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -318,6 +322,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v0() {
         .get_transaction_by_hash(
             Felt::from_hex("030a541df2547ed9f94602c35daf61ce3a8e179ec75d26cbe34e0ec61f823695")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -337,6 +342,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("01936a09e5aaee208fc0f7cc826e126d421c3ac9aca2c789605e1e919e399185")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -356,6 +362,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v2() {
         .get_transaction_by_hash(
             Felt::from_hex("004cacc2bbdd5ec77b20e908f311ab27d6495b69761e929bb24ba02632716944")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -375,6 +382,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v3() {
         .get_transaction_by_hash(
             Felt::from_hex("054270d103c875a613e013d1fd555edcff2085feca9d7b4532243a8257fd5cf3")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -397,6 +405,7 @@ async fn jsonrpc_get_transaction_by_hash_deploy_account_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("024ed6b82e2f6d3a811ec180a25c1ccd0bdc7bdba8ebd709de2ed697a1e82193")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -416,6 +425,7 @@ async fn jsonrpc_get_transaction_by_hash_deploy_account_v3() {
         .get_transaction_by_hash(
             Felt::from_hex("011c67fb3a9a623b3190c9ac41ebf7f5dd421f2583344c498a30a7280c660f01")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -432,7 +442,7 @@ async fn jsonrpc_get_transaction_by_block_id_and_index() {
     let rpc_client = create_jsonrpc_client();
 
     let tx = rpc_client
-        .get_transaction_by_block_id_and_index(BlockId::Number(10_000), 1)
+        .get_transaction_by_block_id_and_index(BlockId::Number(10_000), 1, None)
         .await
         .unwrap();
 
@@ -448,7 +458,7 @@ async fn jsonrpc_get_transaction_by_hash_non_existent_tx() {
     let rpc_client = create_jsonrpc_client();
 
     let err = rpc_client
-        .get_transaction_by_hash(Felt::from_hex("1234").unwrap())
+        .get_transaction_by_hash(Felt::from_hex("1234").unwrap(), None)
         .await
         .unwrap_err();
 
@@ -468,6 +478,7 @@ async fn jsonrpc_get_transaction_receipt_invoke() {
         .get_transaction_receipt(
             Felt::from_hex("03f786ecc4955a2602c91a291328518ef866cb7f3d50e4b16fd42282952623aa")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -492,6 +503,7 @@ async fn jsonrpc_get_transaction_receipt_invoke_reverted() {
         .get_transaction_receipt(
             Felt::from_hex("02f00c7f28df2197196440747f97baa63d0851e3b0cfc2efedb6a88a7ef78cb1")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -515,8 +527,14 @@ async fn jsonrpc_get_transaction_receipt_l1_handler() {
     let tx_hash =
         Felt::from_hex("0785c2ada3f53fbc66078d47715c27718f92e6e48b96372b36e5197de69b82b5").unwrap();
 
-    let tx = rpc_client.get_transaction_by_hash(tx_hash).await.unwrap();
-    let receipt = rpc_client.get_transaction_receipt(tx_hash).await.unwrap();
+    let tx = rpc_client
+        .get_transaction_by_hash(tx_hash, None)
+        .await
+        .unwrap();
+    let receipt = rpc_client
+        .get_transaction_receipt(tx_hash, None)
+        .await
+        .unwrap();
 
     let Transaction::L1Handler(tx) = tx else {
         panic!("unexpected tx type")
@@ -544,6 +562,7 @@ async fn jsonrpc_get_transaction_receipt_declare() {
         .get_transaction_receipt(
             Felt::from_hex("01936a09e5aaee208fc0f7cc826e126d421c3ac9aca2c789605e1e919e399185")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -571,6 +590,7 @@ async fn jsonrpc_get_transaction_receipt_deploy_account() {
         .get_transaction_receipt(
             Felt::from_hex("024ed6b82e2f6d3a811ec180a25c1ccd0bdc7bdba8ebd709de2ed697a1e82193")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -719,50 +739,67 @@ async fn jsonrpc_estimate_fee() {
                 broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3 {
                     signature: vec![
                         Felt::from_hex(
-                            "000e25bc2c344b9a64887c614cebdf50c8c1a8b3e1af7f22e5bd9958ada216a6",
+                            "0xa9177cee8d654e10849d0bc64672598a84523efe7c17904472ea27f342f1a",
                         )
                         .unwrap(),
                         Felt::from_hex(
-                            "01f676fc74cd4dd50ad0cc7a0131fed16d235f3d0afca51bcb4946dc7855b1ff",
+                            "0x6c5f68d004730866be5fec4ff30305b003bb65142df41abe75ca67531923d6",
                         )
                         .unwrap(),
                     ],
-                    nonce: Felt::ONE,
                     sender_address: Felt::from_hex(
-                        "052d6e8f4fcebd83f4f5fdb7244cc917eadebf3a64109d4e8c2af09b7682a190",
+                        "0x4f4e29add19afa12c868ba1f4439099f225403ff9a71fe667eebb50e13518d3",
                     )
                     .unwrap(),
+                    nonce: Felt::from_hex("0x7bf5c9").unwrap(),
                     calldata: vec![
-                        Felt::from_hex("1").unwrap(),
+                        Felt::from_hex("0x2").unwrap(),
                         Felt::from_hex(
-                            "04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                            "0x2a730fc5366a8932645ada40338487d5c272294d70a43dc2d53f03534f418ea",
                         )
                         .unwrap(),
                         Felt::from_hex(
-                            "0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                            "0x27c3334165536f239cfd400ed956eabff55fc60de4fb56728b6a4f6b87db01c",
                         )
                         .unwrap(),
-                        Felt::from_hex("3").unwrap(),
-                        Felt::from_hex("1234").unwrap(),
-                        Felt::from_hex("1").unwrap(),
-                        Felt::from_hex("0").unwrap(),
+                        Felt::from_hex("0x3").unwrap(),
+                        Felt::from_hex(
+                            "0x3eaf27245e5a10286542e75c216d17432dd077984c86d37944ba7f5002d10d3",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "0x382be990ca34815134e64a9ac28f41a907c62e5ad10547f97174362ab94dc89",
+                        )
+                        .unwrap(),
+                        Felt::from_hex("0x0").unwrap(),
+                        Felt::from_hex(
+                            "0x3eaf27245e5a10286542e75c216d17432dd077984c86d37944ba7f5002d10d3",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "0x1136789e1c76159d9b9eca06fcef05bdcf77f5d51bd4d9e09f2bc8d7520d8e6",
+                        )
+                        .unwrap(),
+                        Felt::from_hex("0x2").unwrap(),
+                        Felt::from_hex("0xb18280063f0ffc77f9f3fa35c20794bd").unwrap(),
+                        Felt::from_hex("0xc5001b52e4e2809dd262aa94070ea7a4").unwrap(),
                     ],
                     is_query: true,
                     resource_bounds: ResourceBoundsMapping {
                         l1_gas: ResourceBounds {
-                            max_amount: 0,
-                            max_price_per_unit: 0,
+                            max_amount: 70_000,
+                            max_price_per_unit: 2_488_849_860_263_936,
                         },
                         l1_data_gas: ResourceBounds {
-                            max_amount: 0,
-                            max_price_per_unit: 0,
+                            max_amount: 10_000,
+                            max_price_per_unit: 27_659_894_942_675_796,
                         },
                         l2_gas: ResourceBounds {
-                            max_amount: 0,
-                            max_price_per_unit: 0,
+                            max_amount: 100_000_000,
+                            max_price_per_unit: 50_000_000_000,
                         },
                     },
-                    tip: Default::default(),
+                    tip: 100_000_000,
                     paymaster_data: Vec::default(),
                     account_deployment_data: Vec::default(),
                     nonce_data_availability_mode: DataAvailabilityMode::L1,

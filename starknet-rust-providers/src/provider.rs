@@ -11,7 +11,8 @@ use starknet_rust_core::types::{
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
     SimulateTransactionsResult, SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
     StarknetError, StorageProof, SubscriptionId, SyncStatusType, TraceBlockTransactionsResult,
-    Transaction, TransactionReceiptWithBlockInfo, TransactionStatus, TransactionTrace,
+    TraceFlag, Transaction, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
+    TransactionStatus, TransactionTrace,
     requests::{
         AddDeclareTransactionRequest, AddDeployAccountTransactionRequest,
         AddInvokeTransactionRequest, BlockHashAndNumberRequest, BlockNumberRequest, CallRequest,
@@ -110,6 +111,7 @@ pub trait Provider {
     async fn get_transaction_status<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<TransactionStatus, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync;
@@ -118,6 +120,7 @@ pub trait Provider {
     async fn get_transaction_by_hash<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync;
@@ -127,6 +130,7 @@ pub trait Provider {
         &self,
         block_id: B,
         index: u64,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync;
@@ -135,6 +139,7 @@ pub trait Provider {
     async fn get_transaction_receipt<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<TransactionReceiptWithBlockInfo, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync;
@@ -304,6 +309,7 @@ pub trait Provider {
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
+        trace_flags: Option<&[TraceFlag]>,
     ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync;

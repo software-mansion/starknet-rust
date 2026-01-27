@@ -111,7 +111,10 @@ where
     let deadline = SystemTime::now() + timeout;
 
     while SystemTime::now() <= deadline {
-        match provider.get_transaction_receipt(transaction_hash).await {
+        match provider
+            .get_transaction_receipt(transaction_hash, None)
+            .await
+        {
             Ok(receipt) => match receipt.receipt.execution_result() {
                 ExecutionResult::Succeeded => return,
                 ExecutionResult::Reverted { reason } => {

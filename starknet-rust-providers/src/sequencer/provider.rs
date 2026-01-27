@@ -12,8 +12,8 @@ use starknet_rust_core::types::{
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
     SimulateTransactionsResult, SimulationFlag, SimulationFlagForEstimateFee, StarknetError,
-    StorageProof, SyncStatusType, TraceBlockTransactionsResult, Transaction,
-    TransactionReceiptWithBlockInfo, TransactionStatus, TransactionTrace,
+    StorageProof, SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
+    TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionStatus, TransactionTrace,
 };
 
 use crate::{
@@ -128,6 +128,7 @@ impl Provider for SequencerGatewayProvider {
     async fn get_transaction_status<H>(
         &self,
         transaction_hash: H,
+        _response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<TransactionStatus, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
@@ -152,6 +153,7 @@ impl Provider for SequencerGatewayProvider {
     async fn get_transaction_by_hash<H>(
         &self,
         transaction_hash: H,
+        _response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
@@ -166,6 +168,7 @@ impl Provider for SequencerGatewayProvider {
         &self,
         block_id: B,
         index: u64,
+        _response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
@@ -187,6 +190,7 @@ impl Provider for SequencerGatewayProvider {
     async fn get_transaction_receipt<H>(
         &self,
         transaction_hash: H,
+        _response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<TransactionReceiptWithBlockInfo, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
@@ -452,6 +456,7 @@ impl Provider for SequencerGatewayProvider {
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
+        _trace_flags: Option<&[TraceFlag]>,
     ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
