@@ -1202,7 +1202,7 @@ pub struct FunctionInvocation {
     #[serde_as(as = "Vec<UfeHex>")]
     pub result: Vec<Felt>,
     /// The calls made by this invocation
-    pub calls: Vec<FunctionInvocation>,
+    pub calls: Vec<Self>,
     /// The events emitted in this invocation
     pub events: Vec<OrderedEvent>,
     /// The messages sent by this invocation to L1
