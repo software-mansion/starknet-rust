@@ -133,11 +133,7 @@ impl Provider for SequencerGatewayProvider {
     where
         H: AsRef<Felt> + Send + Sync,
     {
-        if response_flags.is_some() {
-            return Err(ProviderError::Other(Box::new(
-                GatewayClientError::MethodNotSupported,
-            )));
-        }
+        let _ = response_flags;
 
         let status = self
             .get_transaction_status(*transaction_hash.as_ref())
@@ -164,11 +160,7 @@ impl Provider for SequencerGatewayProvider {
     where
         H: AsRef<Felt> + Send + Sync,
     {
-        if response_flags.is_some() {
-            return Err(ProviderError::Other(Box::new(
-                GatewayClientError::MethodNotSupported,
-            )));
-        }
+        let _ = response_flags;
 
         Ok(self
             .get_transaction(*transaction_hash.as_ref())
@@ -185,11 +177,7 @@ impl Provider for SequencerGatewayProvider {
     where
         B: AsRef<BlockId> + Send + Sync,
     {
-        if response_flags.is_some() {
-            return Err(ProviderError::Other(Box::new(
-                GatewayClientError::MethodNotSupported,
-            )));
-        }
+        let _ = response_flags;
 
         let mut block = self
             .get_block(block_id.as_ref().to_owned().try_into()?)
@@ -213,11 +201,7 @@ impl Provider for SequencerGatewayProvider {
     where
         H: AsRef<Felt> + Send + Sync,
     {
-        if response_flags.is_some() {
-            return Err(ProviderError::Other(Box::new(
-                GatewayClientError::MethodNotSupported,
-            )));
-        }
+        let _ = response_flags;
 
         // Deprecated since Starknet v0.12.3
         Err(ProviderError::Other(Box::new(
@@ -485,11 +469,7 @@ impl Provider for SequencerGatewayProvider {
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
     {
-        if trace_flags.is_some() {
-            return Err(ProviderError::Other(Box::new(
-                GatewayClientError::MethodNotSupported,
-            )));
-        }
+        let _ = trace_flags;
 
         // With JSON-RPC v0.5.0 it's no longer possible to convert feeder traces to JSON-RPC traces. So we simply pretend that it's not supported here.
         //
