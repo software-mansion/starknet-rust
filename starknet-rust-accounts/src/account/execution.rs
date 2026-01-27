@@ -48,6 +48,12 @@ impl<'a, A> ExecutionV3<'a, A> {
             gas_estimate_multiplier: 1.5,
             gas_price_estimate_multiplier: 1.5,
             tip: None,
+            paymaster_data: None,
+            account_deployment_data: None,
+            nonce_data_availability_mode: None,
+            fee_data_availability_mode: None,
+            proof_facts: None,
+            proof: None,
         }
     }
 
@@ -135,6 +141,54 @@ impl<'a, A> ExecutionV3<'a, A> {
         }
     }
 
+    /// Returns a new [`ExecutionV3`] with the `paymaster_data`.
+    pub fn paymaster_data(self, paymaster_data: Vec<Felt>) -> Self {
+        Self {
+            paymaster_data: Some(paymaster_data),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `account_deployment_data`.
+    pub fn account_deployment_data(self, account_deployment_data: Vec<Felt>) -> Self {
+        Self {
+            account_deployment_data: Some(account_deployment_data),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `nonce_data_availability_mode`.
+    pub fn nonce_data_availability_mode(self, mode: DataAvailabilityMode) -> Self {
+        Self {
+            nonce_data_availability_mode: Some(mode),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `fee_data_availability_mode`.
+    pub fn fee_data_availability_mode(self, mode: DataAvailabilityMode) -> Self {
+        Self {
+            fee_data_availability_mode: Some(mode),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `proof_facts`.
+    pub fn proof_facts(self, proof_facts: Vec<Felt>) -> Self {
+        Self {
+            proof_facts: Some(proof_facts),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the transaction `proof`.
+    pub fn proof(self, proof: Vec<u64>) -> Self {
+        Self {
+            proof: Some(proof),
+            ..self
+        }
+    }
+
     /// Calling this function after manually specifying `nonce`, `gas` and `gas_price` turns
     /// [`ExecutionV3`] into [`PreparedExecutionV3`]. Returns `Err` if any field is `None`.
     pub fn prepared(self) -> Result<PreparedExecutionV3<'a, A>, NotPreparedError> {
@@ -146,6 +200,16 @@ impl<'a, A> ExecutionV3<'a, A> {
         let l1_data_gas = self.l1_data_gas.ok_or(NotPreparedError)?;
         let l1_data_gas_price = self.l1_data_gas_price.ok_or(NotPreparedError)?;
         let tip = self.tip.ok_or(NotPreparedError)?;
+        let paymaster_data = self.paymaster_data.unwrap_or_default();
+        let account_deployment_data = self.account_deployment_data.unwrap_or_default();
+        let nonce_data_availability_mode = self
+            .nonce_data_availability_mode
+            .unwrap_or(DataAvailabilityMode::L1);
+        let fee_data_availability_mode = self
+            .fee_data_availability_mode
+            .unwrap_or(DataAvailabilityMode::L1);
+        let proof_facts = self.proof_facts;
+        let proof = self.proof;
 
         Ok(PreparedExecutionV3 {
             account: self.account,
@@ -159,6 +223,12 @@ impl<'a, A> ExecutionV3<'a, A> {
                 l1_data_gas,
                 l1_data_gas_price,
                 tip,
+                paymaster_data,
+                account_deployment_data,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+                proof_facts,
+                proof,
             },
         })
     }
@@ -365,6 +435,16 @@ where
                 l1_data_gas,
                 l1_data_gas_price,
                 tip,
+                paymaster_data: self.paymaster_data.clone().unwrap_or_default(),
+                account_deployment_data: self.account_deployment_data.clone().unwrap_or_default(),
+                nonce_data_availability_mode: self
+                    .nonce_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                fee_data_availability_mode: self
+                    .fee_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         })
     }
@@ -389,6 +469,16 @@ where
                 l1_data_gas: 0,
                 l1_data_gas_price: 0,
                 tip: 0,
+                paymaster_data: self.paymaster_data.clone().unwrap_or_default(),
+                account_deployment_data: self.account_deployment_data.clone().unwrap_or_default(),
+                nonce_data_availability_mode: self
+                    .nonce_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                fee_data_availability_mode: self
+                    .fee_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         };
         let invoke = prepared
@@ -444,6 +534,16 @@ where
                 l1_data_gas: self.l1_data_gas.unwrap_or_default(),
                 l1_data_gas_price: self.l1_data_gas_price.unwrap_or_default(),
                 tip: self.tip.unwrap_or_default(),
+                paymaster_data: self.paymaster_data.clone().unwrap_or_default(),
+                account_deployment_data: self.account_deployment_data.clone().unwrap_or_default(),
+                nonce_data_availability_mode: self
+                    .nonce_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                fee_data_availability_mode: self
+                    .fee_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         };
         let invoke = prepared
@@ -526,17 +626,40 @@ impl RawExecutionV3 {
             fee_hasher.finalize()
         });
 
-        // Hard-coded empty `paymaster_data`
-        hasher.update(PoseidonHasher::new().finalize());
+        hasher.update({
+            let mut paymaster_hasher = PoseidonHasher::new();
+
+            self.paymaster_data
+                .iter()
+                .for_each(|element| paymaster_hasher.update(*element));
+
+            paymaster_hasher.finalize()
+        });
 
         hasher.update(chain_id);
         hasher.update(self.nonce);
 
-        // Hard-coded L1 DA mode for nonce and fee
-        hasher.update(Felt::ZERO);
+        let nonce_mode = match self.nonce_data_availability_mode {
+            DataAvailabilityMode::L1 => 0_u64,
+            DataAvailabilityMode::L2 => 1_u64,
+        };
+        let fee_mode = match self.fee_data_availability_mode {
+            DataAvailabilityMode::L1 => 0_u64,
+            DataAvailabilityMode::L2 => 1_u64,
+        };
+        let data_availability_modes = (nonce_mode << 32) + fee_mode;
 
-        // Hard-coded empty `account_deployment_data`
-        hasher.update(PoseidonHasher::new().finalize());
+        hasher.update(Felt::from(data_availability_modes));
+
+        hasher.update({
+            let mut deployment_hasher = PoseidonHasher::new();
+
+            self.account_deployment_data
+                .iter()
+                .for_each(|element| deployment_hasher.update(*element));
+
+            deployment_hasher.finalize()
+        });
 
         hasher.update({
             let mut calldata_hasher = PoseidonHasher::new();
@@ -595,6 +718,36 @@ impl RawExecutionV3 {
     /// Gets the `tip` of the execution request.
     pub const fn tip(&self) -> u64 {
         self.tip
+    }
+
+    /// Gets the `paymaster_data` of the execution request.
+    pub fn paymaster_data(&self) -> &[Felt] {
+        &self.paymaster_data
+    }
+
+    /// Gets the `account_deployment_data` of the execution request.
+    pub fn account_deployment_data(&self) -> &[Felt] {
+        &self.account_deployment_data
+    }
+
+    /// Gets the `nonce_data_availability_mode` of the execution request.
+    pub const fn nonce_data_availability_mode(&self) -> DataAvailabilityMode {
+        self.nonce_data_availability_mode
+    }
+
+    /// Gets the `fee_data_availability_mode` of the execution request.
+    pub const fn fee_data_availability_mode(&self) -> DataAvailabilityMode {
+        self.fee_data_availability_mode
+    }
+
+    /// Gets the `proof_facts` of the execution request.
+    pub fn proof_facts(&self) -> Option<&[Felt]> {
+        self.proof_facts.as_deref()
+    }
+
+    /// Gets the `proof` of the execution request.
+    pub fn proof(&self) -> Option<&[u64]> {
+        self.proof.as_deref()
     }
 }
 
@@ -667,17 +820,14 @@ where
                     },
                 },
                 tip: self.inner.tip,
-                // Hard-coded empty `paymaster_data`
-                paymaster_data: vec![],
-                // Hard-coded empty `account_deployment_data`
-                account_deployment_data: vec![],
-                // Hard-coded L1 DA mode for nonce and fee
-                nonce_data_availability_mode: DataAvailabilityMode::L1,
-                fee_data_availability_mode: DataAvailabilityMode::L1,
-                proof_facts: None,
+                paymaster_data: self.inner.paymaster_data.clone(),
+                account_deployment_data: self.inner.account_deployment_data.clone(),
+                nonce_data_availability_mode: self.inner.nonce_data_availability_mode,
+                fee_data_availability_mode: self.inner.fee_data_availability_mode,
+                proof_facts: self.inner.proof_facts.clone(),
                 is_query: query_only,
             },
-            proof: None,
+            proof: self.inner.proof.clone(),
         })
     }
 }

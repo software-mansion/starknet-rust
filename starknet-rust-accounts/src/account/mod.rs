@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use starknet_rust_core::types::{
-    BlockId, BlockTag, Call, Felt, FlattenedSierraClass, contract::ComputeClassHashError,
+    BlockId, BlockTag, Call, DataAvailabilityMode, Felt, FlattenedSierraClass,
+    contract::ComputeClassHashError,
 };
 use starknet_rust_providers::{Provider, ProviderError};
 use starknet_rust_signers::SignerInteractivityContext;
@@ -173,6 +174,12 @@ pub struct ExecutionV3<'a, A> {
     gas_estimate_multiplier: f64,
     gas_price_estimate_multiplier: f64,
     tip: Option<u64>,
+    paymaster_data: Option<Vec<Felt>>,
+    account_deployment_data: Option<Vec<Felt>>,
+    nonce_data_availability_mode: Option<DataAvailabilityMode>,
+    fee_data_availability_mode: Option<DataAvailabilityMode>,
+    proof_facts: Option<Vec<Felt>>,
+    proof: Option<Vec<u64>>,
 }
 
 /// Abstraction over `DECLARE` transactions from accounts for invoking contracts. This struct uses
@@ -210,6 +217,12 @@ pub struct RawExecutionV3 {
     l1_data_gas: u64,
     l1_data_gas_price: u128,
     tip: u64,
+    paymaster_data: Vec<Felt>,
+    account_deployment_data: Vec<Felt>,
+    nonce_data_availability_mode: DataAvailabilityMode,
+    fee_data_availability_mode: DataAvailabilityMode,
+    proof_facts: Option<Vec<Felt>>,
+    proof: Option<Vec<u64>>,
 }
 
 /// [`DeclarationV3`] but with `nonce` and other transaction fee options already determined.
