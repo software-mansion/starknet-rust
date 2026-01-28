@@ -8,7 +8,7 @@ use starknet_rust_core::{
 };
 use starknet_rust_providers::Provider;
 use starknet_rust_signers::{LocalWallet, SigningKey};
-use test_common::create_jsonrpc_client;
+use test_common::{create_jsonrpc_client, shared_signer_lock};
 
 #[tokio::test]
 async fn can_deploy_contract_with_legacy_udc_unique() {
@@ -87,6 +87,7 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
         .l1_data_gas_price(100_000_000_000_000);
     let deployed_address = deployment.deployed_address();
 
+    let _guard = shared_signer_lock().await;
     let transaction = deployment.send().await.unwrap();
     watch_tx(
         &provider,

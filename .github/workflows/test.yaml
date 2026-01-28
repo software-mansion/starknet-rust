@@ -35,12 +35,8 @@ jobs:
           cargo test -p starknet-rust-crypto --features pedersen_no_lookup
 
       - name: Run cargo tests
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 20
-          retry_wait_seconds: 30
-          command: cargo test --all
+        run: |
+          cargo test --all
 
   win-test:
     name: Windows tests
@@ -72,12 +68,8 @@ jobs:
           cargo test -p starknet-rust-crypto --features pedersen_no_lookup
 
       - name: Run cargo tests
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 20
-          retry_wait_seconds: 30
-          command: cargo test --all --target ${{ matrix.target }} --exclude starknet-rust-cxx
+        run: |
+          cargo test --all --target ${{ matrix.target }} --exclude starknet-rust-cxx
 
   wasm-test:
     name: WASM tests

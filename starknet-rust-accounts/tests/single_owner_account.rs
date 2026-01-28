@@ -8,7 +8,7 @@ use starknet_rust_core::{
 use starknet_rust_providers::{Provider, ProviderError, SequencerGatewayProvider};
 use starknet_rust_signers::{LocalWallet, SigningKey};
 use std::sync::Arc;
-use test_common::create_jsonrpc_client;
+use test_common::{create_jsonrpc_client, shared_signer_lock};
 
 /// Cairo short string encoding for `SN_SEPOLIA`.
 const CHAIN_ID: Felt = Felt::from_raw([
@@ -197,6 +197,7 @@ async fn can_execute_eth_transfer_invoke_v3_inner<P: Provider + Send + Sync>(
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
+    let _guard = shared_signer_lock().await;
     let result = account
         .execute_v3(vec![Call {
             to: eth_token_address,
@@ -228,6 +229,7 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + 
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
+    let _guard = shared_signer_lock().await;
     let result = account
         .execute_v3(vec![Call {
             to: eth_token_address,
@@ -286,6 +288,7 @@ async fn can_estimate_declare_v3_fee_inner<P: Provider + Send + Sync>(provider: 
             .as_millis()
     );
 
+    let _guard = shared_signer_lock().await;
     let result = account
         .declare_v3(
             Arc::new(flattened_class),
