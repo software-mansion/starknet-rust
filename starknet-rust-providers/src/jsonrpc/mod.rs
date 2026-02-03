@@ -601,6 +601,7 @@ where
             JsonRpcMethod::GetBlockWithTxHashes,
             GetBlockWithTxHashesRequestRef {
                 block_id: block_id.as_ref(),
+                response_flags: None,
             },
         )
         .await
