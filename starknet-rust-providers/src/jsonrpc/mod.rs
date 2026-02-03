@@ -618,6 +618,7 @@ where
             JsonRpcMethod::GetBlockWithTxs,
             GetBlockWithTxsRequestRef {
                 block_id: block_id.as_ref(),
+                response_flags: None,
             },
         )
         .await
@@ -635,6 +636,7 @@ where
             JsonRpcMethod::GetBlockWithReceipts,
             GetBlockWithReceiptsRequestRef {
                 block_id: block_id.as_ref(),
+                response_flags: None,
             },
         )
         .await

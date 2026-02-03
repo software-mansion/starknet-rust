@@ -5,7 +5,7 @@
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#cd8c5642b826a1943d09f41359e33092ebe16077
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#0504e449adb49e29202dc29d0a5ef4a1d7daffbf
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -32,6 +32,7 @@
 // - `TXN`
 // - `TXN_CONTENT`
 // - `TXN_RECEIPT`
+
 #![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_const_for_fn)]
@@ -45,10 +46,12 @@ use serde_with::serde_as;
 use crate::serde::byte_array::base64;
 
 use super::{
-    AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId, ContractExecutionError,
-    EthAddress, ExecuteInvocation, ExecutionResult, Felt, Hash256, LegacyContractAbiEntry,
-    MerkleNode, ReceiptBlock, Transaction, TransactionContent, TransactionReceipt,
-    TransactionStatus, TransactionTrace, UfeHex, alloc,
+    AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId,
+    ContractExecutionError,
+    EthAddress, ExecuteInvocation, ExecutionResult, Felt, Hash256,
+    LegacyContractAbiEntry, MerkleNode, ReceiptBlock, Transaction,
+    TransactionContent, TransactionReceipt, TransactionStatus, TransactionTrace,
+    UfeHex, alloc,
     serde_impls::{MerkleNodeMap, NumAsHex, OwnedContractExecutionError},
 };
 
@@ -2142,8 +2145,7 @@ pub struct SimulatedTransaction {
 /// from the balance before the simulation of the next transaction). To skip the fee charge, use the
 /// skip_fee_charge flag. When return_initial_reads is present, the node returns the minimal set of
 /// concrete state values fetched from the underlying state reader during execution for all
-/// transactions in the simulation. This provides a complete witness sufficient to reconstruct the
-/// cached state needed for re-execution.
+/// transactions in the simulation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SimulationFlag {
     #[serde(rename = "SKIP_VALIDATE")]
@@ -2267,9 +2269,7 @@ impl core::fmt::Display for StarknetError {
             Self::UnsupportedTxVersion => write!(f, "UnsupportedTxVersion"),
             Self::UnsupportedContractClassVersion => write!(f, "UnsupportedContractClassVersion"),
             Self::UnexpectedError(e) => write!(f, "UnexpectedError: {e:?}"),
-            Self::ReplacementTransactionUnderpriced => {
-                write!(f, "ReplacementTransactionUnderpriced")
-            }
+            Self::ReplacementTransactionUnderpriced => write!(f, "ReplacementTransactionUnderpriced"),
             Self::FeeBelowMinimum => write!(f, "FeeBelowMinimum"),
             Self::NoTraceAvailable(e) => write!(f, "NoTraceAvailable: {e:?}"),
             Self::InvalidSubscriptionId => write!(f, "InvalidSubscriptionId"),
@@ -2496,8 +2496,8 @@ pub struct TraceBlockTransactionsResult {
 /// Flags that indicate what additional information should be included in the trace. When
 /// return_initial_reads is present, the node returns the minimal set of concrete state values
 /// fetched from the underlying state reader during execution for all transactions in the block.
-/// This provides a complete witness sufficient to reconstruct the cached state needed for
-/// re-execution.
+/// Returns an empty object instead of initial_reads when the execution trace for the referenced
+/// block is inconsistent with the canonical block trace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TraceFlag {
     #[serde(rename = "RETURN_INITIAL_READS")]
@@ -2706,12 +2706,15 @@ pub struct GetBlockTransactionCountRequestRef<'a> {
 pub struct GetBlockWithReceiptsRequest {
     /// The hash of the requested block, or number (height) of the requested block, or a block tag
     pub block_id: BlockId,
+    /// Flags that control what additional fields are included in the response
+    pub response_flags: Option<Vec<TransactionResponseFlag>>,
 }
 
 /// Reference version of [GetBlockWithReceiptsRequest].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetBlockWithReceiptsRequestRef<'a> {
     pub block_id: &'a BlockId,
+    pub response_flags: Option<&'a [TransactionResponseFlag]>,
 }
 
 /// Request for method starknet_getBlockWithTxHashes
@@ -2719,12 +2722,15 @@ pub struct GetBlockWithReceiptsRequestRef<'a> {
 pub struct GetBlockWithTxHashesRequest {
     /// The hash of the requested block, or number (height) of the requested block, or a block tag
     pub block_id: BlockId,
+    /// Flags that control what additional fields are included in the response
+    pub response_flags: Option<Vec<TransactionResponseFlag>>,
 }
 
 /// Reference version of [GetBlockWithTxHashesRequest].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetBlockWithTxHashesRequestRef<'a> {
     pub block_id: &'a BlockId,
+    pub response_flags: Option<&'a [TransactionResponseFlag]>,
 }
 
 /// Request for method starknet_getBlockWithTxs
@@ -2732,12 +2738,15 @@ pub struct GetBlockWithTxHashesRequestRef<'a> {
 pub struct GetBlockWithTxsRequest {
     /// The hash of the requested block, or number (height) of the requested block, or a block tag
     pub block_id: BlockId,
+    /// Flags that control what additional fields are included in the response
+    pub response_flags: Option<Vec<TransactionResponseFlag>>,
 }
 
 /// Reference version of [GetBlockWithTxsRequest].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetBlockWithTxsRequestRef<'a> {
     pub block_id: &'a BlockId,
+    pub response_flags: Option<&'a [TransactionResponseFlag]>,
 }
 
 /// Request for method starknet_getClassAt
@@ -7102,6 +7111,8 @@ impl Serialize for GetBlockWithReceiptsRequest {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -7110,11 +7121,18 @@ impl Serialize for GetBlockWithReceiptsRequest {
             pub value: &'a BlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: &self.block_id,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -7126,6 +7144,8 @@ impl Serialize for GetBlockWithReceiptsRequestRef<'_> {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -7134,11 +7154,18 @@ impl Serialize for GetBlockWithReceiptsRequestRef<'_> {
             pub value: &'a BlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: self.block_id,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -7150,6 +7177,8 @@ impl<'de> Deserialize<'de> for GetBlockWithReceiptsRequest {
         #[derive(Deserialize)]
         struct AsObject {
             block_id: Field0,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1>,
         }
 
         #[derive(Deserialize)]
@@ -7158,9 +7187,26 @@ impl<'de> Deserialize<'de> for GetBlockWithReceiptsRequest {
             pub value: BlockId,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field1 {
+            pub value: Vec<TransactionResponseFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field1 = if element_count > 1 {
+                Some(
+                    serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field0 = serde_json::from_value::<Field0>(
                 elements
                     .pop()
@@ -7170,10 +7216,12 @@ impl<'de> Deserialize<'de> for GetBlockWithReceiptsRequest {
 
             Ok(Self {
                 block_id: field0.value,
+                response_flags: field1.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 block_id: object.block_id.value,
+                response_flags: object.response_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
@@ -7186,6 +7234,8 @@ impl Serialize for GetBlockWithTxHashesRequest {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -7194,11 +7244,18 @@ impl Serialize for GetBlockWithTxHashesRequest {
             pub value: &'a BlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: &self.block_id,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -7210,6 +7267,8 @@ impl Serialize for GetBlockWithTxHashesRequestRef<'_> {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -7218,11 +7277,18 @@ impl Serialize for GetBlockWithTxHashesRequestRef<'_> {
             pub value: &'a BlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: self.block_id,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -7234,6 +7300,8 @@ impl<'de> Deserialize<'de> for GetBlockWithTxHashesRequest {
         #[derive(Deserialize)]
         struct AsObject {
             block_id: Field0,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1>,
         }
 
         #[derive(Deserialize)]
@@ -7242,9 +7310,26 @@ impl<'de> Deserialize<'de> for GetBlockWithTxHashesRequest {
             pub value: BlockId,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field1 {
+            pub value: Vec<TransactionResponseFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field1 = if element_count > 1 {
+                Some(
+                    serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field0 = serde_json::from_value::<Field0>(
                 elements
                     .pop()
@@ -7254,10 +7339,12 @@ impl<'de> Deserialize<'de> for GetBlockWithTxHashesRequest {
 
             Ok(Self {
                 block_id: field0.value,
+                response_flags: field1.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 block_id: object.block_id.value,
+                response_flags: object.response_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
@@ -7270,6 +7357,8 @@ impl Serialize for GetBlockWithTxsRequest {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -7278,11 +7367,18 @@ impl Serialize for GetBlockWithTxsRequest {
             pub value: &'a BlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: &self.block_id,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -7294,6 +7390,8 @@ impl Serialize for GetBlockWithTxsRequestRef<'_> {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -7302,11 +7400,18 @@ impl Serialize for GetBlockWithTxsRequestRef<'_> {
             pub value: &'a BlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            pub value: &'a [TransactionResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: self.block_id,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -7318,6 +7423,8 @@ impl<'de> Deserialize<'de> for GetBlockWithTxsRequest {
         #[derive(Deserialize)]
         struct AsObject {
             block_id: Field0,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field1>,
         }
 
         #[derive(Deserialize)]
@@ -7326,9 +7433,26 @@ impl<'de> Deserialize<'de> for GetBlockWithTxsRequest {
             pub value: BlockId,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field1 {
+            pub value: Vec<TransactionResponseFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field1 = if element_count > 1 {
+                Some(
+                    serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field0 = serde_json::from_value::<Field0>(
                 elements
                     .pop()
@@ -7338,10 +7462,12 @@ impl<'de> Deserialize<'de> for GetBlockWithTxsRequest {
 
             Ok(Self {
                 block_id: field0.value,
+                response_flags: field1.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 block_id: object.block_id.value,
+                response_flags: object.response_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
