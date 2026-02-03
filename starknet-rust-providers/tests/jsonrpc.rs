@@ -1117,7 +1117,7 @@ struct MockTransport {
 }
 
 impl MockTransport {
-    fn new(expected_method: JsonRpcMethod, expected_params: serde_json::Value) -> Self {
+    const fn new(expected_method: JsonRpcMethod, expected_params: serde_json::Value) -> Self {
         Self {
             expected_method,
             expected_params,
@@ -1144,7 +1144,7 @@ struct MockTransportResponse {
 }
 
 impl MockTransportResponse {
-    fn new(
+    const fn new(
         expected_method: JsonRpcMethod,
         expected_params: serde_json::Value,
         response: serde_json::Value,
@@ -1301,7 +1301,7 @@ async fn jsonrpc_get_block_with_receipts_passes_response_flags() {
 async fn jsonrpc_get_block_with_tx_hashes_real_fixture() {
     let response = serde_json::json!({
         "block_hash": "0x18ba447106ed475cc14fe9e42fb62a39e254d9ef5251d7851cb0fe7bb5a5f8f",
-        "block_number": 7211391,
+        "block_number": 7_211_391,
         "event_commitment": "0x24d31e78b1ce40b29c6bc85f2bdde39600231c49d89f947a9dc8239f3a37df8",
         "event_count": 4,
         "l1_da_mode": "BLOB",
@@ -1325,7 +1325,7 @@ async fn jsonrpc_get_block_with_tx_hashes_real_fixture() {
         "state_diff_commitment": "0x3b3d141a38f07eb6452ad730e1411eb537fb4176ae741bd796056455b4bd910",
         "state_diff_length": 5,
         "status": "ACCEPTED_ON_L2",
-        "timestamp": 1770112757,
+        "timestamp": 1_770_112_757,
         "transaction_commitment": "0x54776cbd2c7c39422235c5fb8fb3864adbcb56a596c6bf1752195731003b86c",
         "transaction_count": 4,
         "transactions": [
@@ -1339,14 +1339,14 @@ async fn jsonrpc_get_block_with_tx_hashes_real_fixture() {
     let transport = MockTransportResponse::new(
         JsonRpcMethod::GetBlockWithTxHashes,
         json!({
-            "block_id": { "block_number": 7211391 }
+            "block_id": { "block_number": 7_211_391 }
         }),
         response,
     );
     let rpc_client = JsonRpcClient::new(transport);
 
     let block = rpc_client
-        .get_block_with_tx_hashes(BlockId::Number(7211391), None)
+        .get_block_with_tx_hashes(BlockId::Number(7_211_391), None)
         .await
         .unwrap();
 
@@ -1357,6 +1357,6 @@ async fn jsonrpc_get_block_with_tx_hashes_real_fixture() {
         }
     };
 
-    assert_eq!(block.block_number, 7211391);
+    assert_eq!(block.block_number, 7_211_391);
     assert_eq!(block.transactions.len(), 4);
 }
