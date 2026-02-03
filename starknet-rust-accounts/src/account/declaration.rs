@@ -7,6 +7,7 @@ use starknet_rust_core::types::{
     BroadcastedDeclareTransactionV3, BroadcastedTransaction, DataAvailabilityMode,
     DeclareTransactionResult, FeeEstimate, Felt, FlattenedSierraClass, ResourceBounds,
     ResourceBoundsMapping, SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
+    TransactionResponseFlag,
 };
 use starknet_rust_crypto::PoseidonHasher;
 use starknet_rust_providers::Provider;
@@ -43,6 +44,7 @@ impl<'a, A> DeclarationV3<'a, A> {
             account,
             contract_class,
             compiled_class_hash,
+            response_flags: None,
             nonce: None,
             l1_gas: None,
             l1_gas_price: None,
@@ -60,6 +62,14 @@ impl<'a, A> DeclarationV3<'a, A> {
     pub fn nonce(self, nonce: Felt) -> Self {
         Self {
             nonce: Some(nonce),
+            ..self
+        }
+    }
+
+    /// Returns a new [`DeclarationV3`] with `response_flags` used for block queries.
+    pub fn response_flags(self, response_flags: Vec<TransactionResponseFlag>) -> Self {
+        Self {
+            response_flags: Some(response_flags),
             ..self
         }
     }
@@ -271,7 +281,10 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_tx_hashes(self.account.block_id(), None)
+                            .get_block_with_tx_hashes(
+                                self.account.block_id(),
+                                self.response_flags.as_deref(),
+                            )
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -286,7 +299,10 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_txs(self.account.block_id(), None)
+                            .get_block_with_txs(
+                                self.account.block_id(),
+                                self.response_flags.as_deref(),
+                            )
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -352,7 +368,7 @@ where
                 None => self
                     .account
                     .provider()
-                    .get_block_with_txs(self.account.block_id(), None)
+                    .get_block_with_txs(self.account.block_id(), self.response_flags.as_deref())
                     .await
                     .map_err(AccountError::Provider)?,
             };

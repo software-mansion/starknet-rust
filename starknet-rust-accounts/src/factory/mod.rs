@@ -7,7 +7,7 @@ use starknet_rust_core::{
         BlockId, BlockTag, BroadcastedDeployAccountTransactionV3, BroadcastedTransaction,
         DataAvailabilityMode, DeployAccountTransactionResult, FeeEstimate, Felt, NonZeroFelt,
         ResourceBounds, ResourceBoundsMapping, SimulatedTransaction, SimulationFlag,
-        SimulationFlagForEstimateFee, StarknetError,
+        SimulationFlagForEstimateFee, StarknetError, TransactionResponseFlag,
     },
 };
 use starknet_rust_crypto::PoseidonHasher;
@@ -121,6 +121,7 @@ pub struct AccountDeploymentV3<'f, F> {
     salt: Felt,
     // We need to allow setting nonce here as `DeployAccount` transactions may have non-zero nonces
     /// after failed transactions can be included in blocks.
+    response_flags: Option<Vec<TransactionResponseFlag>>,
     nonce: Option<Felt>,
     l1_gas: Option<u64>,
     l1_gas_price: Option<u128>,
@@ -177,6 +178,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
         Self {
             factory,
             salt,
+            response_flags: None,
             nonce: None,
             l1_gas: None,
             l1_gas_price: None,
@@ -191,15 +193,23 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     }
 
     /// Returns a new [`AccountDeploymentV3`] with the `nonce`.
-    pub const fn nonce(self, nonce: Felt) -> Self {
+    pub fn nonce(self, nonce: Felt) -> Self {
         Self {
             nonce: Some(nonce),
             ..self
         }
     }
 
+    /// Returns a new [`AccountDeploymentV3`] with `response_flags` used for block queries.
+    pub fn response_flags(self, response_flags: Vec<TransactionResponseFlag>) -> Self {
+        Self {
+            response_flags: Some(response_flags),
+            ..self
+        }
+    }
+
     /// Returns a new [`AccountDeploymentV3`] with the `l1_gas`.
-    pub const fn l1_gas(self, l1_gas: u64) -> Self {
+    pub fn l1_gas(self, l1_gas: u64) -> Self {
         Self {
             l1_gas: Some(l1_gas),
             ..self
@@ -207,7 +217,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     }
 
     /// Returns a new [`AccountDeploymentV3`] with the `l1_gas_price`.
-    pub const fn l1_gas_price(self, l1_gas_price: u128) -> Self {
+    pub fn l1_gas_price(self, l1_gas_price: u128) -> Self {
         Self {
             l1_gas_price: Some(l1_gas_price),
             ..self
@@ -215,7 +225,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     }
 
     /// Returns a new [`AccountDeploymentV3`] with the `l2_gas`.
-    pub const fn l2_gas(self, l2_gas: u64) -> Self {
+    pub fn l2_gas(self, l2_gas: u64) -> Self {
         Self {
             l2_gas: Some(l2_gas),
             ..self
@@ -223,7 +233,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     }
 
     /// Returns a new [`AccountDeploymentV3`] with the `l2_gas_price`.
-    pub const fn l2_gas_price(self, l2_gas_price: u128) -> Self {
+    pub fn l2_gas_price(self, l2_gas_price: u128) -> Self {
         Self {
             l2_gas_price: Some(l2_gas_price),
             ..self
@@ -231,7 +241,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     }
 
     /// Returns a new [`AccountDeploymentV3`] with the `l1_data_gas`.
-    pub const fn l1_data_gas(self, l1_data_gas: u64) -> Self {
+    pub fn l1_data_gas(self, l1_data_gas: u64) -> Self {
         Self {
             l1_data_gas: Some(l1_data_gas),
             ..self
@@ -239,7 +249,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     }
 
     /// Returns a new [`AccountDeploymentV3`] with the `l1_data_gas_price`.
-    pub const fn l1_data_gas_price(self, l1_data_gas_price: u128) -> Self {
+    pub fn l1_data_gas_price(self, l1_data_gas_price: u128) -> Self {
         Self {
             l1_data_gas_price: Some(l1_data_gas_price),
             ..self
@@ -249,7 +259,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     /// Returns a new [`AccountDeploymentV3`] with the gas amount estimate multiplier.  The
     /// multiplier is used when the gas amount is not manually specified and must be fetched from a
     /// [`Provider`] instead.
-    pub const fn gas_estimate_multiplier(self, gas_estimate_multiplier: f64) -> Self {
+    pub fn gas_estimate_multiplier(self, gas_estimate_multiplier: f64) -> Self {
         Self {
             gas_estimate_multiplier,
             ..self
@@ -259,7 +269,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     /// Returns a new [`AccountDeploymentV3`] with the gas price estimate multiplier.  The
     /// multiplier is used when the gas price is not manually specified and must be fetched from a
     /// [`Provider`] instead.
-    pub const fn gas_price_estimate_multiplier(self, gas_price_estimate_multiplier: f64) -> Self {
+    pub fn gas_price_estimate_multiplier(self, gas_price_estimate_multiplier: f64) -> Self {
         Self {
             gas_price_estimate_multiplier,
             ..self
@@ -267,7 +277,7 @@ impl<'f, F> AccountDeploymentV3<'f, F> {
     }
 
     /// Returns a new [`AccountDeploymentV3`] with the `tip`.
-    pub const fn tip(self, tip: u64) -> Self {
+    pub fn tip(self, tip: u64) -> Self {
         Self {
             tip: Some(tip),
             ..self
@@ -430,7 +440,10 @@ where
                         let block = self
                             .factory
                             .provider()
-                            .get_block_with_tx_hashes(self.factory.block_id(), None)
+                            .get_block_with_tx_hashes(
+                                self.factory.block_id(),
+                                self.response_flags.as_deref(),
+                            )
                             .await
                             .map_err(AccountFactoryError::Provider)?;
                         (
@@ -445,7 +458,10 @@ where
                         let block = self
                             .factory
                             .provider()
-                            .get_block_with_txs(self.factory.block_id(), None)
+                            .get_block_with_txs(
+                                self.factory.block_id(),
+                                self.response_flags.as_deref(),
+                            )
                             .await
                             .map_err(AccountFactoryError::Provider)?;
                         (
@@ -517,7 +533,7 @@ where
                 None => self
                     .factory
                     .provider()
-                    .get_block_with_txs(self.factory.block_id(), None)
+                    .get_block_with_txs(self.factory.block_id(), self.response_flags.as_deref())
                     .await
                     .map_err(AccountFactoryError::Provider)?,
             };

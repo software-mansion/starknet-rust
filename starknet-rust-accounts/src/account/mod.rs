@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use auto_impl::auto_impl;
 use starknet_rust_core::types::{
     BlockId, BlockTag, Call, DataAvailabilityMode, Felt, FlattenedSierraClass,
-    contract::ComputeClassHashError,
+    TransactionResponseFlag, contract::ComputeClassHashError,
 };
 use starknet_rust_providers::{Provider, ProviderError};
 use starknet_rust_signers::SignerInteractivityContext;
@@ -164,6 +164,7 @@ pub trait ConnectedAccount: Account {
 pub struct ExecutionV3<'a, A> {
     account: &'a A,
     calls: Vec<Call>,
+    response_flags: Option<Vec<TransactionResponseFlag>>,
     nonce: Option<Felt>,
     l1_gas: Option<u64>,
     l1_gas_price: Option<u128>,
@@ -193,6 +194,7 @@ pub struct DeclarationV3<'a, A> {
     account: &'a A,
     contract_class: Arc<FlattenedSierraClass>,
     compiled_class_hash: Felt,
+    response_flags: Option<Vec<TransactionResponseFlag>>,
     nonce: Option<Felt>,
     l1_gas: Option<u64>,
     l1_gas_price: Option<u128>,

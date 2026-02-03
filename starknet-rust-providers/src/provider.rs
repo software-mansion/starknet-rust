@@ -55,6 +55,20 @@ pub trait Provider {
     where
         B: AsRef<BlockId> + Send + Sync;
 
+    /// Returns the version of the Starknet being used, with optional response flags for
+    /// fetching block metadata.
+    async fn starknet_version_with_flags<B>(
+        &self,
+        block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
+    ) -> Result<String, ProviderError>
+    where
+        B: AsRef<BlockId> + Send + Sync,
+    {
+        let _ = response_flags;
+        self.starknet_version(block_id).await
+    }
+
     /// Gets block information with transaction hashes given the block id.
     async fn get_block_with_tx_hashes<B>(
         &self,
