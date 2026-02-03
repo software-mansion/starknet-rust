@@ -913,6 +913,7 @@ impl TryFrom<&L1HandlerTransaction> for MsgToL2 {
 #[cfg(test)]
 mod tests {
     use super::{requests::*, *};
+    use serde_json::json;
 
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -1074,6 +1075,226 @@ mod tests {
                 contracts_storage_keys: None
             },
             serde_json::from_str(as_array).unwrap(),
+        );
+    }
+
+    fn minimal_invoke_trace_json() -> serde_json::Value {
+        json!({
+            "type": "INVOKE",
+            "validate_invocation": null,
+            "execute_invocation": {
+                "contract_address": "0x1",
+                "entry_point_selector": "0x1",
+                "calldata": [],
+                "caller_address": "0x0",
+                "class_hash": "0x1",
+                "entry_point_type": "EXTERNAL",
+                "call_type": "CALL",
+                "result": [],
+                "calls": [],
+                "events": [],
+                "messages": [],
+                "execution_resources": {
+                    "l1_gas": 0,
+                    "l2_gas": 0
+                },
+                "is_reverted": false
+            },
+            "fee_transfer_invocation": null,
+            "state_diff": null,
+            "execution_resources": {
+                "l1_gas": 0,
+                "l1_data_gas": 0,
+                "l2_gas": 0
+            }
+        })
+    }
+
+    fn sample_initial_reads_json() -> serde_json::Value {
+        json!({
+            "storage": [{
+                "contract_address": "0x1",
+                "key": "0x2",
+                "value": "0x3"
+            }],
+            "nonces": [{
+                "contract_address": "0x4",
+                "nonce": "0x5"
+            }],
+            "class_hashes": [{
+                "contract_address": "0x6",
+                "class_hash": "0x7"
+            }],
+            "declared_contracts": [{
+                "class_hash": "0x8",
+                "is_declared": true
+            }]
+        })
+    }
+
+    fn sample_fee_estimation_json() -> serde_json::Value {
+        json!({
+            "l1_gas_consumed": "0x0",
+            "l1_gas_price": "0x0",
+            "l2_gas_consumed": "0x0",
+            "l2_gas_price": "0x0",
+            "l1_data_gas_consumed": "0x0",
+            "l1_data_gas_price": "0x0",
+            "overall_fee": "0x0"
+        })
+    }
+
+    fn sample_resource_bounds_json() -> serde_json::Value {
+        json!({
+            "l1_gas": {
+                "max_amount": "0x1",
+                "max_price_per_unit": "0x2"
+            },
+            "l1_data_gas": {
+                "max_amount": "0x3",
+                "max_price_per_unit": "0x4"
+            },
+            "l2_gas": {
+                "max_amount": "0x5",
+                "max_price_per_unit": "0x6"
+            }
+        })
+    }
+
+    #[test]
+    fn v0101_address_filter_accepts_single() {
+        let input = json!({
+            "from_block": {"block_number": 0},
+            "to_block": {"block_number": 1},
+            "address": "0x1"
+        });
+
+        let filter: EventFilter = serde_json::from_value(input).unwrap();
+
+        assert_eq!(
+            filter.address,
+            Some(AddressFilter::Single(Felt::from_hex_unchecked("0x1")))
+        );
+    }
+
+    #[test]
+    fn v0101_address_filter_accepts_multiple() {
+        let input = json!({
+            "address": ["0x10", "0x20"]
+        });
+
+        let filter: EventFilter = serde_json::from_value(input).unwrap();
+
+        assert_eq!(
+            filter.address,
+            Some(AddressFilter::Multiple(vec![
+                Felt::from_hex_unchecked("0x10"),
+                Felt::from_hex_unchecked("0x20"),
+            ]))
+        );
+    }
+
+    #[test]
+    fn v0101_simulation_flag_return_initial_reads_serde() {
+        let value = serde_json::to_value(SimulationFlag::ReturnInitialReads).unwrap();
+        assert_eq!(value, json!("RETURN_INITIAL_READS"));
+    }
+
+    #[test]
+    fn v0101_trace_flag_return_initial_reads_serde() {
+        let value = serde_json::to_value(TraceFlag::ReturnInitialReads).unwrap();
+        assert_eq!(value, json!("RETURN_INITIAL_READS"));
+    }
+
+    #[test]
+    fn v0101_transaction_response_flag_include_proof_facts_serde() {
+        let value = serde_json::to_value(TransactionResponseFlag::IncludeProofFacts).unwrap();
+        assert_eq!(value, json!("INCLUDE_PROOF_FACTS"));
+    }
+
+    #[test]
+    fn v0101_subscription_tag_include_proof_facts_serde() {
+        let value = serde_json::to_value(SubscriptionTag::IncludeProofFacts).unwrap();
+        assert_eq!(value, json!("INCLUDE_PROOF_FACTS"));
+    }
+
+    #[test]
+    fn v0101_simulate_transactions_initial_reads_non_empty() {
+        let input = json!({
+            "simulated_transactions": [{
+                "transaction_trace": minimal_invoke_trace_json(),
+                "fee_estimation": sample_fee_estimation_json()
+            }],
+            "initial_reads": sample_initial_reads_json()
+        });
+
+        let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
+        let reads = result
+            .initial_reads
+            .expect("initial_reads should be present");
+        assert!(reads.storage.as_ref().is_some_and(|v| !v.is_empty()));
+        assert!(reads.nonces.as_ref().is_some_and(|v| !v.is_empty()));
+        assert!(reads.class_hashes.as_ref().is_some_and(|v| !v.is_empty()));
+        assert!(
+            reads
+                .declared_contracts
+                .as_ref()
+                .is_some_and(|v| !v.is_empty())
+        );
+    }
+
+    #[test]
+    fn v0101_trace_block_transactions_initial_reads_non_empty() {
+        let input = json!({
+            "traces": [{
+                "transaction_hash": "0x1",
+                "trace_root": minimal_invoke_trace_json()
+            }],
+            "initial_reads": sample_initial_reads_json()
+        });
+
+        let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
+        let reads = result
+            .initial_reads
+            .expect("initial_reads should be present");
+        assert!(reads.storage.as_ref().is_some_and(|v| !v.is_empty()));
+        assert!(reads.nonces.as_ref().is_some_and(|v| !v.is_empty()));
+        assert!(reads.class_hashes.as_ref().is_some_and(|v| !v.is_empty()));
+        assert!(
+            reads
+                .declared_contracts
+                .as_ref()
+                .is_some_and(|v| !v.is_empty())
+        );
+    }
+
+    #[test]
+    fn v0101_broadcasted_invoke_with_proof_facts_and_proof() {
+        let input = json!({
+            "type": "INVOKE",
+            "sender_address": "0x1",
+            "calldata": [],
+            "version": "0x3",
+            "signature": [],
+            "nonce": "0x1",
+            "resource_bounds": sample_resource_bounds_json(),
+            "tip": "0x0",
+            "paymaster_data": [],
+            "account_deployment_data": [],
+            "nonce_data_availability_mode": "L1",
+            "fee_data_availability_mode": "L2",
+            "proof_facts": ["0xabc", "0xdef"],
+            "proof": [11, 22]
+        });
+
+        let tx: BroadcastedInvokeTransaction = serde_json::from_value(input).unwrap();
+        assert_eq!(tx.proof, Some(vec![11, 22]));
+        assert_eq!(
+            tx.broadcasted_invoke_txn_v3.proof_facts,
+            Some(vec![
+                Felt::from_hex_unchecked("0xabc"),
+                Felt::from_hex_unchecked("0xdef"),
+            ])
         );
     }
 }
