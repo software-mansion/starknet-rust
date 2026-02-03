@@ -6,10 +6,12 @@ use super::{
     Block, BlockId, BlockStatus, CompressedLegacyContractClass, ConfirmedTransactionReceipt,
     DeclareTransaction, DeclareTransactionRequest, DeclareV3TransactionRequest,
     DeployAccountTransaction, DeployAccountTransactionRequest, DeployAccountV3TransactionRequest,
-    DeployTransaction, DeployedClass, EntryPointType, Event, InvokeFunctionTransaction,
-    InvokeFunctionTransactionRequest, InvokeFunctionV3TransactionRequest, L1HandlerTransaction,
-    L2ToL1Message, StateUpdate, TransactionExecutionStatus, TransactionFinalityStatus,
-    TransactionInfo, TransactionStatusInfo, TransactionType, contract,
+    DeployTransaction, DeployedClass, EntryPointType, Event, GatewayExecutionResources,
+    GatewayFunctionInvocation, GatewayGas, GatewayMsgToL1, GatewayTransactionTrace,
+    InvokeFunctionTransaction, InvokeFunctionTransactionRequest,
+    InvokeFunctionV3TransactionRequest, L1HandlerTransaction, L2ToL1Message, StateUpdate,
+    TransactionExecutionStatus, TransactionFinalityStatus, TransactionInfo, TransactionStatusInfo,
+    TransactionType, contract,
     state_update::{DeclaredContract, DeployedContract, StateDiff, StorageDiff},
     transaction::{DataAvailabilityMode, ResourceBounds, ResourceBoundsMapping},
 };
@@ -1110,5 +1112,302 @@ const fn convert_legacy_entry_point(
     contract_legacy::RawLegacyEntryPoint {
         offset: contract_legacy::LegacyEntrypointOffset::U64AsInt(value.offset),
         selector: value.selector,
+    }
+}
+
+pub(crate) fn map_gateway_trace(
+    transaction: &TransactionType,
+    trace: GatewayTransactionTrace,
+) -> Result<core::TransactionTrace, ConversionError> {
+    let execution_resources = trace_execution_resources(&trace)?;
+
+    Ok(match *transaction {
+        TransactionType::Declare(_) => {
+            core::TransactionTrace::Declare(core::DeclareTransactionTrace {
+                validate_invocation: trace
+                    .validate_invocation
+                    .map(map_gateway_function_invocation)
+                    .transpose()?,
+                fee_transfer_invocation: trace
+                    .fee_transfer_invocation
+                    .map(map_gateway_function_invocation)
+                    .transpose()?,
+                state_diff: None,
+                execution_resources,
+            })
+        }
+        TransactionType::DeployAccount(_) | TransactionType::Deploy(_) => {
+            let constructor_invocation = trace
+                .function_invocation
+                .map(map_gateway_function_invocation)
+                .transpose()?
+                .ok_or(ConversionError)?;
+            core::TransactionTrace::DeployAccount(core::DeployAccountTransactionTrace {
+                validate_invocation: trace
+                    .validate_invocation
+                    .map(map_gateway_function_invocation)
+                    .transpose()?,
+                constructor_invocation,
+                fee_transfer_invocation: trace
+                    .fee_transfer_invocation
+                    .map(map_gateway_function_invocation)
+                    .transpose()?,
+                state_diff: None,
+                execution_resources,
+            })
+        }
+        TransactionType::InvokeFunction(_) => {
+            let execute_invocation = match trace.revert_error {
+                Some(revert_reason) => {
+                    core::ExecuteInvocation::Reverted(core::RevertedInvocation { revert_reason })
+                }
+                None => core::ExecuteInvocation::Success(
+                    trace
+                        .function_invocation
+                        .map(map_gateway_function_invocation)
+                        .transpose()?
+                        .ok_or(ConversionError)?,
+                ),
+            };
+            core::TransactionTrace::Invoke(core::InvokeTransactionTrace {
+                validate_invocation: trace
+                    .validate_invocation
+                    .map(map_gateway_function_invocation)
+                    .transpose()?,
+                execute_invocation,
+                fee_transfer_invocation: trace
+                    .fee_transfer_invocation
+                    .map(map_gateway_function_invocation)
+                    .transpose()?,
+                state_diff: None,
+                execution_resources,
+            })
+        }
+        TransactionType::L1Handler(_) => {
+            let function_invocation = match trace.revert_error {
+                Some(revert_reason) => {
+                    core::ExecuteInvocation::Reverted(core::RevertedInvocation { revert_reason })
+                }
+                None => core::ExecuteInvocation::Success(
+                    trace
+                        .function_invocation
+                        .map(map_gateway_function_invocation)
+                        .transpose()?
+                        .ok_or(ConversionError)?,
+                ),
+            };
+            core::TransactionTrace::L1Handler(core::L1HandlerTransactionTrace {
+                function_invocation,
+                state_diff: None,
+                execution_resources,
+            })
+        }
+    })
+}
+
+fn map_gateway_function_invocation(
+    invocation: GatewayFunctionInvocation,
+) -> Result<core::FunctionInvocation, ConversionError> {
+    let entry_point_selector = invocation.selector.ok_or(ConversionError)?;
+    let call_type = invocation.call_type.ok_or(ConversionError)?.into();
+    let class_hash = invocation.class_hash.ok_or(ConversionError)?;
+    let entry_point_type = invocation.entry_point_type.ok_or(ConversionError)?;
+    let execution_resources = map_gateway_inner_call_resources(&invocation)?;
+    let contract_address = invocation.contract_address;
+
+    Ok(core::FunctionInvocation {
+        contract_address,
+        entry_point_selector,
+        calldata: invocation.calldata,
+        caller_address: invocation.caller_address,
+        class_hash,
+        entry_point_type,
+        call_type,
+        result: invocation.result,
+        calls: invocation
+            .internal_calls
+            .into_iter()
+            .map(map_gateway_function_invocation)
+            .collect::<Result<_, _>>()?,
+        events: invocation
+            .events
+            .into_iter()
+            .map(map_gateway_event)
+            .collect::<Result<_, _>>()?,
+        messages: invocation
+            .messages
+            .into_iter()
+            .map(|msg| map_gateway_message(msg, contract_address))
+            .collect::<Result<_, _>>()?,
+        execution_resources,
+        is_reverted: invocation.failed,
+    })
+}
+
+fn map_gateway_event(event: super::trace::Event) -> Result<core::OrderedEvent, ConversionError> {
+    let order = u64::try_from(event.order).map_err(|_| ConversionError)?;
+    Ok(core::OrderedEvent {
+        order,
+        keys: event.keys,
+        data: event.data,
+    })
+}
+
+fn map_gateway_message(
+    message: GatewayMsgToL1,
+    from_address: Felt,
+) -> Result<core::OrderedMessage, ConversionError> {
+    let order = u64::try_from(message.order).map_err(|_| ConversionError)?;
+    Ok(core::OrderedMessage {
+        order,
+        from_address,
+        to_address: message.to_address,
+        payload: message.payload,
+    })
+}
+
+fn trace_execution_resources(
+    trace: &GatewayTransactionTrace,
+) -> Result<core::ExecutionResources, ConversionError> {
+    let mut l1_gas: u128 = 0;
+    let mut l1_data_gas: u128 = 0;
+    let mut l2_gas: u128 = 0;
+
+    for invocation in [
+        trace.validate_invocation.as_ref(),
+        trace.function_invocation.as_ref(),
+        trace.fee_transfer_invocation.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        let gas = gas_from_resources(&invocation.execution_resources);
+        l1_gas = l1_gas.checked_add(gas.l1_gas).ok_or(ConversionError)?;
+        l1_data_gas = l1_data_gas
+            .checked_add(gas.l1_data_gas)
+            .ok_or(ConversionError)?;
+        let invocation_l2 = l2_gas_for_invocation(invocation, &gas);
+        l2_gas = l2_gas.checked_add(invocation_l2).ok_or(ConversionError)?;
+    }
+
+    Ok(core::ExecutionResources {
+        l1_gas: to_u64(l1_gas)?,
+        l1_data_gas: to_u64(l1_data_gas)?,
+        l2_gas: to_u64(l2_gas)?,
+    })
+}
+
+fn map_gateway_inner_call_resources(
+    invocation: &GatewayFunctionInvocation,
+) -> Result<core::InnerCallExecutionResources, ConversionError> {
+    let gas = gas_from_resources(&invocation.execution_resources);
+    Ok(core::InnerCallExecutionResources {
+        l1_gas: to_u64(gas.l1_gas)?,
+        l2_gas: to_u64(l2_gas_for_invocation(invocation, &gas))?,
+    })
+}
+
+fn gas_from_resources(resources: &GatewayExecutionResources) -> GatewayGas {
+    resources
+        .total_gas_consumed
+        .or(resources.data_availability)
+        .unwrap_or_default()
+}
+
+fn l2_gas_for_invocation(invocation: &GatewayFunctionInvocation, gas: &GatewayGas) -> u128 {
+    invocation.gas_consumed.or(gas.l2_gas).unwrap_or_default()
+}
+
+fn to_u64(value: u128) -> Result<u64, ConversionError> {
+    value.try_into().map_err(|_| ConversionError)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sequencer::models::InvokeFunctionTransaction;
+
+    #[test]
+    fn map_gateway_invoke_trace_success() {
+        let trace_json = r#"
+        {
+          "revert_error": null,
+          "validate_invocation": null,
+          "function_invocation": {
+            "caller_address": "0x0",
+            "contract_address": "0x1",
+            "calldata": ["0x2"],
+            "selector": "0x3",
+            "call_type": "CALL",
+            "class_hash": "0x4",
+            "entry_point_type": "EXTERNAL",
+            "result": ["0x5"],
+            "failed": false,
+            "execution_resources": {
+              "n_steps": 1,
+              "builtin_instance_counter": {},
+              "n_memory_holes": 0,
+              "total_gas_consumed": { "l1_gas": 3, "l1_data_gas": 4, "l2_gas": 5 }
+            },
+            "internal_calls": [],
+            "events": [{ "order": 0, "keys": ["0x6"], "data": ["0x7"] }],
+            "messages": [{ "order": 0, "payload": ["0x8"], "to_address": "0x9" }]
+          },
+          "fee_transfer_invocation": null,
+          "signature": [],
+          "transaction_hash": "0xabc"
+        }"#;
+
+        let trace: GatewayTransactionTrace = serde_json::from_str(trace_json).unwrap();
+
+        let transaction = TransactionType::InvokeFunction(InvokeFunctionTransaction {
+            sender_address: Felt::from_dec_str("1").unwrap(),
+            entry_point_selector: Some(Felt::from_dec_str("2").unwrap()),
+            calldata: vec![Felt::from_dec_str("3").unwrap()],
+            signature: vec![],
+            transaction_hash: Felt::from_dec_str("4").unwrap(),
+            max_fee: None,
+            nonce: None,
+            nonce_data_availability_mode: None,
+            fee_data_availability_mode: None,
+            resource_bounds: None,
+            tip: None,
+            paymaster_data: None,
+            account_deployment_data: None,
+            proof_facts: None,
+            version: Felt::from_dec_str("1").unwrap(),
+        });
+
+        let mapped = map_gateway_trace(&transaction, trace).unwrap();
+
+        match mapped {
+            core::TransactionTrace::Invoke(trace) => {
+                assert_eq!(trace.execution_resources.l1_gas, 3);
+                assert_eq!(trace.execution_resources.l1_data_gas, 4);
+                assert_eq!(trace.execution_resources.l2_gas, 5);
+
+                match trace.execute_invocation {
+                    core::ExecuteInvocation::Success(invocation) => {
+                        assert_eq!(
+                            invocation.contract_address,
+                            Felt::from_dec_str("1").unwrap()
+                        );
+                        assert_eq!(
+                            invocation.entry_point_selector,
+                            Felt::from_dec_str("3").unwrap()
+                        );
+                        assert_eq!(invocation.class_hash, Felt::from_dec_str("4").unwrap());
+                        assert_eq!(invocation.call_type, core::CallType::Call);
+                        assert_eq!(invocation.entry_point_type, core::EntryPointType::External);
+                        assert_eq!(invocation.execution_resources.l1_gas, 3);
+                        assert_eq!(invocation.execution_resources.l2_gas, 5);
+                        assert_eq!(invocation.events.len(), 1);
+                        assert_eq!(invocation.messages.len(), 1);
+                    }
+                    _ => panic!("expected successful invocation"),
+                }
+            }
+            _ => panic!("expected invoke trace"),
+        }
     }
 }

@@ -8,18 +8,22 @@ use starknet_rust_core::types::{
     BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
     ConfirmedBlockId, ContractClass, ContractStorageKeys, DeclareTransactionResult,
     DeployAccountTransactionResult, EventFilter, EventsPage, FeeEstimate, Felt, FunctionCall,
-    Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
+    Hash256, InitialReads, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1, ReceiptBlock,
     SimulateTransactionsResult, SimulationFlag, SimulationFlagForEstimateFee, StarknetError,
     StorageProof, SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
     TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionStatus, TransactionTrace,
+    TransactionTraceWithHash,
 };
 
 use crate::{
     Provider, ProviderError, ProviderRequestData, ProviderResponseData, SequencerGatewayProvider,
     provider::ProviderImplError,
-    sequencer::{GatewayClientError, models::conversions::ConversionError},
+    sequencer::{
+        GatewayClientError,
+        models::conversions::{ConversionError, map_gateway_trace},
+    },
 };
 
 use super::models::TransactionFinalityStatus;
@@ -497,17 +501,17 @@ impl Provider for SequencerGatewayProvider {
 
     async fn trace_transaction<H>(
         &self,
-        _transaction_hash: H,
+        transaction_hash: H,
     ) -> Result<TransactionTrace, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
     {
-        // With JSON-RPC v0.5.0 it's no longer possible to convert feeder traces to JSON-RPC traces. So we simply pretend that it's not supported here.
-        //
-        // This is fine as the feeder gateway is soon to be removed anyways.
-        Err(ProviderError::Other(Box::new(
-            GatewayClientError::MethodNotSupported,
-        )))
+        let transaction_hash = *transaction_hash.as_ref();
+        let transaction_info = self.get_transaction(transaction_hash).await?;
+        let transaction = transaction_info.r#type.ok_or(ConversionError)?;
+        let trace = self.get_transaction_trace(transaction_hash).await?;
+
+        Ok(map_gateway_trace(&transaction, trace)?)
     }
 
     async fn simulate_transactions<B, T, S>(
@@ -537,15 +541,45 @@ impl Provider for SequencerGatewayProvider {
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
     {
-        let _ = trace_flags;
-        let _ = block_id;
+        let block_id = match block_id.as_ref() {
+            ConfirmedBlockId::Hash(hash) => super::models::BlockId::Hash(*hash),
+            ConfirmedBlockId::Number(number) => super::models::BlockId::Number(*number),
+            ConfirmedBlockId::Latest => super::models::BlockId::Latest,
+            ConfirmedBlockId::L1Accepted => return Err(ConversionError.into()),
+        };
 
-        // With JSON-RPC v0.5.0 it's no longer possible to convert feeder traces to JSON-RPC traces. So we simply pretend that it's not supported here.
-        //
-        // This is fine as the feeder gateway is soon to be removed anyways.
-        Err(ProviderError::Other(Box::new(
-            GatewayClientError::MethodNotSupported,
-        )))
+        let block = self.get_block(block_id).await?;
+        let traces = self.get_block_traces(block_id).await?;
+
+        if block.transactions.len() != traces.traces.len() {
+            return Err(ConversionError.into());
+        }
+
+        let traces = block
+            .transactions
+            .into_iter()
+            .zip(traces.traces.into_iter())
+            .map(|(tx, trace)| {
+                Ok(TransactionTraceWithHash {
+                    transaction_hash: tx.transaction_hash(),
+                    trace_root: map_gateway_trace(&tx, trace)?,
+                })
+            })
+            .collect::<Result<Vec<_>, ProviderError>>()?;
+
+        let initial_reads = trace_flags
+            .is_some_and(|flags| flags.contains(&TraceFlag::ReturnInitialReads))
+            .then_some(InitialReads {
+                storage: None,
+                nonces: None,
+                class_hashes: None,
+                declared_contracts: None,
+            });
+
+        Ok(TraceBlockTransactionsResult {
+            traces,
+            initial_reads,
+        })
     }
 
     async fn batch_requests<R>(

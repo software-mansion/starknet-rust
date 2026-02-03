@@ -24,6 +24,13 @@ pub use transaction_receipt::{
     TransactionFinalityStatus, TransactionStatus,
 };
 
+mod trace;
+pub use trace::{
+    BlockTrace as GatewayBlockTrace, ExecutionResources as GatewayExecutionResources,
+    FunctionInvocation as GatewayFunctionInvocation, Gas as GatewayGas, MsgToL1 as GatewayMsgToL1,
+    TransactionTrace as GatewayTransactionTrace,
+};
+
 mod contract_addresses;
 pub use contract_addresses::ContractAddresses;
 

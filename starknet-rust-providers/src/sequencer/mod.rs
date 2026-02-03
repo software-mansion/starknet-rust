@@ -16,9 +16,9 @@ use url::Url;
 #[allow(unused)]
 pub mod models;
 use models::{
-    AddTransactionResult, Block, BlockId, ContractAddresses, DeployedClass, StateUpdate,
-    StateUpdateWithBlock, TransactionInfo, TransactionRequest, TransactionStatusInfo,
-    conversions::ConversionError,
+    AddTransactionResult, Block, BlockId, ContractAddresses, DeployedClass, GatewayBlockTrace,
+    GatewayTransactionTrace, StateUpdate, StateUpdateWithBlock, TransactionInfo,
+    TransactionRequest, TransactionStatusInfo, conversions::ConversionError,
 };
 
 // Allows sequencer gateway to be used as if it's jsonrpc.
@@ -289,6 +289,21 @@ impl SequencerGatewayProvider {
     #[deprecated(
         note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
     )]
+    pub async fn get_block_traces(
+        &self,
+        block_identifier: BlockId,
+    ) -> Result<GatewayBlockTrace, ProviderError> {
+        let mut request_url = self.extend_feeder_gateway_url("get_block_traces");
+        append_block_id(&mut request_url, block_identifier);
+
+        self.send_get_request::<GatewayResponse<_>>(request_url)
+            .await?
+            .into()
+    }
+
+    #[deprecated(
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+    )]
     pub async fn get_state_update(
         &self,
         block_identifier: BlockId,
@@ -382,6 +397,23 @@ impl SequencerGatewayProvider {
         transaction_hash: Felt,
     ) -> Result<TransactionInfo, ProviderError> {
         let mut request_url = self.extend_feeder_gateway_url("get_transaction");
+        request_url
+            .query_pairs_mut()
+            .append_pair("transactionHash", &format!("{transaction_hash:#x}"));
+
+        self.send_get_request::<GatewayResponse<_>>(request_url)
+            .await?
+            .into()
+    }
+
+    #[deprecated(
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+    )]
+    pub async fn get_transaction_trace(
+        &self,
+        transaction_hash: Felt,
+    ) -> Result<GatewayTransactionTrace, ProviderError> {
+        let mut request_url = self.extend_feeder_gateway_url("get_transaction_trace");
         request_url
             .query_pairs_mut()
             .append_pair("transactionHash", &format!("{transaction_hash:#x}"));
