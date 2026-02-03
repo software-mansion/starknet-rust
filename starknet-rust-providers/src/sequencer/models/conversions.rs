@@ -1404,7 +1404,9 @@ mod tests {
                         assert_eq!(invocation.events.len(), 1);
                         assert_eq!(invocation.messages.len(), 1);
                     }
-                    _ => panic!("expected successful invocation"),
+                    core::ExecuteInvocation::Reverted(_) => {
+                        panic!("expected successful invocation")
+                    }
                 }
             }
             _ => panic!("expected invoke trace"),
