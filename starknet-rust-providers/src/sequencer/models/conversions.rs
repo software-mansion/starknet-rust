@@ -396,7 +396,7 @@ impl TryFrom<InvokeFunctionTransaction> for core::InvokeTransaction {
                     .fee_data_availability_mode
                     .ok_or(ConversionError)?
                     .into(),
-                proof_facts: None,
+                proof_facts: value.proof_facts,
             }))
         } else {
             Err(ConversionError)

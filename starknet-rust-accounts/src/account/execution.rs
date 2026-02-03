@@ -335,7 +335,7 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_tx_hashes(self.account.block_id())
+                            .get_block_with_tx_hashes(self.account.block_id(), None)
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -350,7 +350,7 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_txs(self.account.block_id())
+                            .get_block_with_txs(self.account.block_id(), None)
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -416,7 +416,7 @@ where
                 None => self
                     .account
                     .provider()
-                    .get_block_with_txs(self.account.block_id())
+                    .get_block_with_txs(self.account.block_id(), None)
                     .await
                     .map_err(AccountError::Provider)?,
             };
@@ -829,5 +829,142 @@ where
             },
             proof: self.inner.proof.clone(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RawExecutionV3;
+    use crate::ExecutionEncoder;
+    use starknet_rust_core::types::{Call, DataAvailabilityMode, Felt};
+
+    struct DummyEncoder;
+
+    impl ExecutionEncoder for DummyEncoder {
+        fn encode_calls(&self, calls: &[Call]) -> Vec<Felt> {
+            let mut encoded = Vec::with_capacity(1 + calls.len() * 3);
+            encoded.push(Felt::from(calls.len() as u64));
+            for call in calls {
+                encoded.push(call.to);
+                encoded.push(call.selector);
+                encoded.extend(call.calldata.iter().copied());
+            }
+            encoded
+        }
+    }
+
+    fn sample_execution() -> RawExecutionV3 {
+        RawExecutionV3 {
+            calls: vec![Call {
+                to: Felt::from_hex_unchecked("0x1"),
+                selector: Felt::from_hex_unchecked("0x2"),
+                calldata: vec![Felt::from_hex_unchecked("0x3")],
+            }],
+            nonce: Felt::from_hex_unchecked("0x4"),
+            l1_gas: 10,
+            l1_gas_price: 11,
+            l2_gas: 12,
+            l2_gas_price: 13,
+            l1_data_gas: 14,
+            l1_data_gas_price: 15,
+            tip: 16,
+            paymaster_data: vec![Felt::from_hex_unchecked("0x17")],
+            account_deployment_data: vec![Felt::from_hex_unchecked("0x18")],
+            nonce_data_availability_mode: DataAvailabilityMode::L1,
+            fee_data_availability_mode: DataAvailabilityMode::L2,
+            proof_facts: None,
+            proof: None,
+        }
+    }
+
+    #[test]
+    fn raw_execution_v3_hash_is_deterministic() {
+        let execution = sample_execution();
+        let encoder = DummyEncoder;
+        let chain_id = Felt::from_hex_unchecked("0x1");
+        let address = Felt::from_hex_unchecked("0x2");
+
+        let hash_1 = execution.transaction_hash(chain_id, address, false, &encoder);
+        let hash_2 = execution.transaction_hash(chain_id, address, false, &encoder);
+
+        assert_eq!(hash_1, hash_2);
+    }
+
+    #[test]
+    fn raw_execution_v3_hash_changes_with_query_only() {
+        let execution = sample_execution();
+        let encoder = DummyEncoder;
+        let chain_id = Felt::from_hex_unchecked("0x1");
+        let address = Felt::from_hex_unchecked("0x2");
+
+        let hash_regular = execution.transaction_hash(chain_id, address, false, &encoder);
+        let hash_query = execution.transaction_hash(chain_id, address, true, &encoder);
+
+        assert_ne!(hash_regular, hash_query);
+    }
+
+    #[test]
+    fn raw_execution_v3_hash_changes_with_fee_fields() {
+        let mut execution = sample_execution();
+        let encoder = DummyEncoder;
+        let chain_id = Felt::from_hex_unchecked("0x1");
+        let address = Felt::from_hex_unchecked("0x2");
+
+        let hash_initial = execution.transaction_hash(chain_id, address, false, &encoder);
+
+        execution.l1_gas += 1;
+        let hash_l1_gas = execution.transaction_hash(chain_id, address, false, &encoder);
+        assert_ne!(hash_initial, hash_l1_gas);
+
+        execution.l1_data_gas_price += 1;
+        let hash_l1_data_price = execution.transaction_hash(chain_id, address, false, &encoder);
+        assert_ne!(hash_l1_gas, hash_l1_data_price);
+    }
+
+    #[test]
+    fn raw_execution_v3_hash_changes_with_calls_and_metadata() {
+        let mut execution = sample_execution();
+        let encoder = DummyEncoder;
+        let chain_id = Felt::from_hex_unchecked("0x1");
+        let address = Felt::from_hex_unchecked("0x2");
+
+        let hash_initial = execution.transaction_hash(chain_id, address, false, &encoder);
+
+        execution
+            .paymaster_data
+            .push(Felt::from_hex_unchecked("0x19"));
+        let hash_paymaster = execution.transaction_hash(chain_id, address, false, &encoder);
+        assert_ne!(hash_initial, hash_paymaster);
+
+        execution
+            .account_deployment_data
+            .push(Felt::from_hex_unchecked("0x1a"));
+        let hash_deployment = execution.transaction_hash(chain_id, address, false, &encoder);
+        assert_ne!(hash_paymaster, hash_deployment);
+
+        execution.calls.push(Call {
+            to: Felt::from_hex_unchecked("0x10"),
+            selector: Felt::from_hex_unchecked("0x20"),
+            calldata: vec![Felt::from_hex_unchecked("0x30")],
+        });
+        let hash_calls = execution.transaction_hash(chain_id, address, false, &encoder);
+        assert_ne!(hash_deployment, hash_calls);
+    }
+
+    #[test]
+    fn raw_execution_v3_hash_changes_with_data_availability_modes() {
+        let mut execution = sample_execution();
+        let encoder = DummyEncoder;
+        let chain_id = Felt::from_hex_unchecked("0x1");
+        let address = Felt::from_hex_unchecked("0x2");
+
+        let hash_initial = execution.transaction_hash(chain_id, address, false, &encoder);
+        execution.nonce_data_availability_mode = DataAvailabilityMode::L2;
+        let hash_nonce_mode = execution.transaction_hash(chain_id, address, false, &encoder);
+        assert_ne!(hash_initial, hash_nonce_mode);
+
+        execution.fee_data_availability_mode = DataAvailabilityMode::L1;
+        let hash_fee_mode = execution.transaction_hash(chain_id, address, false, &encoder);
+        assert_ne!(hash_nonce_mode, hash_fee_mode);
     }
 }

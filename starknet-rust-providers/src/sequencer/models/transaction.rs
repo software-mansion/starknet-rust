@@ -198,6 +198,8 @@ pub struct InvokeFunctionTransaction {
     pub paymaster_data: Option<Vec<Felt>>,
     #[serde_as(deserialize_as = "Option<Vec<UfeHex>>")]
     pub account_deployment_data: Option<Vec<Felt>>,
+    #[serde_as(deserialize_as = "Option<Vec<UfeHex>>")]
+    pub proof_facts: Option<Vec<Felt>>,
     #[serde_as(as = "UfeHex")]
     pub version: Felt,
 }

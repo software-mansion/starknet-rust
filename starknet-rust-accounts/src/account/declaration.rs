@@ -271,7 +271,7 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_tx_hashes(self.account.block_id())
+                            .get_block_with_tx_hashes(self.account.block_id(), None)
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -286,7 +286,7 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_txs(self.account.block_id())
+                            .get_block_with_txs(self.account.block_id(), None)
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -352,7 +352,7 @@ where
                 None => self
                     .account
                     .provider()
-                    .get_block_with_txs(self.account.block_id())
+                    .get_block_with_txs(self.account.block_id(), None)
                     .await
                     .map_err(AccountError::Provider)?,
             };

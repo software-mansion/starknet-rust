@@ -430,7 +430,7 @@ where
                         let block = self
                             .factory
                             .provider()
-                            .get_block_with_tx_hashes(self.factory.block_id())
+                            .get_block_with_tx_hashes(self.factory.block_id(), None)
                             .await
                             .map_err(AccountFactoryError::Provider)?;
                         (
@@ -445,7 +445,7 @@ where
                         let block = self
                             .factory
                             .provider()
-                            .get_block_with_txs(self.factory.block_id())
+                            .get_block_with_txs(self.factory.block_id(), None)
                             .await
                             .map_err(AccountFactoryError::Provider)?;
                         (
@@ -517,7 +517,7 @@ where
                 None => self
                     .factory
                     .provider()
-                    .get_block_with_txs(self.factory.block_id())
+                    .get_block_with_txs(self.factory.block_id(), None)
                     .await
                     .map_err(AccountFactoryError::Provider)?,
             };

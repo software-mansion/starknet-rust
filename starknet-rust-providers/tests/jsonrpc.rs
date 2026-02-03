@@ -1,3 +1,4 @@
+use serde_json::json;
 use starknet_rust_core::{
     types::{
         BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3,
@@ -8,12 +9,15 @@ use starknet_rust_core::{
         MaybePreConfirmedBlockWithTxs, MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds,
         ResourceBoundsMapping, SimulationFlagForEstimateFee, StarknetError, StorageKey,
         SyncStatusType, Transaction, TransactionFinalityStatus, TransactionReceipt,
-        TransactionStatus, TransactionTrace,
+        TransactionResponseFlag, TransactionStatus, TransactionTrace,
         requests::{CallRequest, GetBlockTransactionCountRequest},
     },
     utils::{get_selector_from_name, get_storage_var_address},
 };
-use starknet_rust_providers::{Provider, ProviderError, ProviderRequestData, ProviderResponseData};
+use starknet_rust_providers::{
+    Provider, ProviderError, ProviderRequestData, ProviderResponseData,
+    jsonrpc::{JsonRpcClient, JsonRpcError, JsonRpcMethod, JsonRpcResponse, JsonRpcTransport},
+};
 use test_common::create_jsonrpc_client;
 
 #[tokio::test]
@@ -42,7 +46,7 @@ async fn jsonrpc_get_block_with_tx_hashes_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::Latest))
+        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::Latest), None)
         .await
         .unwrap();
 
@@ -61,7 +65,7 @@ async fn jsonrpc_get_block_with_tx_hashes_with_l1_accepted() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::L1Accepted))
+        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::L1Accepted), None)
         .await
         .unwrap();
 
@@ -80,7 +84,7 @@ async fn jsonrpc_get_block_with_txs_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_txs(BlockId::Tag(BlockTag::Latest))
+        .get_block_with_txs(BlockId::Tag(BlockTag::Latest), None)
         .await
         .unwrap();
 
@@ -99,7 +103,7 @@ async fn jsonrpc_get_block_with_txs_with_l1_accepted() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_txs(BlockId::Tag(BlockTag::L1Accepted))
+        .get_block_with_txs(BlockId::Tag(BlockTag::L1Accepted), None)
         .await
         .unwrap();
 
@@ -118,7 +122,7 @@ async fn jsonrpc_get_block_with_receipts_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_receipts(BlockId::Tag(BlockTag::Latest))
+        .get_block_with_receipts(BlockId::Tag(BlockTag::Latest), None)
         .await
         .unwrap();
 
@@ -137,7 +141,7 @@ async fn jsonrpc_get_block_with_receipts_with_l1_accepted() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_receipts(BlockId::Tag(BlockTag::L1Accepted))
+        .get_block_with_receipts(BlockId::Tag(BlockTag::L1Accepted), None)
         .await
         .unwrap();
 
@@ -1105,3 +1109,254 @@ async fn jsonrpc_batch() {
 // NOTE: `addXxxxTransaction` methods are harder to test here since they require signatures. These
 // are integration tests anyways, so we might as well just leave the job to th tests in
 // `starknet-rust-accounts`.
+
+#[derive(Debug)]
+struct MockTransport {
+    expected_method: JsonRpcMethod,
+    expected_params: serde_json::Value,
+}
+
+impl MockTransport {
+    fn new(expected_method: JsonRpcMethod, expected_params: serde_json::Value) -> Self {
+        Self {
+            expected_method,
+            expected_params,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct MockTransportError(&'static str);
+
+impl std::fmt::Display for MockTransportError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for MockTransportError {}
+
+#[derive(Debug)]
+struct MockTransportResponse {
+    expected_method: JsonRpcMethod,
+    expected_params: serde_json::Value,
+    response: serde_json::Value,
+}
+
+impl MockTransportResponse {
+    fn new(
+        expected_method: JsonRpcMethod,
+        expected_params: serde_json::Value,
+        response: serde_json::Value,
+    ) -> Self {
+        Self {
+            expected_method,
+            expected_params,
+            response,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl JsonRpcTransport for MockTransport {
+    type Error = MockTransportError;
+
+    async fn send_request<P, R>(
+        &self,
+        method: JsonRpcMethod,
+        params: P,
+    ) -> Result<JsonRpcResponse<R>, Self::Error>
+    where
+        P: serde::Serialize + Send + Sync,
+        R: serde::de::DeserializeOwned + Send,
+    {
+        assert_eq!(
+            std::mem::discriminant(&method),
+            std::mem::discriminant(&self.expected_method)
+        );
+        let params_value = serde_json::to_value(params).map_err(|_| MockTransportError("serde"))?;
+        assert_eq!(params_value, self.expected_params);
+
+        Ok(JsonRpcResponse::Error {
+            id: 1,
+            error: JsonRpcError {
+                code: -32602,
+                message: "Invalid params".to_string(),
+                data: None,
+            },
+        })
+    }
+
+    async fn send_requests<R>(
+        &self,
+        _requests: R,
+    ) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, Self::Error>
+    where
+        R: AsRef<[ProviderRequestData]> + Send + Sync,
+    {
+        Err(MockTransportError("batch not supported"))
+    }
+}
+
+#[async_trait::async_trait]
+impl JsonRpcTransport for MockTransportResponse {
+    type Error = MockTransportError;
+
+    async fn send_request<P, R>(
+        &self,
+        method: JsonRpcMethod,
+        params: P,
+    ) -> Result<JsonRpcResponse<R>, Self::Error>
+    where
+        P: serde::Serialize + Send + Sync,
+        R: serde::de::DeserializeOwned + Send,
+    {
+        assert_eq!(
+            std::mem::discriminant(&method),
+            std::mem::discriminant(&self.expected_method)
+        );
+        let params_value = serde_json::to_value(params).map_err(|_| MockTransportError("serde"))?;
+        assert_eq!(params_value, self.expected_params);
+
+        let result = serde_json::from_value(self.response.clone())
+            .map_err(|_| MockTransportError("deserialize"))?;
+        Ok(JsonRpcResponse::Success { id: 1, result })
+    }
+
+    async fn send_requests<R>(
+        &self,
+        _requests: R,
+    ) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, Self::Error>
+    where
+        R: AsRef<[ProviderRequestData]> + Send + Sync,
+    {
+        Err(MockTransportError("batch not supported"))
+    }
+}
+
+#[tokio::test]
+async fn jsonrpc_get_block_with_tx_hashes_passes_response_flags() {
+    let transport = MockTransport::new(
+        JsonRpcMethod::GetBlockWithTxHashes,
+        json!({
+            "block_id": "latest",
+            "response_flags": ["INCLUDE_PROOF_FACTS"]
+        }),
+    );
+    let rpc_client = JsonRpcClient::new(transport);
+
+    let result = rpc_client
+        .get_block_with_tx_hashes(
+            BlockId::Tag(BlockTag::Latest),
+            Some(&[TransactionResponseFlag::IncludeProofFacts]),
+        )
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn jsonrpc_get_block_with_txs_passes_response_flags() {
+    let transport = MockTransport::new(
+        JsonRpcMethod::GetBlockWithTxs,
+        json!({
+            "block_id": "latest",
+            "response_flags": ["INCLUDE_PROOF_FACTS"]
+        }),
+    );
+    let rpc_client = JsonRpcClient::new(transport);
+
+    let result = rpc_client
+        .get_block_with_txs(
+            BlockId::Tag(BlockTag::Latest),
+            Some(&[TransactionResponseFlag::IncludeProofFacts]),
+        )
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn jsonrpc_get_block_with_receipts_passes_response_flags() {
+    let transport = MockTransport::new(
+        JsonRpcMethod::GetBlockWithReceipts,
+        json!({
+            "block_id": "latest",
+            "response_flags": ["INCLUDE_PROOF_FACTS"]
+        }),
+    );
+    let rpc_client = JsonRpcClient::new(transport);
+
+    let result = rpc_client
+        .get_block_with_receipts(
+            BlockId::Tag(BlockTag::Latest),
+            Some(&[TransactionResponseFlag::IncludeProofFacts]),
+        )
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn jsonrpc_get_block_with_tx_hashes_real_fixture() {
+    let response = serde_json::json!({
+        "block_hash": "0x18ba447106ed475cc14fe9e42fb62a39e254d9ef5251d7851cb0fe7bb5a5f8f",
+        "block_number": 7211391,
+        "event_commitment": "0x24d31e78b1ce40b29c6bc85f2bdde39600231c49d89f947a9dc8239f3a37df8",
+        "event_count": 4,
+        "l1_da_mode": "BLOB",
+        "l1_data_gas_price": {
+            "price_in_fri": "0x4530296738",
+            "price_in_wei": "0x7d4bc0"
+        },
+        "l1_gas_price": {
+            "price_in_fri": "0x42e1eb9ca2d9",
+            "price_in_wei": "0x791edaf9"
+        },
+        "l2_gas_price": {
+            "price_in_fri": "0x1dcd65000",
+            "price_in_wei": "0x35f86"
+        },
+        "new_root": "0x7d399831a5615f0e1fbb7c767daf85000dc7612a32339f8a1feca2719db0022",
+        "parent_hash": "0x6e199f96adc7eb55e754c33be72544086a787c31591d5bb6ce339c2b096f97c",
+        "receipt_commitment": "0x3eed2a1ce4967f9892a2c56bb533ed93d52eb27d5a08a73b714303efc5265b4",
+        "sequencer_address": "0x1176a1bd84444c89232ec27754698e5d2e7e1a7f1539f12027f28b23ec9f3d8",
+        "starknet_version": "0.14.1",
+        "state_diff_commitment": "0x3b3d141a38f07eb6452ad730e1411eb537fb4176ae741bd796056455b4bd910",
+        "state_diff_length": 5,
+        "status": "ACCEPTED_ON_L2",
+        "timestamp": 1770112757,
+        "transaction_commitment": "0x54776cbd2c7c39422235c5fb8fb3864adbcb56a596c6bf1752195731003b86c",
+        "transaction_count": 4,
+        "transactions": [
+            "0x20b3019a585b9f43003cba4110d4d88e60a007ae894cd7e50258e0f464a4d28",
+            "0x1045c1f475642d7c32b6576a6289d089e80ad948d36eb10fafe6eeed116e7b3",
+            "0x4677b940bbbf10a98fbea57125917e335fd4ceae76d74f3daf2e7ec71ce1f5b",
+            "0x430004085f3a4799e1fc83683ff82f358fbab77129c15d08cc2b025b14d336"
+        ]
+    });
+
+    let transport = MockTransportResponse::new(
+        JsonRpcMethod::GetBlockWithTxHashes,
+        json!({
+            "block_id": { "block_number": 7211391 }
+        }),
+        response,
+    );
+    let rpc_client = JsonRpcClient::new(transport);
+
+    let block = rpc_client
+        .get_block_with_tx_hashes(BlockId::Number(7211391), None)
+        .await
+        .unwrap();
+
+    let block = match block {
+        MaybePreConfirmedBlockWithTxHashes::Block(block) => block,
+        MaybePreConfirmedBlockWithTxHashes::PreConfirmedBlock(_) => {
+            panic!("unexpected block response type")
+        }
+    };
+
+    assert_eq!(block.block_number, 7211391);
+    assert_eq!(block.transactions.len(), 4);
+}
