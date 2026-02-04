@@ -65,7 +65,7 @@ pub struct FunctionInvocation {
     #[serde_as(as = "UfeHex")]
     pub caller_address: Felt,
     #[serde(default)]
-    pub internal_calls: Vec<FunctionInvocation>,
+    pub internal_calls: Vec<Self>,
     #[serde(default)]
     #[serde_as(as = "Option<UfeHex>")]
     pub class_hash: Option<Felt>,
