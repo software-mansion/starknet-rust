@@ -4,6 +4,7 @@ use futures_util::{SinkExt, stream::SplitSink};
 use rand::{RngCore, thread_rng};
 use starknet_rust_core::types::{
     ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus, SubscriptionId,
+    SubscriptionTag,
     requests::{
         SubscribeEventsRequest, SubscribeNewHeadsRequest, SubscribeNewTransactionReceiptsRequest,
         SubscribeNewTransactionsRequest, SubscribeTransactionStatusRequest, UnsubscribeRequest,
@@ -74,6 +75,7 @@ pub enum SubscribeWriteData {
     NewTransactions {
         finality_status: Option<Vec<L2TransactionStatus>>,
         sender_address: Option<Vec<Felt>>,
+        tags: Option<Vec<SubscriptionTag>>,
     },
 }
 
@@ -121,6 +123,7 @@ impl StreamWriteDriver {
         }
     }
 
+    #[allow(clippy::cognitive_complexity)]
     async fn handle_write_action(
         &mut self,
         action: Option<WriteAction>,
@@ -203,10 +206,12 @@ impl StreamWriteDriver {
                             SubscribeWriteData::NewTransactions {
                                 finality_status,
                                 sender_address,
+                                tags,
                             } => ProviderRequestData::SubscribeNewTransactions(
                                 SubscribeNewTransactionsRequest {
                                     finality_status,
                                     sender_address,
+                                    tags,
                                 },
                             ),
                         },

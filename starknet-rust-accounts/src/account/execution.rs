@@ -5,9 +5,10 @@ use super::{
 use crate::ExecutionEncoder;
 
 use starknet_rust_core::types::{
-    BroadcastedInvokeTransactionV3, BroadcastedTransaction, Call, DataAvailabilityMode,
-    FeeEstimate, Felt, InvokeTransactionResult, ResourceBounds, ResourceBoundsMapping,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
+    BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3, BroadcastedTransaction, Call,
+    DataAvailabilityMode, FeeEstimate, Felt, InvokeTransactionResult, ResourceBounds,
+    ResourceBoundsMapping, SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
+    TransactionResponseFlag,
 };
 use starknet_rust_crypto::PoseidonHasher;
 use starknet_rust_providers::Provider;
@@ -38,6 +39,7 @@ impl<'a, A> ExecutionV3<'a, A> {
         Self {
             account,
             calls,
+            response_flags: None,
             nonce: None,
             l1_gas: None,
             l1_gas_price: None,
@@ -48,6 +50,12 @@ impl<'a, A> ExecutionV3<'a, A> {
             gas_estimate_multiplier: 1.5,
             gas_price_estimate_multiplier: 1.5,
             tip: None,
+            paymaster_data: None,
+            account_deployment_data: None,
+            nonce_data_availability_mode: None,
+            fee_data_availability_mode: None,
+            proof_facts: None,
+            proof: None,
         }
     }
 
@@ -55,6 +63,14 @@ impl<'a, A> ExecutionV3<'a, A> {
     pub fn nonce(self, nonce: Felt) -> Self {
         Self {
             nonce: Some(nonce),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with `response_flags` used for block queries.
+    pub fn response_flags(self, response_flags: Vec<TransactionResponseFlag>) -> Self {
+        Self {
+            response_flags: Some(response_flags),
             ..self
         }
     }
@@ -135,6 +151,54 @@ impl<'a, A> ExecutionV3<'a, A> {
         }
     }
 
+    /// Returns a new [`ExecutionV3`] with the `paymaster_data`.
+    pub fn paymaster_data(self, paymaster_data: Vec<Felt>) -> Self {
+        Self {
+            paymaster_data: Some(paymaster_data),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `account_deployment_data`.
+    pub fn account_deployment_data(self, account_deployment_data: Vec<Felt>) -> Self {
+        Self {
+            account_deployment_data: Some(account_deployment_data),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `nonce_data_availability_mode`.
+    pub fn nonce_data_availability_mode(self, mode: DataAvailabilityMode) -> Self {
+        Self {
+            nonce_data_availability_mode: Some(mode),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `fee_data_availability_mode`.
+    pub fn fee_data_availability_mode(self, mode: DataAvailabilityMode) -> Self {
+        Self {
+            fee_data_availability_mode: Some(mode),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `proof_facts`.
+    pub fn proof_facts(self, proof_facts: Vec<Felt>) -> Self {
+        Self {
+            proof_facts: Some(proof_facts),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the transaction `proof`.
+    pub fn proof(self, proof: Vec<u64>) -> Self {
+        Self {
+            proof: Some(proof),
+            ..self
+        }
+    }
+
     /// Calling this function after manually specifying `nonce`, `gas` and `gas_price` turns
     /// [`ExecutionV3`] into [`PreparedExecutionV3`]. Returns `Err` if any field is `None`.
     pub fn prepared(self) -> Result<PreparedExecutionV3<'a, A>, NotPreparedError> {
@@ -146,6 +210,16 @@ impl<'a, A> ExecutionV3<'a, A> {
         let l1_data_gas = self.l1_data_gas.ok_or(NotPreparedError)?;
         let l1_data_gas_price = self.l1_data_gas_price.ok_or(NotPreparedError)?;
         let tip = self.tip.ok_or(NotPreparedError)?;
+        let paymaster_data = self.paymaster_data.unwrap_or_default();
+        let account_deployment_data = self.account_deployment_data.unwrap_or_default();
+        let nonce_data_availability_mode = self
+            .nonce_data_availability_mode
+            .unwrap_or(DataAvailabilityMode::L1);
+        let fee_data_availability_mode = self
+            .fee_data_availability_mode
+            .unwrap_or(DataAvailabilityMode::L1);
+        let proof_facts = self.proof_facts;
+        let proof = self.proof;
 
         Ok(PreparedExecutionV3 {
             account: self.account,
@@ -159,6 +233,12 @@ impl<'a, A> ExecutionV3<'a, A> {
                 l1_data_gas,
                 l1_data_gas_price,
                 tip,
+                paymaster_data,
+                account_deployment_data,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+                proof_facts,
+                proof,
             },
         })
     }
@@ -265,7 +345,10 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_tx_hashes(self.account.block_id())
+                            .get_block_with_tx_hashes(
+                                self.account.block_id(),
+                                self.response_flags.as_deref(),
+                            )
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -280,7 +363,10 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_txs(self.account.block_id())
+                            .get_block_with_txs(
+                                self.account.block_id(),
+                                self.response_flags.as_deref(),
+                            )
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -346,7 +432,7 @@ where
                 None => self
                     .account
                     .provider()
-                    .get_block_with_txs(self.account.block_id())
+                    .get_block_with_txs(self.account.block_id(), self.response_flags.as_deref())
                     .await
                     .map_err(AccountError::Provider)?,
             };
@@ -365,6 +451,16 @@ where
                 l1_data_gas,
                 l1_data_gas_price,
                 tip,
+                paymaster_data: self.paymaster_data.clone().unwrap_or_default(),
+                account_deployment_data: self.account_deployment_data.clone().unwrap_or_default(),
+                nonce_data_availability_mode: self
+                    .nonce_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                fee_data_availability_mode: self
+                    .fee_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         })
     }
@@ -389,6 +485,16 @@ where
                 l1_data_gas: 0,
                 l1_data_gas_price: 0,
                 tip: 0,
+                paymaster_data: self.paymaster_data.clone().unwrap_or_default(),
+                account_deployment_data: self.account_deployment_data.clone().unwrap_or_default(),
+                nonce_data_availability_mode: self
+                    .nonce_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                fee_data_availability_mode: self
+                    .fee_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         };
         let invoke = prepared
@@ -444,6 +550,16 @@ where
                 l1_data_gas: self.l1_data_gas.unwrap_or_default(),
                 l1_data_gas_price: self.l1_data_gas_price.unwrap_or_default(),
                 tip: self.tip.unwrap_or_default(),
+                paymaster_data: self.paymaster_data.clone().unwrap_or_default(),
+                account_deployment_data: self.account_deployment_data.clone().unwrap_or_default(),
+                nonce_data_availability_mode: self
+                    .nonce_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                fee_data_availability_mode: self
+                    .fee_data_availability_mode
+                    .unwrap_or(DataAvailabilityMode::L1),
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         };
         let invoke = prepared
@@ -526,17 +642,40 @@ impl RawExecutionV3 {
             fee_hasher.finalize()
         });
 
-        // Hard-coded empty `paymaster_data`
-        hasher.update(PoseidonHasher::new().finalize());
+        hasher.update({
+            let mut paymaster_hasher = PoseidonHasher::new();
+
+            self.paymaster_data
+                .iter()
+                .for_each(|element| paymaster_hasher.update(*element));
+
+            paymaster_hasher.finalize()
+        });
 
         hasher.update(chain_id);
         hasher.update(self.nonce);
 
-        // Hard-coded L1 DA mode for nonce and fee
-        hasher.update(Felt::ZERO);
+        let nonce_mode = match self.nonce_data_availability_mode {
+            DataAvailabilityMode::L1 => 0_u64,
+            DataAvailabilityMode::L2 => 1_u64,
+        };
+        let fee_mode = match self.fee_data_availability_mode {
+            DataAvailabilityMode::L1 => 0_u64,
+            DataAvailabilityMode::L2 => 1_u64,
+        };
+        let data_availability_modes = (nonce_mode << 32) + fee_mode;
 
-        // Hard-coded empty `account_deployment_data`
-        hasher.update(PoseidonHasher::new().finalize());
+        hasher.update(Felt::from(data_availability_modes));
+
+        hasher.update({
+            let mut deployment_hasher = PoseidonHasher::new();
+
+            self.account_deployment_data
+                .iter()
+                .for_each(|element| deployment_hasher.update(*element));
+
+            deployment_hasher.finalize()
+        });
 
         hasher.update({
             let mut calldata_hasher = PoseidonHasher::new();
@@ -548,6 +687,16 @@ impl RawExecutionV3 {
 
             calldata_hasher.finalize()
         });
+
+        if let Some(proof_facts) = &self.proof_facts {
+            let mut proof_facts_hasher = PoseidonHasher::new();
+
+            for element in proof_facts {
+                proof_facts_hasher.update(*element);
+            }
+
+            hasher.update(proof_facts_hasher.finalize());
+        }
 
         hasher.finalize()
     }
@@ -596,6 +745,36 @@ impl RawExecutionV3 {
     pub const fn tip(&self) -> u64 {
         self.tip
     }
+
+    /// Gets the `paymaster_data` of the execution request.
+    pub fn paymaster_data(&self) -> &[Felt] {
+        &self.paymaster_data
+    }
+
+    /// Gets the `account_deployment_data` of the execution request.
+    pub fn account_deployment_data(&self) -> &[Felt] {
+        &self.account_deployment_data
+    }
+
+    /// Gets the `nonce_data_availability_mode` of the execution request.
+    pub const fn nonce_data_availability_mode(&self) -> DataAvailabilityMode {
+        self.nonce_data_availability_mode
+    }
+
+    /// Gets the `fee_data_availability_mode` of the execution request.
+    pub const fn fee_data_availability_mode(&self) -> DataAvailabilityMode {
+        self.fee_data_availability_mode
+    }
+
+    /// Gets the `proof_facts` of the execution request.
+    pub fn proof_facts(&self) -> Option<&[Felt]> {
+        self.proof_facts.as_deref()
+    }
+
+    /// Gets the `proof` of the execution request.
+    pub fn proof(&self) -> Option<&[u64]> {
+        self.proof.as_deref()
+    }
 }
 
 impl<A> PreparedExecutionV3<'_, A>
@@ -639,41 +818,128 @@ where
         &self,
         query_only: bool,
         skip_signature: bool,
-    ) -> Result<BroadcastedInvokeTransactionV3, A::SignError> {
-        Ok(BroadcastedInvokeTransactionV3 {
-            sender_address: self.account.address(),
-            calldata: self.account.encode_calls(&self.inner.calls),
-            signature: if skip_signature {
-                vec![]
-            } else {
-                self.account
-                    .sign_execution_v3(&self.inner, query_only)
-                    .await?
+    ) -> Result<BroadcastedInvokeTransaction, A::SignError> {
+        Ok(BroadcastedInvokeTransaction {
+            broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3 {
+                sender_address: self.account.address(),
+                calldata: self.account.encode_calls(&self.inner.calls),
+                signature: if skip_signature {
+                    vec![]
+                } else {
+                    self.account
+                        .sign_execution_v3(&self.inner, query_only)
+                        .await?
+                },
+                nonce: self.inner.nonce,
+                resource_bounds: ResourceBoundsMapping {
+                    l1_gas: ResourceBounds {
+                        max_amount: self.inner.l1_gas,
+                        max_price_per_unit: self.inner.l1_gas_price,
+                    },
+                    l1_data_gas: ResourceBounds {
+                        max_amount: self.inner.l1_data_gas,
+                        max_price_per_unit: self.inner.l1_data_gas_price,
+                    },
+                    l2_gas: ResourceBounds {
+                        max_amount: self.inner.l2_gas,
+                        max_price_per_unit: self.inner.l2_gas_price,
+                    },
+                },
+                tip: self.inner.tip,
+                paymaster_data: self.inner.paymaster_data.clone(),
+                account_deployment_data: self.inner.account_deployment_data.clone(),
+                nonce_data_availability_mode: self.inner.nonce_data_availability_mode,
+                fee_data_availability_mode: self.inner.fee_data_availability_mode,
+                proof_facts: self.inner.proof_facts.clone(),
+                is_query: query_only,
             },
-            nonce: self.inner.nonce,
-            resource_bounds: ResourceBoundsMapping {
-                l1_gas: ResourceBounds {
-                    max_amount: self.inner.l1_gas,
-                    max_price_per_unit: self.inner.l1_gas_price,
-                },
-                l1_data_gas: ResourceBounds {
-                    max_amount: self.inner.l1_data_gas,
-                    max_price_per_unit: self.inner.l1_data_gas_price,
-                },
-                l2_gas: ResourceBounds {
-                    max_amount: self.inner.l2_gas,
-                    max_price_per_unit: self.inner.l2_gas_price,
-                },
-            },
-            tip: self.inner.tip,
-            // Hard-coded empty `paymaster_data`
-            paymaster_data: vec![],
-            // Hard-coded empty `account_deployment_data`
-            account_deployment_data: vec![],
-            // Hard-coded L1 DA mode for nonce and fee
+            proof: self.inner.proof.clone(),
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RawExecutionV3;
+    use crate::ExecutionEncoder;
+    use starknet_rust_core::chain_id;
+    use starknet_rust_core::types::{Call, DataAvailabilityMode, Felt};
+
+    struct FixedCalldataEncoder {
+        calldata: Vec<Felt>,
+    }
+
+    impl ExecutionEncoder for FixedCalldataEncoder {
+        fn encode_calls(&self, _calls: &[Call]) -> Vec<Felt> {
+            self.calldata.clone()
+        }
+    }
+
+    fn integration_invoke_v3_vector() -> (RawExecutionV3, FixedCalldataEncoder, Felt, Felt, Felt) {
+        // Vector sourced from integration-sepolia JSON-RPC (Invoke v3 transaction).
+        let calldata = vec![
+            Felt::from_hex_unchecked("0x2"),
+            Felt::from_hex_unchecked(
+                "0x3eaf27245e5a10286542e75c216d17432dd077984c86d37944ba7f5002d10d3",
+            ),
+            Felt::from_hex_unchecked(
+                "0x3604cea1cdb094a73a31144f14a3e5861613c008e1e879939ebc4827d10cd50",
+            ),
+            Felt::from_hex_unchecked("0x3"),
+            Felt::from_hex_unchecked(
+                "0x2c54954f9d126e741de59d7791e24831e4181c8909c98aaaf7a73165e4dd9fe",
+            ),
+            Felt::from_hex_unchecked(
+                "0x3d3da80997f8be5d16e9ae7ee6a4b5f7191d60765a1a6c219ab74269c85cf97",
+            ),
+            Felt::from_hex_unchecked("0x0"),
+            Felt::from_hex_unchecked(
+                "0x2a730fc5366a8932645ada40338487d5c272294d70a43dc2d53f03534f418ea",
+            ),
+            Felt::from_hex_unchecked(
+                "0x1136789e1c76159d9b9eca06fcef05bdcf77f5d51bd4d9e09f2bc8d7520d8e6",
+            ),
+            Felt::from_hex_unchecked("0x2"),
+            Felt::from_hex_unchecked("0x6d9d9d30b00f9330494791b6a9dd5814"),
+            Felt::from_hex_unchecked("0xbcea3baa836807afba45d75feffa4ea7"),
+        ];
+
+        let execution = RawExecutionV3 {
+            calls: Vec::new(),
+            nonce: Felt::from_hex_unchecked("0x8a1032"),
+            l1_gas: 0x11170,
+            l1_gas_price: 0x0008_d798_83d2_0000,
+            l2_gas: 0x05f5_e100,
+            l2_gas_price: 0x000b_a43b_7400,
+            l1_data_gas: 0x2710,
+            l1_data_gas_price: 0x0062_4487_2495_3354,
+            tip: 0x05f5_e100,
+            paymaster_data: Vec::new(),
+            account_deployment_data: Vec::new(),
             nonce_data_availability_mode: DataAvailabilityMode::L1,
             fee_data_availability_mode: DataAvailabilityMode::L1,
-            is_query: query_only,
-        })
+            proof_facts: None,
+            proof: None,
+        };
+
+        let encoder = FixedCalldataEncoder { calldata };
+        let chain = chain_id::SEPOLIA;
+        let sender = Felt::from_hex_unchecked(
+            "0x4f4e29add19afa12c868ba1f4439099f225403ff9a71fe667eebb50e13518d3",
+        );
+        let expected_hash = Felt::from_hex_unchecked(
+            "0x7748c9b24cd7ae114fe8c827b31075c1430e0e5b1b712ccb0445022728d0c3c",
+        );
+
+        (execution, encoder, chain, sender, expected_hash)
+    }
+
+    #[test]
+    fn raw_execution_v3_hash_matches_integration_vector() {
+        let (execution, encoder, chain, sender, expected_hash) = integration_invoke_v3_vector();
+
+        let hash = execution.transaction_hash(chain, sender, false, &encoder);
+
+        assert_eq!(hash, expected_hash);
     }
 }

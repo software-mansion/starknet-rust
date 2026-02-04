@@ -1,18 +1,23 @@
+use serde_json::json;
 use starknet_rust_core::{
     types::{
-        BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedTransaction, ConfirmedBlockId,
-        ContractClass, ContractStorageKeys, DataAvailabilityMode, DeclareTransaction,
-        DeployAccountTransaction, EthAddress, EventFilter, ExecuteInvocation, ExecutionResult,
-        Felt, FunctionCall, Hash256, InvokeTransaction, MaybePreConfirmedBlockWithReceipts,
-        MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
-        MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds, ResourceBoundsMapping,
-        StarknetError, StorageKey, SyncStatusType, Transaction, TransactionFinalityStatus,
-        TransactionReceipt, TransactionStatus, TransactionTrace,
+        BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3,
+        BroadcastedTransaction, ConfirmedBlockId, ContractClass, ContractStorageKeys,
+        DataAvailabilityMode, DeclareTransaction, DeployAccountTransaction, EthAddress,
+        EventFilter, ExecuteInvocation, ExecutionResult, Felt, FunctionCall, Hash256,
+        InvokeTransaction, MaybePreConfirmedBlockWithReceipts, MaybePreConfirmedBlockWithTxHashes,
+        MaybePreConfirmedBlockWithTxs, MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds,
+        ResourceBoundsMapping, SimulationFlagForEstimateFee, StarknetError, StorageKey,
+        SyncStatusType, Transaction, TransactionFinalityStatus, TransactionReceipt,
+        TransactionResponseFlag, TransactionStatus, TransactionTrace,
         requests::{CallRequest, GetBlockTransactionCountRequest},
     },
     utils::{get_selector_from_name, get_storage_var_address},
 };
-use starknet_rust_providers::{Provider, ProviderError, ProviderRequestData, ProviderResponseData};
+use starknet_rust_providers::{
+    Provider, ProviderError, ProviderRequestData, ProviderResponseData,
+    jsonrpc::{JsonRpcClient, JsonRpcError, JsonRpcMethod, JsonRpcResponse, JsonRpcTransport},
+};
 use test_common::create_jsonrpc_client;
 
 #[tokio::test]
@@ -41,7 +46,7 @@ async fn jsonrpc_get_block_with_tx_hashes_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::Latest))
+        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::Latest), None)
         .await
         .unwrap();
 
@@ -60,7 +65,7 @@ async fn jsonrpc_get_block_with_tx_hashes_with_l1_accepted() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::L1Accepted))
+        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::L1Accepted), None)
         .await
         .unwrap();
 
@@ -79,7 +84,7 @@ async fn jsonrpc_get_block_with_txs_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_txs(BlockId::Tag(BlockTag::Latest))
+        .get_block_with_txs(BlockId::Tag(BlockTag::Latest), None)
         .await
         .unwrap();
 
@@ -98,7 +103,7 @@ async fn jsonrpc_get_block_with_txs_with_l1_accepted() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_txs(BlockId::Tag(BlockTag::L1Accepted))
+        .get_block_with_txs(BlockId::Tag(BlockTag::L1Accepted), None)
         .await
         .unwrap();
 
@@ -117,7 +122,7 @@ async fn jsonrpc_get_block_with_receipts_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_receipts(BlockId::Tag(BlockTag::Latest))
+        .get_block_with_receipts(BlockId::Tag(BlockTag::Latest), None)
         .await
         .unwrap();
 
@@ -136,7 +141,7 @@ async fn jsonrpc_get_block_with_receipts_with_l1_accepted() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_receipts(BlockId::Tag(BlockTag::L1Accepted))
+        .get_block_with_receipts(BlockId::Tag(BlockTag::L1Accepted), None)
         .await
         .unwrap();
 
@@ -239,6 +244,7 @@ async fn jsonrpc_get_transaction_status_succeeded() {
         .get_transaction_status(
             Felt::from_hex("03f786ecc4955a2602c91a291328518ef866cb7f3d50e4b16fd42282952623aa")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -257,6 +263,7 @@ async fn jsonrpc_get_transaction_status_reverted() {
         .get_transaction_status(
             Felt::from_hex("02f00c7f28df2197196440747f97baa63d0851e3b0cfc2efedb6a88a7ef78cb1")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -280,6 +287,7 @@ async fn jsonrpc_get_transaction_by_hash_invoke_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("03f786ecc4955a2602c91a291328518ef866cb7f3d50e4b16fd42282952623aa")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -299,6 +307,7 @@ async fn jsonrpc_get_transaction_by_hash_l1_handler() {
         .get_transaction_by_hash(
             Felt::from_hex("0785c2ada3f53fbc66078d47715c27718f92e6e48b96372b36e5197de69b82b5")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -318,6 +327,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v0() {
         .get_transaction_by_hash(
             Felt::from_hex("030a541df2547ed9f94602c35daf61ce3a8e179ec75d26cbe34e0ec61f823695")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -337,6 +347,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("01936a09e5aaee208fc0f7cc826e126d421c3ac9aca2c789605e1e919e399185")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -356,6 +367,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v2() {
         .get_transaction_by_hash(
             Felt::from_hex("004cacc2bbdd5ec77b20e908f311ab27d6495b69761e929bb24ba02632716944")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -375,6 +387,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v3() {
         .get_transaction_by_hash(
             Felt::from_hex("054270d103c875a613e013d1fd555edcff2085feca9d7b4532243a8257fd5cf3")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -397,6 +410,7 @@ async fn jsonrpc_get_transaction_by_hash_deploy_account_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("024ed6b82e2f6d3a811ec180a25c1ccd0bdc7bdba8ebd709de2ed697a1e82193")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -416,6 +430,7 @@ async fn jsonrpc_get_transaction_by_hash_deploy_account_v3() {
         .get_transaction_by_hash(
             Felt::from_hex("011c67fb3a9a623b3190c9ac41ebf7f5dd421f2583344c498a30a7280c660f01")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -432,7 +447,7 @@ async fn jsonrpc_get_transaction_by_block_id_and_index() {
     let rpc_client = create_jsonrpc_client();
 
     let tx = rpc_client
-        .get_transaction_by_block_id_and_index(BlockId::Number(10_000), 1)
+        .get_transaction_by_block_id_and_index(BlockId::Number(10_000), 1, None)
         .await
         .unwrap();
 
@@ -448,7 +463,7 @@ async fn jsonrpc_get_transaction_by_hash_non_existent_tx() {
     let rpc_client = create_jsonrpc_client();
 
     let err = rpc_client
-        .get_transaction_by_hash(Felt::from_hex("1234").unwrap())
+        .get_transaction_by_hash(Felt::from_hex("1234").unwrap(), None)
         .await
         .unwrap_err();
 
@@ -468,6 +483,7 @@ async fn jsonrpc_get_transaction_receipt_invoke() {
         .get_transaction_receipt(
             Felt::from_hex("03f786ecc4955a2602c91a291328518ef866cb7f3d50e4b16fd42282952623aa")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -492,6 +508,7 @@ async fn jsonrpc_get_transaction_receipt_invoke_reverted() {
         .get_transaction_receipt(
             Felt::from_hex("02f00c7f28df2197196440747f97baa63d0851e3b0cfc2efedb6a88a7ef78cb1")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -515,8 +532,14 @@ async fn jsonrpc_get_transaction_receipt_l1_handler() {
     let tx_hash =
         Felt::from_hex("0785c2ada3f53fbc66078d47715c27718f92e6e48b96372b36e5197de69b82b5").unwrap();
 
-    let tx = rpc_client.get_transaction_by_hash(tx_hash).await.unwrap();
-    let receipt = rpc_client.get_transaction_receipt(tx_hash).await.unwrap();
+    let tx = rpc_client
+        .get_transaction_by_hash(tx_hash, None)
+        .await
+        .unwrap();
+    let receipt = rpc_client
+        .get_transaction_receipt(tx_hash, None)
+        .await
+        .unwrap();
 
     let Transaction::L1Handler(tx) = tx else {
         panic!("unexpected tx type")
@@ -544,6 +567,7 @@ async fn jsonrpc_get_transaction_receipt_declare() {
         .get_transaction_receipt(
             Felt::from_hex("01936a09e5aaee208fc0f7cc826e126d421c3ac9aca2c789605e1e919e399185")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -571,6 +595,7 @@ async fn jsonrpc_get_transaction_receipt_deploy_account() {
         .get_transaction_receipt(
             Felt::from_hex("024ed6b82e2f6d3a811ec180a25c1ccd0bdc7bdba8ebd709de2ed697a1e82193")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -712,62 +737,87 @@ async fn jsonrpc_call() {
 #[tokio::test]
 async fn jsonrpc_estimate_fee() {
     let rpc_client = create_jsonrpc_client();
+    let sender_address =
+        Felt::from_hex("0x4f4e29add19afa12c868ba1f4439099f225403ff9a71fe667eebb50e13518d3")
+            .unwrap();
+    let nonce = rpc_client
+        .get_nonce(BlockId::Tag(BlockTag::PreConfirmed), sender_address)
+        .await
+        .unwrap();
 
     let estimate = rpc_client
         .estimate_fee_single(
             BroadcastedTransaction::Invoke(BroadcastedInvokeTransaction {
-                signature: vec![
-                    Felt::from_hex(
-                        "000e25bc2c344b9a64887c614cebdf50c8c1a8b3e1af7f22e5bd9958ada216a6",
-                    )
-                    .unwrap(),
-                    Felt::from_hex(
-                        "01f676fc74cd4dd50ad0cc7a0131fed16d235f3d0afca51bcb4946dc7855b1ff",
-                    )
-                    .unwrap(),
-                ],
-                nonce: Felt::ONE,
-                sender_address: Felt::from_hex(
-                    "052d6e8f4fcebd83f4f5fdb7244cc917eadebf3a64109d4e8c2af09b7682a190",
-                )
-                .unwrap(),
-                calldata: vec![
-                    Felt::from_hex("1").unwrap(),
-                    Felt::from_hex(
-                        "04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-                    )
-                    .unwrap(),
-                    Felt::from_hex(
-                        "0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-                    )
-                    .unwrap(),
-                    Felt::from_hex("3").unwrap(),
-                    Felt::from_hex("1234").unwrap(),
-                    Felt::from_hex("1").unwrap(),
-                    Felt::from_hex("0").unwrap(),
-                ],
-                is_query: true,
-                resource_bounds: ResourceBoundsMapping {
-                    l1_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
+                broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3 {
+                    signature: vec![
+                        Felt::from_hex(
+                            "0xa9177cee8d654e10849d0bc64672598a84523efe7c17904472ea27f342f1a",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "0x6c5f68d004730866be5fec4ff30305b003bb65142df41abe75ca67531923d6",
+                        )
+                        .unwrap(),
+                    ],
+                    sender_address,
+                    nonce,
+                    calldata: vec![
+                        Felt::from_hex("0x2").unwrap(),
+                        Felt::from_hex(
+                            "0x2a730fc5366a8932645ada40338487d5c272294d70a43dc2d53f03534f418ea",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "0x27c3334165536f239cfd400ed956eabff55fc60de4fb56728b6a4f6b87db01c",
+                        )
+                        .unwrap(),
+                        Felt::from_hex("0x3").unwrap(),
+                        Felt::from_hex(
+                            "0x3eaf27245e5a10286542e75c216d17432dd077984c86d37944ba7f5002d10d3",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "0x382be990ca34815134e64a9ac28f41a907c62e5ad10547f97174362ab94dc89",
+                        )
+                        .unwrap(),
+                        Felt::from_hex("0x0").unwrap(),
+                        Felt::from_hex(
+                            "0x3eaf27245e5a10286542e75c216d17432dd077984c86d37944ba7f5002d10d3",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "0x1136789e1c76159d9b9eca06fcef05bdcf77f5d51bd4d9e09f2bc8d7520d8e6",
+                        )
+                        .unwrap(),
+                        Felt::from_hex("0x2").unwrap(),
+                        Felt::from_hex("0xb18280063f0ffc77f9f3fa35c20794bd").unwrap(),
+                        Felt::from_hex("0xc5001b52e4e2809dd262aa94070ea7a4").unwrap(),
+                    ],
+                    is_query: true,
+                    resource_bounds: ResourceBoundsMapping {
+                        l1_gas: ResourceBounds {
+                            max_amount: 70_000,
+                            max_price_per_unit: 2_488_849_860_263_936,
+                        },
+                        l1_data_gas: ResourceBounds {
+                            max_amount: 10_000,
+                            max_price_per_unit: 27_659_894_942_675_796,
+                        },
+                        l2_gas: ResourceBounds {
+                            max_amount: 100_000_000,
+                            max_price_per_unit: 50_000_000_000,
+                        },
                     },
-                    l1_data_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
-                    },
-                    l2_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
-                    },
+                    tip: 100_000_000,
+                    paymaster_data: Vec::default(),
+                    account_deployment_data: Vec::default(),
+                    nonce_data_availability_mode: DataAvailabilityMode::L1,
+                    fee_data_availability_mode: DataAvailabilityMode::L1,
+                    proof_facts: None,
                 },
-                tip: Default::default(),
-                paymaster_data: Vec::default(),
-                account_deployment_data: Vec::default(),
-                nonce_data_availability_mode: DataAvailabilityMode::L1,
-                fee_data_availability_mode: DataAvailabilityMode::L1,
+                proof: None,
             }),
-            [],
+            vec![SimulationFlagForEstimateFee::SkipValidate],
             BlockId::Tag(BlockTag::Latest),
         )
         .await
@@ -1059,3 +1109,254 @@ async fn jsonrpc_batch() {
 // NOTE: `addXxxxTransaction` methods are harder to test here since they require signatures. These
 // are integration tests anyways, so we might as well just leave the job to th tests in
 // `starknet-rust-accounts`.
+
+#[derive(Debug)]
+struct MockTransport {
+    expected_method: JsonRpcMethod,
+    expected_params: serde_json::Value,
+}
+
+impl MockTransport {
+    const fn new(expected_method: JsonRpcMethod, expected_params: serde_json::Value) -> Self {
+        Self {
+            expected_method,
+            expected_params,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct MockTransportError(&'static str);
+
+impl std::fmt::Display for MockTransportError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for MockTransportError {}
+
+#[derive(Debug)]
+struct MockTransportResponse {
+    expected_method: JsonRpcMethod,
+    expected_params: serde_json::Value,
+    response: serde_json::Value,
+}
+
+impl MockTransportResponse {
+    const fn new(
+        expected_method: JsonRpcMethod,
+        expected_params: serde_json::Value,
+        response: serde_json::Value,
+    ) -> Self {
+        Self {
+            expected_method,
+            expected_params,
+            response,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl JsonRpcTransport for MockTransport {
+    type Error = MockTransportError;
+
+    async fn send_request<P, R>(
+        &self,
+        method: JsonRpcMethod,
+        params: P,
+    ) -> Result<JsonRpcResponse<R>, Self::Error>
+    where
+        P: serde::Serialize + Send + Sync,
+        R: serde::de::DeserializeOwned + Send,
+    {
+        assert_eq!(
+            std::mem::discriminant(&method),
+            std::mem::discriminant(&self.expected_method)
+        );
+        let params_value = serde_json::to_value(params).map_err(|_| MockTransportError("serde"))?;
+        assert_eq!(params_value, self.expected_params);
+
+        Ok(JsonRpcResponse::Error {
+            id: 1,
+            error: JsonRpcError {
+                code: -32602,
+                message: "Invalid params".to_string(),
+                data: None,
+            },
+        })
+    }
+
+    async fn send_requests<R>(
+        &self,
+        _requests: R,
+    ) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, Self::Error>
+    where
+        R: AsRef<[ProviderRequestData]> + Send + Sync,
+    {
+        Err(MockTransportError("batch not supported"))
+    }
+}
+
+#[async_trait::async_trait]
+impl JsonRpcTransport for MockTransportResponse {
+    type Error = MockTransportError;
+
+    async fn send_request<P, R>(
+        &self,
+        method: JsonRpcMethod,
+        params: P,
+    ) -> Result<JsonRpcResponse<R>, Self::Error>
+    where
+        P: serde::Serialize + Send + Sync,
+        R: serde::de::DeserializeOwned + Send,
+    {
+        assert_eq!(
+            std::mem::discriminant(&method),
+            std::mem::discriminant(&self.expected_method)
+        );
+        let params_value = serde_json::to_value(params).map_err(|_| MockTransportError("serde"))?;
+        assert_eq!(params_value, self.expected_params);
+
+        let result = serde_json::from_value(self.response.clone())
+            .map_err(|_| MockTransportError("deserialize"))?;
+        Ok(JsonRpcResponse::Success { id: 1, result })
+    }
+
+    async fn send_requests<R>(
+        &self,
+        _requests: R,
+    ) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, Self::Error>
+    where
+        R: AsRef<[ProviderRequestData]> + Send + Sync,
+    {
+        Err(MockTransportError("batch not supported"))
+    }
+}
+
+#[tokio::test]
+async fn jsonrpc_get_block_with_tx_hashes_passes_response_flags() {
+    let transport = MockTransport::new(
+        JsonRpcMethod::GetBlockWithTxHashes,
+        json!({
+            "block_id": "latest",
+            "response_flags": ["INCLUDE_PROOF_FACTS"]
+        }),
+    );
+    let rpc_client = JsonRpcClient::new(transport);
+
+    let result = rpc_client
+        .get_block_with_tx_hashes(
+            BlockId::Tag(BlockTag::Latest),
+            Some(&[TransactionResponseFlag::IncludeProofFacts]),
+        )
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn jsonrpc_get_block_with_txs_passes_response_flags() {
+    let transport = MockTransport::new(
+        JsonRpcMethod::GetBlockWithTxs,
+        json!({
+            "block_id": "latest",
+            "response_flags": ["INCLUDE_PROOF_FACTS"]
+        }),
+    );
+    let rpc_client = JsonRpcClient::new(transport);
+
+    let result = rpc_client
+        .get_block_with_txs(
+            BlockId::Tag(BlockTag::Latest),
+            Some(&[TransactionResponseFlag::IncludeProofFacts]),
+        )
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn jsonrpc_get_block_with_receipts_passes_response_flags() {
+    let transport = MockTransport::new(
+        JsonRpcMethod::GetBlockWithReceipts,
+        json!({
+            "block_id": "latest",
+            "response_flags": ["INCLUDE_PROOF_FACTS"]
+        }),
+    );
+    let rpc_client = JsonRpcClient::new(transport);
+
+    let result = rpc_client
+        .get_block_with_receipts(
+            BlockId::Tag(BlockTag::Latest),
+            Some(&[TransactionResponseFlag::IncludeProofFacts]),
+        )
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn jsonrpc_get_block_with_tx_hashes_real_fixture() {
+    let response = serde_json::json!({
+        "block_hash": "0x18ba447106ed475cc14fe9e42fb62a39e254d9ef5251d7851cb0fe7bb5a5f8f",
+        "block_number": 7_211_391,
+        "event_commitment": "0x24d31e78b1ce40b29c6bc85f2bdde39600231c49d89f947a9dc8239f3a37df8",
+        "event_count": 4,
+        "l1_da_mode": "BLOB",
+        "l1_data_gas_price": {
+            "price_in_fri": "0x4530296738",
+            "price_in_wei": "0x7d4bc0"
+        },
+        "l1_gas_price": {
+            "price_in_fri": "0x42e1eb9ca2d9",
+            "price_in_wei": "0x791edaf9"
+        },
+        "l2_gas_price": {
+            "price_in_fri": "0x1dcd65000",
+            "price_in_wei": "0x35f86"
+        },
+        "new_root": "0x7d399831a5615f0e1fbb7c767daf85000dc7612a32339f8a1feca2719db0022",
+        "parent_hash": "0x6e199f96adc7eb55e754c33be72544086a787c31591d5bb6ce339c2b096f97c",
+        "receipt_commitment": "0x3eed2a1ce4967f9892a2c56bb533ed93d52eb27d5a08a73b714303efc5265b4",
+        "sequencer_address": "0x1176a1bd84444c89232ec27754698e5d2e7e1a7f1539f12027f28b23ec9f3d8",
+        "starknet_version": "0.14.1",
+        "state_diff_commitment": "0x3b3d141a38f07eb6452ad730e1411eb537fb4176ae741bd796056455b4bd910",
+        "state_diff_length": 5,
+        "status": "ACCEPTED_ON_L2",
+        "timestamp": 1_770_112_757,
+        "transaction_commitment": "0x54776cbd2c7c39422235c5fb8fb3864adbcb56a596c6bf1752195731003b86c",
+        "transaction_count": 4,
+        "transactions": [
+            "0x20b3019a585b9f43003cba4110d4d88e60a007ae894cd7e50258e0f464a4d28",
+            "0x1045c1f475642d7c32b6576a6289d089e80ad948d36eb10fafe6eeed116e7b3",
+            "0x4677b940bbbf10a98fbea57125917e335fd4ceae76d74f3daf2e7ec71ce1f5b",
+            "0x430004085f3a4799e1fc83683ff82f358fbab77129c15d08cc2b025b14d336"
+        ]
+    });
+
+    let transport = MockTransportResponse::new(
+        JsonRpcMethod::GetBlockWithTxHashes,
+        json!({
+            "block_id": { "block_number": 7_211_391 }
+        }),
+        response,
+    );
+    let rpc_client = JsonRpcClient::new(transport);
+
+    let block = rpc_client
+        .get_block_with_tx_hashes(BlockId::Number(7_211_391), None)
+        .await
+        .unwrap();
+
+    let block = match block {
+        MaybePreConfirmedBlockWithTxHashes::Block(block) => block,
+        MaybePreConfirmedBlockWithTxHashes::PreConfirmedBlock(_) => {
+            panic!("unexpected block response type")
+        }
+    };
+
+    assert_eq!(block.block_number, 7_211_391);
+    assert_eq!(block.transactions.len(), 4);
+}

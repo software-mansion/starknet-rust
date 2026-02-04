@@ -14,11 +14,11 @@ use starknet_rust_core::{
         InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
         MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
         MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
-        NoTraceAvailableErrorData, ResultPageRequest, SimulatedTransaction, SimulationFlag,
+        NoTraceAvailableErrorData, ResultPageRequest, SimulateTransactionsResult, SimulationFlag,
         SimulationFlagForEstimateFee, StarknetError, StorageKey, StorageProof, SubscriptionId,
-        SyncStatusType, Transaction, TransactionExecutionErrorData,
-        TransactionReceiptWithBlockInfo, TransactionStatus, TransactionTrace,
-        TransactionTraceWithHash,
+        SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
+        TransactionExecutionErrorData, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
+        TransactionStatus, TransactionTrace,
         requests::{
             AddDeclareTransactionRequest, AddDeclareTransactionRequestRef,
             AddDeployAccountTransactionRequest, AddDeployAccountTransactionRequestRef,
@@ -504,13 +504,13 @@ where
                         }
                         ProviderRequestData::SimulateTransactions(_) => {
                             ProviderResponseData::SimulateTransactions(
-                                Vec::<SimulatedTransaction>::deserialize(result)
+                                SimulateTransactionsResult::deserialize(result)
                                     .map_err(JsonRpcClientError::<T::Error>::JsonError)?,
                             )
                         }
                         ProviderRequestData::TraceBlockTransactions(_) => {
                             ProviderResponseData::TraceBlockTransactions(
-                                Vec::<TransactionTraceWithHash>::deserialize(result)
+                                TraceBlockTransactionsResult::deserialize(result)
                                     .map_err(JsonRpcClientError::<T::Error>::JsonError)?,
                             )
                         }
@@ -583,7 +583,7 @@ where
     where
         B: AsRef<BlockId> + Send + Sync,
     {
-        Ok(match self.get_block_with_tx_hashes(block_id).await? {
+        Ok(match self.get_block_with_tx_hashes(block_id, None).await? {
             MaybePreConfirmedBlockWithTxHashes::Block(block) => block.starknet_version,
             MaybePreConfirmedBlockWithTxHashes::PreConfirmedBlock(block) => block.starknet_version,
         })
@@ -593,6 +593,7 @@ where
     async fn get_block_with_tx_hashes<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithTxHashes, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
@@ -601,6 +602,7 @@ where
             JsonRpcMethod::GetBlockWithTxHashes,
             GetBlockWithTxHashesRequestRef {
                 block_id: block_id.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -610,6 +612,7 @@ where
     async fn get_block_with_txs<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithTxs, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
@@ -618,6 +621,7 @@ where
             JsonRpcMethod::GetBlockWithTxs,
             GetBlockWithTxsRequestRef {
                 block_id: block_id.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -627,6 +631,7 @@ where
     async fn get_block_with_receipts<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithReceipts, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
@@ -635,6 +640,7 @@ where
             JsonRpcMethod::GetBlockWithReceipts,
             GetBlockWithReceiptsRequestRef {
                 block_id: block_id.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -703,6 +709,7 @@ where
     async fn get_transaction_status<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<TransactionStatus, ProviderError>
     where
         H: AsRef<FeltPrimitive> + Send + Sync,
@@ -711,6 +718,7 @@ where
             JsonRpcMethod::GetTransactionStatus,
             GetTransactionStatusRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -720,6 +728,7 @@ where
     async fn get_transaction_by_hash<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         H: AsRef<FeltPrimitive> + Send + Sync,
@@ -728,6 +737,7 @@ where
             JsonRpcMethod::GetTransactionByHash,
             GetTransactionByHashRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -738,6 +748,7 @@ where
         &self,
         block_id: B,
         index: u64,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
@@ -747,6 +758,7 @@ where
             GetTransactionByBlockIdAndIndexRequestRef {
                 block_id: block_id.as_ref(),
                 index: &index,
+                response_flags,
             },
         )
         .await
@@ -756,6 +768,7 @@ where
     async fn get_transaction_receipt<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<TransactionReceiptWithBlockInfo, ProviderError>
     where
         H: AsRef<FeltPrimitive> + Send + Sync,
@@ -764,6 +777,7 @@ where
             JsonRpcMethod::GetTransactionReceipt,
             GetTransactionReceiptRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -1084,7 +1098,7 @@ where
         block_id: B,
         transactions: TX,
         simulation_flags: S,
-    ) -> Result<Vec<SimulatedTransaction>, ProviderError>
+    ) -> Result<SimulateTransactionsResult, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
         TX: AsRef<[BroadcastedTransaction]> + Send + Sync,
@@ -1105,7 +1119,8 @@ where
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
-    ) -> Result<Vec<TransactionTraceWithHash>, ProviderError>
+        trace_flags: Option<&[TraceFlag]>,
+    ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
     {
@@ -1113,6 +1128,7 @@ where
             JsonRpcMethod::TraceBlockTransactions,
             TraceBlockTransactionsRequestRef {
                 block_id: block_id.as_ref(),
+                trace_flags,
             },
         )
         .await

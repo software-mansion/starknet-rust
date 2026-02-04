@@ -1,12 +1,17 @@
 use std::time::{Duration, SystemTime};
 
-use starknet_rust_accounts::{ExecutionEncoding, SingleOwnerAccount};
-use starknet_rust_contract::{ContractFactory, UdcSelector};
+use starknet_rust_accounts::{
+    AccountError, ConnectedAccount, ExecutionEncoding, SingleOwnerAccount,
+};
+use starknet_rust_contract::{ContractFactory, DeploymentV3, UdcSelector};
 use starknet_rust_core::{
     chain_id,
-    types::{BlockId, BlockTag, ExecutionResult, Felt, contract::legacy::LegacyContractClass},
+    types::{
+        BlockId, BlockTag, ExecutionResult, Felt, InvokeTransactionResult, StarknetError,
+        contract::legacy::LegacyContractClass,
+    },
 };
-use starknet_rust_providers::Provider;
+use starknet_rust_providers::{Provider, ProviderError};
 use starknet_rust_signers::{LocalWallet, SigningKey};
 use test_common::{create_jsonrpc_client, shared_signer_lock};
 
@@ -77,18 +82,21 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
     let factory = ContractFactory::new_with_udc(class_hash, account, udc);
     let salt = SigningKey::from_random().secret_scalar();
 
-    let deployment = factory
-        .deploy_v3(vec![Felt::ONE], salt, unique)
-        .l1_gas(0)
-        .l1_gas_price(1_000_000_000_000_000)
-        .l2_gas(2_000_000)
-        .l2_gas_price(10_000_000_000)
-        .l1_data_gas(1000)
-        .l1_data_gas_price(100_000_000_000_000);
-    let deployed_address = deployment.deployed_address();
+    let constructor_calldata = vec![Felt::ONE];
+    let make_deployment = || {
+        factory
+            .deploy_v3(constructor_calldata.clone(), salt, unique)
+            .l1_gas(0)
+            .l1_gas_price(1_000_000_000_000_000)
+            .l2_gas(2_000_000)
+            .l2_gas_price(10_000_000_000)
+            .l1_data_gas(1000)
+            .l1_data_gas_price(100_000_000_000_000)
+    };
+    let deployed_address = make_deployment().deployed_address();
 
     let _guard = shared_signer_lock().await;
-    let transaction = deployment.send().await.unwrap();
+    let transaction = send_deployment_with_retry(make_deployment).await;
     watch_tx(
         &provider,
         transaction.transaction_hash,
@@ -111,7 +119,10 @@ where
     let deadline = SystemTime::now() + timeout;
 
     while SystemTime::now() <= deadline {
-        match provider.get_transaction_receipt(transaction_hash).await {
+        match provider
+            .get_transaction_receipt(transaction_hash, None)
+            .await
+        {
             Ok(receipt) => match receipt.receipt.execution_result() {
                 ExecutionResult::Succeeded => return,
                 ExecutionResult::Reverted { reason } => {
@@ -123,4 +134,30 @@ where
     }
 
     panic!("Timed out watching transaction {transaction_hash:#064x}");
+}
+
+const SEND_RETRY_COUNT: usize = 3;
+const SEND_RETRY_DELAY: Duration = Duration::from_secs(2);
+
+async fn send_deployment_with_retry<'a, A, F>(make_deployment: F) -> InvokeTransactionResult
+where
+    A: ConnectedAccount + Sync + 'a,
+    F: Fn() -> DeploymentV3<'a, A>,
+{
+    for attempt in 1..=SEND_RETRY_COUNT {
+        match make_deployment().send().await {
+            Ok(result) => return result,
+            Err(AccountError::Provider(ProviderError::StarknetError(
+                StarknetError::InvalidTransactionNonce(_),
+            ))) => {
+                if attempt < SEND_RETRY_COUNT {
+                    tokio::time::sleep(SEND_RETRY_DELAY).await;
+                } else {
+                    panic!("invalid nonce after {attempt} attempts");
+                }
+            }
+            Err(err) => panic!("unexpected error: {err:?}"),
+        }
+    }
+    unreachable!("retry loop must return or panic");
 }

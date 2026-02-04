@@ -8,18 +8,22 @@ use starknet_rust_core::types::{
     BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
     ConfirmedBlockId, ContractClass, ContractStorageKeys, DeclareTransactionResult,
     DeployAccountTransactionResult, EventFilter, EventsPage, FeeEstimate, Felt, FunctionCall,
-    Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
+    Hash256, InitialReads, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
-    MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError,
-    StorageProof, SyncStatusType, Transaction, TransactionReceiptWithBlockInfo, TransactionStatus,
-    TransactionTrace, TransactionTraceWithHash,
+    MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1, ReceiptBlock,
+    SimulateTransactionsResult, SimulationFlag, SimulationFlagForEstimateFee, StarknetError,
+    StorageProof, SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
+    TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionStatus, TransactionTrace,
+    TransactionTraceWithHash,
 };
 
 use crate::{
     Provider, ProviderError, ProviderRequestData, ProviderResponseData, SequencerGatewayProvider,
     provider::ProviderImplError,
-    sequencer::{GatewayClientError, models::conversions::ConversionError},
+    sequencer::{
+        GatewayClientError,
+        models::conversions::{ConversionError, map_gateway_trace},
+    },
 };
 
 use super::models::TransactionFinalityStatus;
@@ -37,19 +41,39 @@ impl Provider for SequencerGatewayProvider {
     where
         B: AsRef<BlockId> + Send + Sync,
     {
-        Ok(match self.get_block_with_tx_hashes(block_id).await? {
-            MaybePreConfirmedBlockWithTxHashes::Block(block) => block.starknet_version,
-            MaybePreConfirmedBlockWithTxHashes::PreConfirmedBlock(block) => block.starknet_version,
-        })
+        self.starknet_version_with_flags(block_id, None).await
+    }
+
+    async fn starknet_version_with_flags<B>(
+        &self,
+        block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
+    ) -> Result<String, ProviderError>
+    where
+        B: AsRef<BlockId> + Send + Sync,
+    {
+        Ok(
+            match self
+                .get_block_with_tx_hashes(block_id, response_flags)
+                .await?
+            {
+                MaybePreConfirmedBlockWithTxHashes::Block(block) => block.starknet_version,
+                MaybePreConfirmedBlockWithTxHashes::PreConfirmedBlock(block) => {
+                    block.starknet_version
+                }
+            },
+        )
     }
 
     async fn get_block_with_tx_hashes<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithTxHashes, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
+        let _ = response_flags;
         Ok(self
             .get_block(block_id.as_ref().to_owned().try_into()?)
             .await?
@@ -59,10 +83,12 @@ impl Provider for SequencerGatewayProvider {
     async fn get_block_with_txs<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithTxs, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
+        let _ = response_flags;
         Ok(self
             .get_block(block_id.as_ref().to_owned().try_into()?)
             .await?
@@ -72,10 +98,12 @@ impl Provider for SequencerGatewayProvider {
     async fn get_block_with_receipts<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithReceipts, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
+        let _ = response_flags;
         Ok(self
             .get_block(block_id.as_ref().to_owned().try_into()?)
             .await?
@@ -128,10 +156,13 @@ impl Provider for SequencerGatewayProvider {
     async fn get_transaction_status<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<TransactionStatus, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
     {
+        let _ = response_flags;
+
         let status = self
             .get_transaction_status(*transaction_hash.as_ref())
             .await?;
@@ -152,10 +183,13 @@ impl Provider for SequencerGatewayProvider {
     async fn get_transaction_by_hash<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
     {
+        let _ = response_flags;
+
         Ok(self
             .get_transaction(*transaction_hash.as_ref())
             .await?
@@ -166,10 +200,13 @@ impl Provider for SequencerGatewayProvider {
         &self,
         block_id: B,
         index: u64,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
+        let _ = response_flags;
+
         let mut block = self
             .get_block(block_id.as_ref().to_owned().try_into()?)
             .await?;
@@ -187,14 +224,61 @@ impl Provider for SequencerGatewayProvider {
     async fn get_transaction_receipt<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<TransactionReceiptWithBlockInfo, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
     {
-        // Deprecated since Starknet v0.12.3
-        Err(ProviderError::Other(Box::new(
-            GatewayClientError::MethodNotSupported,
-        )))
+        let _ = response_flags;
+        let transaction_hash = *transaction_hash.as_ref();
+
+        let tx_info = self.get_transaction(transaction_hash).await?;
+        let block_id = match (tx_info.block_hash, tx_info.block_number) {
+            (Some(hash), _) => BlockId::Hash(hash),
+            (None, Some(number)) => BlockId::Number(number),
+            (None, None) => {
+                return Err(ProviderError::StarknetError(
+                    StarknetError::TransactionHashNotFound,
+                ));
+            }
+        };
+
+        let block = self.get_block(block_id.try_into()?).await?;
+        if block.transactions.len() != block.transaction_receipts.len() {
+            return Err(ConversionError.into());
+        }
+
+        let block_info = match (block.block_hash, block.block_number) {
+            (Some(block_hash), Some(block_number)) => ReceiptBlock::Block {
+                block_hash,
+                block_number,
+            },
+            (None, Some(block_number)) => ReceiptBlock::PreConfirmed { block_number },
+            _ => return Err(ConversionError.into()),
+        };
+
+        let finality = block.status;
+        let transactions = block.transactions;
+        let receipts = block.transaction_receipts;
+
+        for (transaction, receipt) in transactions.into_iter().zip(receipts.into_iter()) {
+            if receipt.transaction_hash == transaction_hash {
+                let receipt = crate::sequencer::models::conversions::ConfirmedReceiptWithContext {
+                    receipt,
+                    transaction,
+                    finality,
+                };
+                let receipt = starknet_rust_core::types::TransactionReceipt::try_from(receipt)?;
+                return Ok(TransactionReceiptWithBlockInfo {
+                    receipt,
+                    block: block_info,
+                });
+            }
+        }
+
+        Err(ProviderError::StarknetError(
+            StarknetError::TransactionHashNotFound,
+        ))
     }
 
     async fn get_class<B, H>(
@@ -417,17 +501,17 @@ impl Provider for SequencerGatewayProvider {
 
     async fn trace_transaction<H>(
         &self,
-        _transaction_hash: H,
+        transaction_hash: H,
     ) -> Result<TransactionTrace, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
     {
-        // With JSON-RPC v0.5.0 it's no longer possible to convert feeder traces to JSON-RPC traces. So we simply pretend that it's not supported here.
-        //
-        // This is fine as the feeder gateway is soon to be removed anyways.
-        Err(ProviderError::Other(Box::new(
-            GatewayClientError::MethodNotSupported,
-        )))
+        let transaction_hash = *transaction_hash.as_ref();
+        let transaction_info = self.get_transaction(transaction_hash).await?;
+        let transaction = transaction_info.r#type.ok_or(ConversionError)?;
+        let trace = self.get_transaction_trace(transaction_hash).await?;
+
+        Ok(map_gateway_trace(&transaction, trace)?)
     }
 
     async fn simulate_transactions<B, T, S>(
@@ -435,7 +519,7 @@ impl Provider for SequencerGatewayProvider {
         block_id: B,
         transactions: T,
         simulation_flags: S,
-    ) -> Result<Vec<SimulatedTransaction>, ProviderError>
+    ) -> Result<SimulateTransactionsResult, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
         T: AsRef<[BroadcastedTransaction]> + Send + Sync,
@@ -452,16 +536,50 @@ impl Provider for SequencerGatewayProvider {
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
-    ) -> Result<Vec<TransactionTraceWithHash>, ProviderError>
+        trace_flags: Option<&[TraceFlag]>,
+    ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
     {
-        // With JSON-RPC v0.5.0 it's no longer possible to convert feeder traces to JSON-RPC traces. So we simply pretend that it's not supported here.
-        //
-        // This is fine as the feeder gateway is soon to be removed anyways.
-        Err(ProviderError::Other(Box::new(
-            GatewayClientError::MethodNotSupported,
-        )))
+        let block_id = match block_id.as_ref() {
+            ConfirmedBlockId::Hash(hash) => super::models::BlockId::Hash(*hash),
+            ConfirmedBlockId::Number(number) => super::models::BlockId::Number(*number),
+            ConfirmedBlockId::Latest => super::models::BlockId::Latest,
+            ConfirmedBlockId::L1Accepted => return Err(ConversionError.into()),
+        };
+
+        let block = self.get_block(block_id).await?;
+        let traces = self.get_block_traces(block_id).await?;
+
+        if block.transactions.len() != traces.traces.len() {
+            return Err(ConversionError.into());
+        }
+
+        let traces = block
+            .transactions
+            .into_iter()
+            .zip(traces.traces.into_iter())
+            .map(|(tx, trace)| {
+                Ok(TransactionTraceWithHash {
+                    transaction_hash: tx.transaction_hash(),
+                    trace_root: map_gateway_trace(&tx, trace)?,
+                })
+            })
+            .collect::<Result<Vec<_>, ProviderError>>()?;
+
+        let initial_reads = trace_flags
+            .is_some_and(|flags| flags.contains(&TraceFlag::ReturnInitialReads))
+            .then_some(InitialReads {
+                storage: None,
+                nonces: None,
+                class_hashes: None,
+                declared_contracts: None,
+            });
+
+        Ok(TraceBlockTransactionsResult {
+            traces,
+            initial_reads,
+        })
     }
 
     async fn batch_requests<R>(

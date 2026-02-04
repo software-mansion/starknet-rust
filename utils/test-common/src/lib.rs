@@ -4,7 +4,9 @@ use std::sync::OnceLock;
 use tokio::sync::{Mutex, MutexGuard};
 
 pub fn create_jsonrpc_client() -> JsonRpcClient<HttpTransport> {
-    let url = url::Url::parse("http://188.34.188.184:7070/rpc/v0_10").unwrap();
+    let url = std::env::var("STARKNET_RPC_URL")
+        .unwrap_or_else(|_| "http://188.34.188.184:7070/rpc/v0_10".to_string());
+    let url = url::Url::parse(&url).unwrap();
     JsonRpcClient::new(HttpTransport::new(url))
 }
 
