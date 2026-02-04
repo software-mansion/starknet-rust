@@ -688,6 +688,18 @@ impl RawExecutionV3 {
             calldata_hasher.finalize()
         });
 
+        hasher.update({
+            let mut proof_facts_hasher = PoseidonHasher::new();
+
+            if let Some(proof_facts) = &self.proof_facts {
+                for element in proof_facts {
+                    proof_facts_hasher.update(*element);
+                }
+            }
+
+            proof_facts_hasher.finalize()
+        });
+
         hasher.finalize()
     }
 
