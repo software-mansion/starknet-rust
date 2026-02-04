@@ -757,6 +757,80 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_encode_struct_named_generic() {
+        #[derive(Encode)]
+        #[starknet(core = "crate")]
+        struct CairoType<A: IntoIterator, B>
+        where
+            B: Eq,
+        {
+            a: A::Item,
+            b: B,
+        }
+
+        let mut serialized = Vec::new();
+        CairoType::<Vec<_>, _> { a: 10u128, b: true }
+            .encode(&mut serialized)
+            .unwrap();
+        assert_eq!(
+            serialized,
+            vec![Felt::from_str("10").unwrap(), Felt::from_str("1").unwrap(),]
+        );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_encode_struct_tuple_generic() {
+        #[derive(Encode)]
+        #[starknet(core = "crate")]
+        struct CairoType<A: IntoIterator, B>(A::Item, B)
+        where
+            B: Eq;
+
+        let mut serialized = Vec::new();
+        CairoType::<Vec<_>, _>(10u128, true)
+            .encode(&mut serialized)
+            .unwrap();
+        assert_eq!(
+            serialized,
+            vec![Felt::from_str("10").unwrap(), Felt::from_str("1").unwrap(),]
+        );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_encode_enum_generic() {
+        #[derive(Encode)]
+        #[starknet(core = "crate")]
+        enum CairoType<A: IntoIterator, B>
+        where
+            B: Eq,
+        {
+            A(A::Item),
+            B(B),
+        }
+
+        let mut serialized = Vec::<Felt>::new();
+        CairoType::<Vec<_>, bool>::A(10u128)
+            .encode(&mut serialized)
+            .unwrap();
+        assert_eq!(
+            serialized,
+            vec![Felt::from_str("0").unwrap(), Felt::from_str("10").unwrap()]
+        );
+
+        serialized.clear();
+        CairoType::<Vec<u128>, _>::B(true)
+            .encode(&mut serialized)
+            .unwrap();
+        assert_eq!(
+            serialized,
+            vec![Felt::from_str("1").unwrap(), Felt::from_str("1").unwrap()]
+        );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_derive_encode_struct_named() {
         #[derive(Encode)]
         #[starknet(core = "crate")]
@@ -1164,6 +1238,68 @@ mod tests {
                 Felt::from_str("0").unwrap()
             ])
             .unwrap()
+        );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_decode_struct_named_generic() {
+        #[derive(Debug, PartialEq, Eq, Decode)]
+        #[starknet(core = "crate")]
+        struct CairoType<A: IntoIterator, B>
+        where
+            B: Eq,
+        {
+            a: A::Item,
+            b: B,
+        }
+
+        assert_eq!(
+            CairoType::<Vec<_>, _> { a: 10u128, b: true },
+            CairoType::decode(&[Felt::from_str("10").unwrap(), Felt::from_str("1").unwrap()])
+                .unwrap()
+        );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_decode_struct_tuple_generic() {
+        #[derive(Debug, PartialEq, Eq, Decode)]
+        #[starknet(core = "crate")]
+        struct CairoType<A: IntoIterator, B>(A::Item, B)
+        where
+            B: Eq;
+
+        assert_eq!(
+            CairoType::<Vec<_>, _>(10u128, true),
+            CairoType::decode(&[Felt::from_str("10").unwrap(), Felt::from_str("1").unwrap(),])
+                .unwrap()
+        );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_decode_enum_generic() {
+        #[derive(Debug, PartialEq, Eq, Decode)]
+        #[starknet(core = "crate")]
+        enum CairoType<A: IntoIterator, B>
+        where
+            B: Eq,
+        {
+            A(A::Item),
+            B { b: B },
+        }
+
+        assert_eq!(
+            CairoType::<Vec<_>, bool>::A(10u128),
+            CairoType::decode(&[Felt::from_str("0").unwrap(), Felt::from_str("10").unwrap(),])
+                .unwrap()
+        );
+
+        assert_eq!(
+            CairoType::<Vec<u128>, _>::B { b: true },
+            CairoType::decode(&[Felt::from_str("1").unwrap(), Felt::from_str("1").unwrap(),])
+                .unwrap()
         );
     }
 }
