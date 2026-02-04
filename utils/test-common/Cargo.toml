@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 starknet-rust-providers.workspace = true
+tokio = { workspace = true, features = ["sync"] }
 url.workspace = true
 
 [lints]
