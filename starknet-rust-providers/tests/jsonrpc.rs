@@ -733,10 +733,9 @@ async fn jsonrpc_call() {
 #[tokio::test]
 async fn jsonrpc_estimate_fee() {
     let rpc_client = create_jsonrpc_client();
-    let sender_address = Felt::from_hex(
-        "0x4f4e29add19afa12c868ba1f4439099f225403ff9a71fe667eebb50e13518d3",
-    )
-    .unwrap();
+    let sender_address =
+        Felt::from_hex("0x4f4e29add19afa12c868ba1f4439099f225403ff9a71fe667eebb50e13518d3")
+            .unwrap();
     let nonce = rpc_client
         .get_nonce(BlockId::Tag(BlockTag::PreConfirmed), sender_address)
         .await
