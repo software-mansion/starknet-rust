@@ -81,6 +81,7 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
 
     let factory = ContractFactory::new_with_udc(class_hash, account, udc);
     let salt = SigningKey::from_random().secret_scalar();
+
     let constructor_calldata = vec![Felt::ONE];
     let make_deployment = || {
         factory
@@ -136,7 +137,7 @@ where
 }
 
 const SEND_RETRY_COUNT: usize = 3;
-const SEND_RETRY_DELAY: Duration = Duration::from_secs(1);
+const SEND_RETRY_DELAY: Duration = Duration::from_secs(2);
 
 async fn send_deployment_with_retry<'a, A, F>(make_deployment: F) -> InvokeTransactionResult
 where
@@ -148,10 +149,14 @@ where
             Ok(result) => return result,
             Err(AccountError::Provider(ProviderError::StarknetError(
                 StarknetError::InvalidTransactionNonce(_),
-            ))) if attempt < SEND_RETRY_COUNT => {
-                tokio::time::sleep(SEND_RETRY_DELAY).await;
+            ))) => {
+                if attempt < SEND_RETRY_COUNT {
+                    tokio::time::sleep(SEND_RETRY_DELAY).await;
+                } else {
+                    panic!("invalid nonce after {attempt} attempts");
+                }
             }
-            Err(err) => panic!("contract deployment failed: {err:?}"),
+            Err(err) => panic!("unexpected error: {err:?}"),
         }
     }
     unreachable!("retry loop must return or panic");

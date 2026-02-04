@@ -1,5 +1,5 @@
 use starknet_rust_accounts::{
-    Account, AccountError, ConnectedAccount, ExecutionEncoding, SingleOwnerAccount,
+    Account, AccountError, ConnectedAccount, ExecutionEncoding, ExecutionV3, SingleOwnerAccount,
 };
 use starknet_rust_core::{
     types::{Call, ContractExecutionError, Felt, StarknetError, contract::SierraClass},
@@ -7,8 +7,12 @@ use starknet_rust_core::{
 };
 use starknet_rust_providers::{Provider, ProviderError, SequencerGatewayProvider};
 use starknet_rust_signers::{LocalWallet, SigningKey};
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use test_common::{create_jsonrpc_client, shared_signer_lock};
+use tokio::time::sleep;
 
 /// Cairo short string encoding for `SN_SEPOLIA`.
 const CHAIN_ID: Felt = Felt::from_raw([
@@ -17,6 +21,11 @@ const CHAIN_ID: Felt = Felt::from_raw([
     18_446_744_073_708_869_172,
     1_555_806_712_078_248_243,
 ]);
+const RECEIPT_TIMEOUT_SECS: u64 = 120;
+const RECEIPT_TIMEOUT: Duration = Duration::from_secs(RECEIPT_TIMEOUT_SECS);
+const RECEIPT_POLL_INTERVAL: Duration = Duration::from_secs(2);
+const SEND_RETRY_COUNT: usize = 3;
+const SEND_RETRY_DELAY: Duration = Duration::from_secs(2);
 
 fn create_sequencer_client() -> SequencerGatewayProvider {
     SequencerGatewayProvider::starknet_alpha_sepolia()
@@ -198,17 +207,15 @@ async fn can_execute_eth_transfer_invoke_v3_inner<P: Provider + Send + Sync>(
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
     let _guard = shared_signer_lock().await;
-    let result = account
-        .execute_v3(vec![Call {
+    let calldata = vec![Felt::from_hex("0x1234").unwrap(), Felt::ONE, Felt::ZERO];
+    send_and_wait_for_receipt(&account, |account| {
+        account.execute_v3(vec![Call {
             to: eth_token_address,
             selector: get_selector_from_name("transfer").unwrap(),
-            calldata: vec![Felt::from_hex("0x1234").unwrap(), Felt::ONE, Felt::ZERO],
+            calldata: calldata.clone(),
         }])
-        .send()
-        .await
-        .unwrap();
-
-    assert!(result.transaction_hash > Felt::ZERO);
+    })
+    .await;
 }
 
 async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + Send + Sync>(
@@ -230,29 +237,28 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + 
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
     let _guard = shared_signer_lock().await;
-    let result = account
-        .execute_v3(vec![Call {
-            to: eth_token_address,
-            selector: get_selector_from_name("transfer").unwrap(),
-            calldata: vec![
-                Felt::from_hex("0x1234").unwrap(),
-                Felt::from_dec_str("10000000000000000000").unwrap(),
-                Felt::ZERO,
-            ],
-        }])
-        .l1_gas(0)
-        .l1_gas_price(1_000_000_000_000_000)
-        .l2_gas(1_000_000)
-        .l2_gas_price(10_000_000_000)
-        .l1_data_gas(1000)
-        .l1_data_gas_price(100_000_000_000_000)
-        // This tx costs around 10^6 L2 gas. So a tip of 10^10 is around 10^16 FRI (0.01 STRK).
-        .tip(10_000_000_000)
-        .send()
-        .await
-        .unwrap();
-
-    assert!(result.transaction_hash > Felt::ZERO);
+    let calldata = vec![
+        Felt::from_hex("0x1234").unwrap(),
+        Felt::from_dec_str("10000000000000000000").unwrap(),
+        Felt::ZERO,
+    ];
+    send_and_wait_for_receipt(&account, |account| {
+        account
+            .execute_v3(vec![Call {
+                to: eth_token_address,
+                selector: get_selector_from_name("transfer").unwrap(),
+                calldata: calldata.clone(),
+            }])
+            .l1_gas(0)
+            .l1_gas_price(1_000_000_000_000_000)
+            .l2_gas(1_000_000)
+            .l2_gas_price(10_000_000_000)
+            .l1_data_gas(1000)
+            .l1_data_gas_price(100_000_000_000_000)
+            // This tx costs around 10^6 L2 gas. So a tip of 10^10 is around 10^16 FRI (0.01 STRK).
+            .tip(10_000_000_000)
+    })
+    .await;
 }
 
 async fn can_estimate_declare_v3_fee_inner<P: Provider + Send + Sync>(provider: P, address: &str) {
@@ -355,4 +361,58 @@ async fn can_declare_cairo1_contract_v3_inner<P: Provider + Send + Sync>(
         .unwrap();
 
     assert!(result.transaction_hash > Felt::ZERO);
+}
+
+async fn wait_for_receipt<P: Provider + Send + Sync>(
+    provider: &P,
+    tx_hash: Felt,
+) -> starknet_rust_core::types::TransactionReceiptWithBlockInfo {
+    let deadline = Instant::now() + RECEIPT_TIMEOUT;
+    loop {
+        match provider.get_transaction_receipt(tx_hash, None).await {
+            Ok(receipt) => return receipt,
+            Err(ProviderError::StarknetError(StarknetError::TransactionHashNotFound)) => {
+                if Instant::now() < deadline {
+                    sleep(RECEIPT_POLL_INTERVAL).await;
+                } else {
+                    panic!("timeout waiting for receipt for tx {tx_hash:?}");
+                }
+            }
+            Err(err) => panic!("unexpected error while waiting for receipt: {err:?}"),
+        }
+    }
+}
+
+async fn send_and_wait_for_receipt<'a, A, F>(account: &'a A, make_execution: F)
+where
+    A: ConnectedAccount + Sync,
+    A::Provider: Send + Sync,
+    F: Fn(&'a A) -> ExecutionV3<'a, A>,
+{
+    let tx_hash = send_with_retry(account, make_execution).await;
+    let receipt = wait_for_receipt(account.provider(), tx_hash).await;
+    assert_eq!(receipt.receipt.transaction_hash(), &tx_hash);
+}
+
+async fn send_with_retry<'a, A, F>(account: &'a A, make_execution: F) -> Felt
+where
+    A: ConnectedAccount + Sync,
+    F: Fn(&'a A) -> ExecutionV3<'a, A>,
+{
+    for attempt in 1..=SEND_RETRY_COUNT {
+        match make_execution(account).send().await {
+            Ok(result) => return result.transaction_hash,
+            Err(AccountError::Provider(ProviderError::StarknetError(
+                StarknetError::DuplicateTx | StarknetError::InvalidTransactionNonce(_),
+            ))) => {
+                if attempt < SEND_RETRY_COUNT {
+                    sleep(SEND_RETRY_DELAY).await;
+                } else {
+                    panic!("retryable nonce error after {attempt} attempts");
+                }
+            }
+            Err(err) => panic!("unexpected error: {err:?}"),
+        }
+    }
+    unreachable!("retry loop must return or panic");
 }
