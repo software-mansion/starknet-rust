@@ -46,7 +46,7 @@ impl SigningKey {
         rng.fill(&mut buffer);
 
         let random_u256 = U256::from_be_slice(&buffer);
-        let secret_scalar = random_u256.rem(&prime);
+        let secret_scalar = random_u256.rem(&ec_range);
 
         // It's safe to unwrap here as we're 100% sure it's not out of range
         let secret_scalar = Felt::from_bytes_be_slice(&secret_scalar.to_be_bytes());
