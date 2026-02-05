@@ -36,8 +36,8 @@ pub enum KeystoreError {
 impl SigningKey {
     /// Generates a new key pair from a cryptographically secure RNG.
     pub fn from_random() -> Self {
-        let prime: NonZero<U256> = NonZero::new(U256::from_be_hex(
-            "0800000000000011000000000000000000000000000000000000000000000001",
+        let ec_range: NonZero<U256> = NonZero::new(U256::from_be_hex(
+            "800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f",
         ))
         .unwrap();
 
@@ -46,7 +46,7 @@ impl SigningKey {
         rng.fill(&mut buffer);
 
         let random_u256 = U256::from_be_slice(&buffer);
-        let secret_scalar = random_u256.rem(&prime);
+        let secret_scalar = random_u256.rem(&ec_range);
 
         // It's safe to unwrap here as we're 100% sure it's not out of range
         let secret_scalar = Felt::from_bytes_be_slice(&secret_scalar.to_be_bytes());
