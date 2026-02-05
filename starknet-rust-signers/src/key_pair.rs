@@ -36,7 +36,7 @@ pub enum KeystoreError {
 impl SigningKey {
     /// Generates a new key pair from a cryptographically secure RNG.
     pub fn from_random() -> Self {
-        let prime: NonZero<U256> = NonZero::new(U256::from_be_hex(
+        let ec_range: NonZero<U256> = NonZero::new(U256::from_be_hex(
             "800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f",
         ))
         .unwrap();
