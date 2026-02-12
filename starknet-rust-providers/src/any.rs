@@ -7,9 +7,9 @@ use starknet_rust_core::types::{
     Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StorageProof,
-    SyncStatusType, Transaction, TransactionReceiptWithBlockInfo, TransactionStatus,
-    TransactionTrace, TransactionTraceWithHash,
+    SimulateTransactionsResult, SimulationFlag, SimulationFlagForEstimateFee, StorageProof,
+    SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
+    TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionStatus, TransactionTrace,
 };
 
 use crate::{
@@ -83,17 +83,27 @@ impl Provider for AnyProvider {
     async fn get_block_with_txs<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithTxs, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
         match self {
             Self::JsonRpcHttp(inner) => {
-                <JsonRpcClient<HttpTransport> as Provider>::get_block_with_txs(inner, block_id)
-                    .await
+                <JsonRpcClient<HttpTransport> as Provider>::get_block_with_txs(
+                    inner,
+                    block_id,
+                    response_flags,
+                )
+                .await
             }
             Self::SequencerGateway(inner) => {
-                <SequencerGatewayProvider as Provider>::get_block_with_txs(inner, block_id).await
+                <SequencerGatewayProvider as Provider>::get_block_with_txs(
+                    inner,
+                    block_id,
+                    response_flags,
+                )
+                .await
             }
         }
     }
@@ -101,18 +111,27 @@ impl Provider for AnyProvider {
     async fn get_block_with_receipts<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithReceipts, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
         match self {
             Self::JsonRpcHttp(inner) => {
-                <JsonRpcClient<HttpTransport> as Provider>::get_block_with_receipts(inner, block_id)
-                    .await
+                <JsonRpcClient<HttpTransport> as Provider>::get_block_with_receipts(
+                    inner,
+                    block_id,
+                    response_flags,
+                )
+                .await
             }
             Self::SequencerGateway(inner) => {
-                <SequencerGatewayProvider as Provider>::get_block_with_receipts(inner, block_id)
-                    .await
+                <SequencerGatewayProvider as Provider>::get_block_with_receipts(
+                    inner,
+                    block_id,
+                    response_flags,
+                )
+                .await
             }
         }
     }
@@ -214,6 +233,7 @@ impl Provider for AnyProvider {
     async fn get_transaction_by_hash<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         H: AsRef<Felt> + Send + Sync,
@@ -223,6 +243,7 @@ impl Provider for AnyProvider {
                 <JsonRpcClient<HttpTransport> as Provider>::get_transaction_by_hash(
                     inner,
                     transaction_hash,
+                    response_flags,
                 )
                 .await
             }
@@ -230,6 +251,7 @@ impl Provider for AnyProvider {
                 <SequencerGatewayProvider as Provider>::get_transaction_by_hash(
                     inner,
                     transaction_hash,
+                    response_flags,
                 )
                 .await
             }
@@ -240,6 +262,7 @@ impl Provider for AnyProvider {
         &self,
         block_id: B,
         index: u64,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
@@ -247,13 +270,19 @@ impl Provider for AnyProvider {
         match self {
             Self::JsonRpcHttp(inner) => {
                 <JsonRpcClient<HttpTransport> as Provider>::get_transaction_by_block_id_and_index(
-                    inner, block_id, index,
+                    inner,
+                    block_id,
+                    index,
+                    response_flags,
                 )
                 .await
             }
             Self::SequencerGateway(inner) => {
                 <SequencerGatewayProvider as Provider>::get_transaction_by_block_id_and_index(
-                    inner, block_id, index,
+                    inner,
+                    block_id,
+                    index,
+                    response_flags,
                 )
                 .await
             }
@@ -686,7 +715,7 @@ impl Provider for AnyProvider {
         block_id: B,
         transactions: T,
         simulation_flags: S,
-    ) -> Result<Vec<SimulatedTransaction>, ProviderError>
+    ) -> Result<SimulateTransactionsResult, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
         T: AsRef<[BroadcastedTransaction]> + Send + Sync,
@@ -717,20 +746,27 @@ impl Provider for AnyProvider {
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
-    ) -> Result<Vec<TransactionTraceWithHash>, ProviderError>
+        trace_flags: Option<&[TraceFlag]>,
+    ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
     {
         match self {
             Self::JsonRpcHttp(inner) => {
                 <JsonRpcClient<HttpTransport> as Provider>::trace_block_transactions(
-                    inner, block_id,
+                    inner,
+                    block_id,
+                    trace_flags,
                 )
                 .await
             }
             Self::SequencerGateway(inner) => {
-                <SequencerGatewayProvider as Provider>::trace_block_transactions(inner, block_id)
-                    .await
+                <SequencerGatewayProvider as Provider>::trace_block_transactions(
+                    inner,
+                    block_id,
+                    trace_flags,
+                )
+                .await
             }
         }
     }

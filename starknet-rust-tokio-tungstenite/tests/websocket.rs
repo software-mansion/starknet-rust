@@ -130,7 +130,10 @@ async fn websocket_new_transaction_receipts_subscription() {
 async fn websocket_new_transactions_subscription() {
     let stream = create_stream().await;
 
-    let mut subscription = stream.subscribe_new_transactions(None, None).await.unwrap();
+    let mut subscription = stream
+        .subscribe_new_transactions(None, None, None)
+        .await
+        .unwrap();
 
     // There should be at least one transaction in 20 seconds
     let NewTransactionsUpdate::Transaction(tx) =

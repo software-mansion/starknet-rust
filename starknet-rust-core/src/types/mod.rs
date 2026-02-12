@@ -1,6 +1,6 @@
 use alloc::{string::String, vec::Vec};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::serde_as;
 
 use crate::serde::unsigned_field_element::UfeHex;
@@ -18,20 +18,20 @@ pub use typed_data::TypedData;
 // TODO: better namespacing of exports?
 mod codegen;
 pub use codegen::{
-    BinaryNode, BlockHeader, BlockStatus, BlockTag, BlockWithReceipts, BlockWithTxHashes,
-    BlockWithTxs, BroadcastedDeclareTransaction, BroadcastedDeclareTransactionV3,
-    BroadcastedDeployAccountTransaction, BroadcastedDeployAccountTransactionV3,
-    BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3, CallType,
-    CompressedLegacyContractClass, ContractErrorData, ContractLeafData, ContractStorageDiffItem,
-    ContractStorageKeys, ContractsProof, DataAvailabilityMode, DeclareTransactionReceipt,
-    DeclareTransactionTrace, DeclareTransactionV0, DeclareTransactionV0Content,
-    DeclareTransactionV1, DeclareTransactionV1Content, DeclareTransactionV2,
-    DeclareTransactionV2Content, DeclareTransactionV3, DeclareTransactionV3Content,
-    DeclaredClassItem, DeployAccountTransactionReceipt, DeployAccountTransactionTrace,
-    DeployAccountTransactionV1, DeployAccountTransactionV1Content, DeployAccountTransactionV3,
-    DeployAccountTransactionV3Content, DeployTransaction, DeployTransactionContent,
-    DeployTransactionReceipt, DeployedContractItem, EdgeNode, EmittedEvent,
-    EmittedEventWithFinality, EntryPointType, EntryPointsByType, Event, EventFilter,
+    AddressFilter, BinaryNode, BlockHeader, BlockStatus, BlockTag, BlockWithReceipts,
+    BlockWithTxHashes, BlockWithTxs, BroadcastedDeclareTransaction,
+    BroadcastedDeclareTransactionV3, BroadcastedDeployAccountTransaction,
+    BroadcastedDeployAccountTransactionV3, BroadcastedInvokeTransaction,
+    BroadcastedInvokeTransactionV3, CallType, CompressedLegacyContractClass, ContractErrorData,
+    ContractLeafData, ContractStorageDiffItem, ContractStorageKeys, ContractsProof,
+    DataAvailabilityMode, DeclareTransactionReceipt, DeclareTransactionTrace, DeclareTransactionV0,
+    DeclareTransactionV0Content, DeclareTransactionV1, DeclareTransactionV1Content,
+    DeclareTransactionV2, DeclareTransactionV2Content, DeclareTransactionV3,
+    DeclareTransactionV3Content, DeclaredClassItem, DeployAccountTransactionReceipt,
+    DeployAccountTransactionTrace, DeployAccountTransactionV1, DeployAccountTransactionV1Content,
+    DeployAccountTransactionV3, DeployAccountTransactionV3Content, DeployTransaction,
+    DeployTransactionContent, DeployTransactionReceipt, DeployedContractItem, EdgeNode,
+    EmittedEvent, EmittedEventWithFinality, EntryPointType, EntryPointsByType, Event, EventFilter,
     EventFilterWithPage, EventsChunk, ExecutionResources, FeeEstimate, FeePayment,
     FlattenedSierraClass, FunctionCall, FunctionInvocation, FunctionStateMutability, GlobalRoots,
     InnerCallExecutionResources, InnerContractExecutionError, InvokeTransactionReceipt,
@@ -48,10 +48,10 @@ pub use codegen::{
     ReorgData, ReplacedClassItem, ResourceBounds, ResourceBoundsMapping, ResourcePrice,
     ResultPageRequest, RevertedInvocation, SequencerTransactionStatus, SierraEntryPoint,
     SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError, StateDiff,
-    StateUpdate, StorageEntry, StorageKey, StorageProof, SubscriptionId, SyncStatus,
-    TransactionExecutionErrorData, TransactionExecutionStatus, TransactionFinalityStatus,
-    TransactionReceiptWithBlockInfo, TransactionTraceWithHash, TransactionWithL2Status,
-    TransactionWithReceipt,
+    StateUpdate, StorageEntry, StorageKey, StorageProof, SubscriptionId, SubscriptionTag,
+    SyncStatus, TraceFlag, TransactionExecutionErrorData, TransactionExecutionStatus,
+    TransactionFinalityStatus, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
+    TransactionTraceWithHash, TransactionWithL2Status, TransactionWithReceipt,
 };
 
 /// Module containing the [`U256`] type.
@@ -179,6 +179,150 @@ pub struct EventsPage {
     /// use `contains_key` as a check for the last page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation_token: Option<String>,
+}
+
+/// Cached state reads returned by `RETURN_INITIAL_READS`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InitialReads {
+    /// Storage entries read during execution.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage: Option<Vec<InitialReadsStorageEntry>>,
+    /// Contract nonces read during execution.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nonces: Option<Vec<InitialReadsNonceEntry>>,
+    /// Contract class hashes read during execution.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class_hashes: Option<Vec<InitialReadsClassHashEntry>>,
+    /// Class declaration statuses read during execution.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub declared_contracts: Option<Vec<InitialReadsDeclaredContractEntry>>,
+}
+
+/// A single storage read witness entry.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InitialReadsStorageEntry {
+    /// Contract address that owns the storage slot.
+    #[serde_as(as = "UfeHex")]
+    pub contract_address: Felt,
+    /// Storage key read from the contract.
+    pub key: StorageKey,
+    /// Value read from the storage slot.
+    #[serde_as(as = "UfeHex")]
+    pub value: Felt,
+}
+
+/// A single nonce read witness entry.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InitialReadsNonceEntry {
+    /// Contract address whose nonce was read.
+    #[serde_as(as = "UfeHex")]
+    pub contract_address: Felt,
+    /// Nonce value read for the contract.
+    #[serde_as(as = "UfeHex")]
+    pub nonce: Felt,
+}
+
+/// A single class hash read witness entry.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InitialReadsClassHashEntry {
+    /// Contract address whose class hash was read.
+    #[serde_as(as = "UfeHex")]
+    pub contract_address: Felt,
+    /// Class hash read for the contract.
+    #[serde_as(as = "UfeHex")]
+    pub class_hash: Felt,
+}
+
+/// A single declaration-status read witness entry.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InitialReadsDeclaredContractEntry {
+    /// Class hash whose declaration status was read.
+    #[serde_as(as = "UfeHex")]
+    pub class_hash: Felt,
+    /// Whether the class is declared.
+    pub is_declared: bool,
+}
+
+/// Result type for `starknet_simulateTransactions` that supports both 0.10.0 and 0.10.1 payloads.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SimulateTransactionsResult {
+    /// Simulated transactions and their traces.
+    pub simulated_transactions: Vec<SimulatedTransaction>,
+    /// Optional initial reads witness when requested.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_reads: Option<InitialReads>,
+}
+
+impl<'de> Deserialize<'de> for SimulateTransactionsResult {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Inner {
+            Legacy(Vec<SimulatedTransaction>),
+            V0101 {
+                simulated_transactions: Vec<SimulatedTransaction>,
+                #[serde(default)]
+                initial_reads: Option<InitialReads>,
+            },
+        }
+
+        match Inner::deserialize(deserializer)? {
+            Inner::Legacy(simulated_transactions) => Ok(Self {
+                simulated_transactions,
+                initial_reads: None,
+            }),
+            Inner::V0101 {
+                simulated_transactions,
+                initial_reads,
+            } => Ok(Self {
+                simulated_transactions,
+                initial_reads,
+            }),
+        }
+    }
+}
+
+/// Result type for `starknet_traceBlockTransactions` that supports both 0.10.0 and 0.10.1 payloads.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TraceBlockTransactionsResult {
+    /// Traces for all transactions in the block.
+    pub traces: Vec<TransactionTraceWithHash>,
+    /// Optional initial reads witness when requested.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_reads: Option<InitialReads>,
+}
+
+impl<'de> Deserialize<'de> for TraceBlockTransactionsResult {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Inner {
+            Legacy(Vec<TransactionTraceWithHash>),
+            V0101 {
+                traces: Vec<TransactionTraceWithHash>,
+                #[serde(default)]
+                initial_reads: Option<InitialReads>,
+            },
+        }
+
+        match Inner::deserialize(deserializer)? {
+            Inner::Legacy(traces) => Ok(Self {
+                traces,
+                initial_reads: None,
+            }),
+            Inner::V0101 {
+                traces,
+                initial_reads,
+            } => Ok(Self {
+                traces,
+                initial_reads,
+            }),
+        }
+    }
 }
 
 /// Response for broadcasting an `INVOKE` transaction.
@@ -1061,5 +1205,211 @@ mod tests {
             },
             serde_json::from_str(as_array).unwrap(),
         );
+    }
+
+    fn minimal_invoke_trace_json() -> serde_json::Value {
+        serde_json::json!({
+            "type": "INVOKE",
+            "validate_invocation": null,
+            "execute_invocation": {
+                "contract_address": "0x1",
+                "entry_point_selector": "0x1",
+                "calldata": [],
+                "caller_address": "0x0",
+                "class_hash": "0x1",
+                "entry_point_type": "EXTERNAL",
+                "call_type": "CALL",
+                "result": [],
+                "calls": [],
+                "events": [],
+                "messages": [],
+                "execution_resources": {
+                    "l1_gas": 0,
+                    "l2_gas": 0
+                },
+                "is_reverted": false
+            },
+            "fee_transfer_invocation": null,
+            "state_diff": null,
+            "execution_resources": {
+                "l1_gas": 0,
+                "l1_data_gas": 0,
+                "l2_gas": 0
+            }
+        })
+    }
+
+    fn sample_initial_reads_json() -> serde_json::Value {
+        serde_json::json!({
+            "storage": [{
+                "contract_address": "0x1",
+                "key": "0x2",
+                "value": "0x3"
+            }],
+            "nonces": [{
+                "contract_address": "0x4",
+                "nonce": "0x5"
+            }],
+            "class_hashes": [{
+                "contract_address": "0x6",
+                "class_hash": "0x7"
+            }],
+            "declared_contracts": [{
+                "class_hash": "0x8",
+                "is_declared": true
+            }]
+        })
+    }
+
+    fn sample_fee_estimation_json() -> serde_json::Value {
+        serde_json::json!({
+            "l1_gas_consumed": "0x0",
+            "l1_gas_price": "0x0",
+            "l2_gas_consumed": "0x0",
+            "l2_gas_price": "0x0",
+            "l1_data_gas_consumed": "0x0",
+            "l1_data_gas_price": "0x0",
+            "overall_fee": "0x0"
+        })
+    }
+
+    #[test]
+    fn v0101_address_filter_accepts_single() {
+        let input = serde_json::json!({
+            "address": "0x1"
+        });
+
+        let filter: EventFilter = serde_json::from_value(input).unwrap();
+        assert_eq!(
+            filter.address,
+            Some(AddressFilter::Single(Felt::from_hex_unchecked("0x1")))
+        );
+    }
+
+    #[test]
+    fn v0101_address_filter_accepts_multiple() {
+        let input = serde_json::json!({
+            "address": ["0x10", "0x20"]
+        });
+
+        let filter: EventFilter = serde_json::from_value(input).unwrap();
+        assert_eq!(
+            filter.address,
+            Some(AddressFilter::Multiple(vec![
+                Felt::from_hex_unchecked("0x10"),
+                Felt::from_hex_unchecked("0x20"),
+            ]))
+        );
+    }
+
+    #[test]
+    fn v0101_address_filter_serializes_single() {
+        let filter = EventFilter {
+            from_block: None,
+            to_block: None,
+            address: Some(AddressFilter::Single(Felt::from_hex_unchecked("0x1"))),
+            keys: None,
+        };
+
+        let value = serde_json::to_value(filter).unwrap();
+        assert_eq!(value["address"], serde_json::json!("0x1"));
+    }
+
+    #[test]
+    fn v0101_address_filter_serializes_multiple() {
+        let filter = EventFilter {
+            from_block: None,
+            to_block: None,
+            address: Some(AddressFilter::Multiple(vec![
+                Felt::from_hex_unchecked("0x10"),
+                Felt::from_hex_unchecked("0x20"),
+            ])),
+            keys: None,
+        };
+
+        let value = serde_json::to_value(filter).unwrap();
+        assert_eq!(value["address"], serde_json::json!(["0x10", "0x20"]));
+    }
+
+    #[test]
+    fn v0101_simulation_flag_return_initial_reads_serde() {
+        let value = serde_json::to_value(SimulationFlag::ReturnInitialReads).unwrap();
+        assert_eq!(value, serde_json::json!("RETURN_INITIAL_READS"));
+    }
+
+    #[test]
+    fn v0101_trace_flag_return_initial_reads_serde() {
+        let value = serde_json::to_value(TraceFlag::ReturnInitialReads).unwrap();
+        assert_eq!(value, serde_json::json!("RETURN_INITIAL_READS"));
+    }
+
+    #[test]
+    fn v0101_transaction_response_flag_include_proof_facts_serde() {
+        let value = serde_json::to_value(TransactionResponseFlag::IncludeProofFacts).unwrap();
+        assert_eq!(value, serde_json::json!("INCLUDE_PROOF_FACTS"));
+    }
+
+    #[test]
+    fn v0101_subscription_tag_include_proof_facts_serde() {
+        let value = serde_json::to_value(SubscriptionTag::IncludeProofFacts).unwrap();
+        assert_eq!(value, serde_json::json!("INCLUDE_PROOF_FACTS"));
+    }
+
+    #[test]
+    fn v0101_simulate_transactions_legacy_array_deser() {
+        let input = serde_json::json!([{
+            "transaction_trace": minimal_invoke_trace_json(),
+            "fee_estimation": sample_fee_estimation_json()
+        }]);
+
+        let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
+        assert_eq!(result.simulated_transactions.len(), 1);
+        assert!(result.initial_reads.is_none());
+    }
+
+    #[test]
+    fn v0101_simulate_transactions_initial_reads_non_empty() {
+        let input = serde_json::json!({
+            "simulated_transactions": [{
+                "transaction_trace": minimal_invoke_trace_json(),
+                "fee_estimation": sample_fee_estimation_json()
+            }],
+            "initial_reads": sample_initial_reads_json()
+        });
+
+        let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
+        let reads = result
+            .initial_reads
+            .expect("initial_reads should be present");
+        assert!(reads.storage.as_ref().is_some_and(|v| !v.is_empty()));
+    }
+
+    #[test]
+    fn v0101_trace_block_transactions_legacy_array_deser() {
+        let input = serde_json::json!([{
+            "transaction_hash": "0x1",
+            "trace_root": minimal_invoke_trace_json()
+        }]);
+
+        let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
+        assert_eq!(result.traces.len(), 1);
+        assert!(result.initial_reads.is_none());
+    }
+
+    #[test]
+    fn v0101_trace_block_transactions_initial_reads_non_empty() {
+        let input = serde_json::json!({
+            "traces": [{
+                "transaction_hash": "0x1",
+                "trace_root": minimal_invoke_trace_json()
+            }],
+            "initial_reads": sample_initial_reads_json()
+        });
+
+        let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
+        let reads = result
+            .initial_reads
+            .expect("initial_reads should be present");
+        assert!(reads.class_hashes.as_ref().is_some_and(|v| !v.is_empty()));
     }
 }
