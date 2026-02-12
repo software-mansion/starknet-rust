@@ -9,7 +9,8 @@ use starknet_rust_providers::{Provider, ProviderError, SequencerGatewayProvider}
 use starknet_rust_signers::{LocalWallet, SigningKey};
 use std::{sync::Arc, time::Duration};
 use test_common::{
-    create_jsonrpc_client, send_with_retry, send_with_retry_allow_revert, shared_signer_lock,
+    create_jsonrpc_client, retry_account_call, retry_provider_call, send_with_retry,
+    send_with_retry_allow_revert, shared_signer_lock,
 };
 
 /// Cairo short string encoding for `SN_SEPOLIA`.
@@ -111,7 +112,14 @@ async fn can_get_nonce_inner<P: Provider + Send + Sync>(provider: P, address: &s
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
-    assert_ne!(account.get_nonce().await.unwrap(), Felt::ZERO);
+    let nonce = retry_provider_call(
+        || account.get_nonce(),
+        Duration::from_secs(120),
+        Duration::from_secs(1),
+    )
+    .await;
+
+    assert_ne!(nonce, Felt::ZERO);
 }
 
 async fn can_estimate_invoke_v3_fee_inner<P: Provider + Send + Sync>(provider: P, address: &str) {
@@ -125,15 +133,21 @@ async fn can_estimate_invoke_v3_fee_inner<P: Provider + Send + Sync>(provider: P
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
-    let fee_estimate = account
-        .execute_v3(vec![Call {
-            to: eth_token_address,
-            selector: get_selector_from_name("transfer").unwrap(),
-            calldata: vec![Felt::from_hex("0x1234").unwrap(), Felt::ONE, Felt::ZERO],
-        }])
-        .estimate_fee()
-        .await
-        .unwrap();
+    let fee_estimate = retry_account_call(
+        || async {
+            account
+                .execute_v3(vec![Call {
+                    to: eth_token_address,
+                    selector: get_selector_from_name("transfer").unwrap(),
+                    calldata: vec![Felt::from_hex("0x1234").unwrap(), Felt::ONE, Felt::ZERO],
+                }])
+                .estimate_fee()
+                .await
+        },
+        Duration::from_secs(120),
+        Duration::from_secs(1),
+    )
+    .await;
 
     assert!(fee_estimate.overall_fee > 0);
 }
@@ -152,29 +166,38 @@ async fn can_parse_fee_estimation_error_inner<P: Provider + Send + Sync>(
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
-    match account
-        .execute_v3(vec![Call {
-            to: eth_token_address,
-            selector: get_selector_from_name("transfer").unwrap(),
-            calldata: vec![
-                address,
-                Felt::from_dec_str("1000000000000000000000").unwrap(),
-                Felt::ZERO,
-            ],
-        }])
-        .estimate_fee()
-        .await
-    {
-        Ok(_) => panic!("unexpected successful fee estimation"),
-        Err(AccountError::Provider(ProviderError::StarknetError(
-            StarknetError::TransactionExecutionError(err_data),
-        ))) => match err_data.execution_error {
-            ContractExecutionError::Nested(_) => {}
-            ContractExecutionError::Message(_) => {
-                panic!("unexpected error data type")
+    let err_data = retry_account_call(
+        || async {
+            match account
+                .execute_v3(vec![Call {
+                    to: eth_token_address,
+                    selector: get_selector_from_name("transfer").unwrap(),
+                    calldata: vec![
+                        address,
+                        Felt::from_dec_str("1000000000000000000000").unwrap(),
+                        Felt::ZERO,
+                    ],
+                }])
+                .estimate_fee()
+                .await
+            {
+                Ok(_) => panic!("unexpected successful fee estimation"),
+                Err(AccountError::Provider(ProviderError::StarknetError(
+                    StarknetError::TransactionExecutionError(err_data),
+                ))) => Ok(err_data),
+                Err(err) => Err(err),
             }
         },
-        _ => panic!("unexpected error type"),
+        Duration::from_secs(120),
+        Duration::from_secs(1),
+    )
+    .await;
+
+    match err_data.execution_error {
+        ContractExecutionError::Nested(_) => {}
+        ContractExecutionError::Message(_) => {
+            panic!("unexpected error data type")
+        }
     }
 }
 

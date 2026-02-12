@@ -8,7 +8,7 @@ use starknet_rust_core::{
 };
 use starknet_rust_providers::Provider;
 use starknet_rust_signers::{LocalWallet, SigningKey};
-use test_common::{create_jsonrpc_client, send_with_retry};
+use test_common::{create_jsonrpc_client, retry_provider_call, send_with_retry};
 
 #[tokio::test]
 async fn can_deploy_contract_with_legacy_udc_unique() {
@@ -100,9 +100,11 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
     )
     .await;
 
-    let class_hash_deployed = provider
-        .get_class_hash_at(BlockId::Tag(BlockTag::PreConfirmed), deployed_address)
-        .await
-        .unwrap();
+    let class_hash_deployed = retry_provider_call(
+        || provider.get_class_hash_at(BlockId::Tag(BlockTag::PreConfirmed), deployed_address),
+        Duration::from_secs(120),
+        Duration::from_secs(1),
+    )
+    .await;
     assert_eq!(class_hash, class_hash_deployed);
 }

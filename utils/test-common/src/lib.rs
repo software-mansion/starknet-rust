@@ -92,6 +92,88 @@ const fn is_nonce_related_error<S>(err: &AccountError<S>) -> bool {
     )
 }
 
+const fn is_transient_provider_error(err: &ProviderError) -> bool {
+    matches!(err, ProviderError::Other(_))
+}
+
+const fn is_transient_account_error<S>(err: &AccountError<S>) -> bool {
+    matches!(
+        err,
+        AccountError::Provider(provider_err) if is_transient_provider_error(provider_err)
+    )
+}
+
+const fn is_retryable_account_error<S>(err: &AccountError<S>) -> bool {
+    is_nonce_related_error(err) || is_transient_account_error(err)
+}
+
+pub async fn retry_provider_call<T, Op, Fut>(
+    mut operation: Op,
+    timeout: Duration,
+    poll_interval: Duration,
+) -> T
+where
+    Op: FnMut() -> Fut + Send,
+    Fut: Future<Output = Result<T, ProviderError>> + Send,
+{
+    let deadline = Instant::now() + timeout;
+    let mut last_error: Option<ProviderError> = None;
+
+    loop {
+        if Instant::now() >= deadline {
+            if let Some(last_error) = last_error {
+                panic!(
+                    "Timed out retrying provider call for {timeout:?}. Last error: {last_error}"
+                );
+            }
+
+            panic!("Timed out retrying provider call for {timeout:?}.");
+        }
+
+        match operation().await {
+            Ok(value) => return value,
+            Err(err) if is_transient_provider_error(&err) => {
+                last_error = Some(err);
+                sleep(poll_interval).await;
+            }
+            Err(err) => panic!("Provider call failed: {err}"),
+        }
+    }
+}
+
+pub async fn retry_account_call<T, S, Op, Fut>(
+    mut operation: Op,
+    timeout: Duration,
+    poll_interval: Duration,
+) -> T
+where
+    Op: FnMut() -> Fut + Send,
+    Fut: Future<Output = Result<T, AccountError<S>>> + Send,
+    S: Error + Send + Sync,
+{
+    let deadline = Instant::now() + timeout;
+    let mut last_error: Option<AccountError<S>> = None;
+
+    loop {
+        if Instant::now() >= deadline {
+            if let Some(last_error) = last_error {
+                panic!("Timed out retrying account call for {timeout:?}. Last error: {last_error}");
+            }
+
+            panic!("Timed out retrying account call for {timeout:?}.");
+        }
+
+        match operation().await {
+            Ok(value) => return value,
+            Err(err) if is_transient_account_error(&err) => {
+                last_error = Some(err);
+                sleep(poll_interval).await;
+            }
+            Err(err) => panic!("Account call failed: {err}"),
+        }
+    }
+}
+
 pub async fn send_with_retry<P, S, SendFn, Fut>(
     provider: &P,
     mut send: SendFn,
@@ -164,7 +246,7 @@ where
                 .await;
                 return transaction_hash;
             }
-            Err(err) if is_nonce_related_error(&err) => {
+            Err(err) if is_retryable_account_error(&err) => {
                 last_error = Some(err);
                 sleep(poll_interval).await;
             }
