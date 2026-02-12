@@ -95,14 +95,14 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
                 .await
                 .map(|result| result.transaction_hash)
         },
-        Duration::from_secs(60 * 2),
+        Duration::new(120, 0),
         Duration::from_secs(1),
     )
     .await;
 
     let class_hash_deployed = retry_provider_call(
         || provider.get_class_hash_at(BlockId::Tag(BlockTag::PreConfirmed), deployed_address),
-        Duration::from_secs(60 * 2),
+        Duration::new(120, 0),
         Duration::from_secs(1),
     )
     .await;

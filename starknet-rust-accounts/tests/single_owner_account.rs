@@ -114,7 +114,7 @@ async fn can_get_nonce_inner<P: Provider + Send + Sync>(provider: P, address: &s
 
     let nonce = retry_provider_call(
         || account.get_nonce(),
-        Duration::from_secs(60 * 2),
+        Duration::new(120, 0),
         Duration::from_secs(1),
     )
     .await;
@@ -144,7 +144,7 @@ async fn can_estimate_invoke_v3_fee_inner<P: Provider + Send + Sync>(provider: P
                 .estimate_fee()
                 .await
         },
-        Duration::from_secs(60 * 2),
+        Duration::new(120, 0),
         Duration::from_secs(1),
     )
     .await;
@@ -188,7 +188,7 @@ async fn can_parse_fee_estimation_error_inner<P: Provider + Send + Sync>(
                 Err(err) => Err(err),
             }
         },
-        Duration::from_secs(60 * 2),
+        Duration::new(120, 0),
         Duration::from_secs(1),
     )
     .await;
@@ -235,7 +235,7 @@ async fn can_execute_eth_transfer_invoke_v3_inner<P: Provider + Send + Sync>(
                 .await
                 .map(|result| result.transaction_hash)
         },
-        Duration::from_secs(60 * 2),
+        Duration::new(120, 0),
         Duration::from_secs(1),
     )
     .await;
@@ -286,7 +286,7 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + 
                 .await
                 .map(|result| result.transaction_hash)
         },
-        Duration::from_secs(60 * 2),
+        Duration::new(120, 0),
         Duration::from_secs(1),
     )
     .await;
