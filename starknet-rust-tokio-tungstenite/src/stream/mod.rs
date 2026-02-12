@@ -5,7 +5,7 @@ use futures_util::StreamExt;
 use serde::Deserialize;
 use starknet_rust_core::types::{
     ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus, StarknetError,
-    SubscriptionId,
+    SubscriptionId, SubscriptionTag,
 };
 use starknet_rust_providers::{
     StreamUpdateData,
@@ -245,12 +245,14 @@ impl TungsteniteStream {
         &self,
         finality_status: Option<Vec<L2TransactionStatus>>,
         sender_address: Option<Vec<Felt>>,
+        tags: Option<Vec<SubscriptionTag>>,
     ) -> Result<NewTransactionsSubscription, SubscribeError> {
         Ok(NewTransactionsSubscription {
             inner: self
                 .subscribe(SubscribeWriteData::NewTransactions {
                     finality_status,
                     sender_address,
+                    tags,
                 })
                 .await?,
         })

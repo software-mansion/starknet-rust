@@ -14,11 +14,11 @@ use starknet_rust_core::{
         InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
         MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
         MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
-        NoTraceAvailableErrorData, ResultPageRequest, SimulatedTransaction, SimulationFlag,
+        NoTraceAvailableErrorData, ResultPageRequest, SimulateTransactionsResult, SimulationFlag,
         SimulationFlagForEstimateFee, StarknetError, StorageKey, StorageProof, SubscriptionId,
-        SyncStatusType, Transaction, TransactionExecutionErrorData,
-        TransactionReceiptWithBlockInfo, TransactionStatus, TransactionTrace,
-        TransactionTraceWithHash,
+        SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
+        TransactionExecutionErrorData, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
+        TransactionStatus, TransactionTrace,
         requests::{
             AddDeclareTransactionRequest, AddDeclareTransactionRequestRef,
             AddDeployAccountTransactionRequest, AddDeployAccountTransactionRequestRef,
@@ -26,16 +26,14 @@ use starknet_rust_core::{
             BlockNumberRequest, CallRequest, CallRequestRef, ChainIdRequest, EstimateFeeRequest,
             EstimateFeeRequestRef, EstimateMessageFeeRequest, EstimateMessageFeeRequestRef,
             GetBlockTransactionCountRequest, GetBlockTransactionCountRequestRef,
-            GetBlockWithReceiptsRequest, GetBlockWithReceiptsRequestRef,
-            GetBlockWithTxHashesRequest, GetBlockWithTxHashesRequestRef, GetBlockWithTxsRequest,
-            GetBlockWithTxsRequestRef, GetClassAtRequest, GetClassAtRequestRef,
-            GetClassHashAtRequest, GetClassHashAtRequestRef, GetClassRequest, GetClassRequestRef,
-            GetEventsRequest, GetEventsRequestRef, GetMessagesStatusRequest,
+            GetBlockWithReceiptsRequest, GetBlockWithTxHashesRequest,
+            GetBlockWithTxHashesRequestRef, GetBlockWithTxsRequest, GetClassAtRequest,
+            GetClassAtRequestRef, GetClassHashAtRequest, GetClassHashAtRequestRef, GetClassRequest,
+            GetClassRequestRef, GetEventsRequest, GetEventsRequestRef, GetMessagesStatusRequest,
             GetMessagesStatusRequestRef, GetNonceRequest, GetNonceRequestRef,
             GetStateUpdateRequest, GetStateUpdateRequestRef, GetStorageAtRequest,
             GetStorageAtRequestRef, GetStorageProofRequest, GetStorageProofRequestRef,
-            GetTransactionByBlockIdAndIndexRequest, GetTransactionByBlockIdAndIndexRequestRef,
-            GetTransactionByHashRequest, GetTransactionByHashRequestRef,
+            GetTransactionByBlockIdAndIndexRequest, GetTransactionByHashRequest,
             GetTransactionReceiptRequest, GetTransactionReceiptRequestRef,
             GetTransactionStatusRequest, GetTransactionStatusRequestRef,
             SimulateTransactionsRequest, SimulateTransactionsRequestRef, SpecVersionRequest,
@@ -45,8 +43,7 @@ use starknet_rust_core::{
             SubscriptionNewHeadsRequest, SubscriptionNewTransactionReceiptsRequest,
             SubscriptionNewTransactionRequest, SubscriptionReorgRequest,
             SubscriptionTransactionStatusRequest, SyncingRequest, TraceBlockTransactionsRequest,
-            TraceBlockTransactionsRequestRef, TraceTransactionRequest, TraceTransactionRequestRef,
-            UnsubscribeRequest,
+            TraceTransactionRequest, TraceTransactionRequestRef, UnsubscribeRequest,
         },
     },
 };
@@ -504,13 +501,13 @@ where
                         }
                         ProviderRequestData::SimulateTransactions(_) => {
                             ProviderResponseData::SimulateTransactions(
-                                Vec::<SimulatedTransaction>::deserialize(result)
+                                SimulateTransactionsResult::deserialize(result)
                                     .map_err(JsonRpcClientError::<T::Error>::JsonError)?,
                             )
                         }
                         ProviderRequestData::TraceBlockTransactions(_) => {
                             ProviderResponseData::TraceBlockTransactions(
-                                Vec::<TransactionTraceWithHash>::deserialize(result)
+                                TraceBlockTransactionsResult::deserialize(result)
                                     .map_err(JsonRpcClientError::<T::Error>::JsonError)?,
                             )
                         }
@@ -566,6 +563,42 @@ where
     }
 }
 
+#[derive(Serialize)]
+struct GetBlockWithTxsParams<'a> {
+    block_id: &'a BlockId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_flags: Option<&'a [TransactionResponseFlag]>,
+}
+
+#[derive(Serialize)]
+struct GetBlockWithReceiptsParams<'a> {
+    block_id: &'a BlockId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_flags: Option<&'a [TransactionResponseFlag]>,
+}
+
+#[derive(Serialize)]
+struct GetTransactionByHashParams<'a> {
+    transaction_hash: &'a FeltPrimitive,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_flags: Option<&'a [TransactionResponseFlag]>,
+}
+
+#[derive(Serialize)]
+struct GetTransactionByBlockIdAndIndexParams<'a> {
+    block_id: &'a BlockId,
+    index: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_flags: Option<&'a [TransactionResponseFlag]>,
+}
+
+#[derive(Serialize)]
+struct TraceBlockTransactionsParams<'a> {
+    block_id: &'a ConfirmedBlockId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    trace_flags: Option<&'a [TraceFlag]>,
+}
+
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl<T> Provider for JsonRpcClient<T>
@@ -610,14 +643,16 @@ where
     async fn get_block_with_txs<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithTxs, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
         self.send_request(
             JsonRpcMethod::GetBlockWithTxs,
-            GetBlockWithTxsRequestRef {
+            GetBlockWithTxsParams {
                 block_id: block_id.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -627,14 +662,16 @@ where
     async fn get_block_with_receipts<B>(
         &self,
         block_id: B,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<MaybePreConfirmedBlockWithReceipts, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
         self.send_request(
             JsonRpcMethod::GetBlockWithReceipts,
-            GetBlockWithReceiptsRequestRef {
+            GetBlockWithReceiptsParams {
                 block_id: block_id.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -720,14 +757,16 @@ where
     async fn get_transaction_by_hash<H>(
         &self,
         transaction_hash: H,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         H: AsRef<FeltPrimitive> + Send + Sync,
     {
         self.send_request(
             JsonRpcMethod::GetTransactionByHash,
-            GetTransactionByHashRequestRef {
+            GetTransactionByHashParams {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags,
             },
         )
         .await
@@ -738,15 +777,17 @@ where
         &self,
         block_id: B,
         index: u64,
+        response_flags: Option<&[TransactionResponseFlag]>,
     ) -> Result<Transaction, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
     {
         self.send_request(
             JsonRpcMethod::GetTransactionByBlockIdAndIndex,
-            GetTransactionByBlockIdAndIndexRequestRef {
+            GetTransactionByBlockIdAndIndexParams {
                 block_id: block_id.as_ref(),
-                index: &index,
+                index,
+                response_flags,
             },
         )
         .await
@@ -1084,7 +1125,7 @@ where
         block_id: B,
         transactions: TX,
         simulation_flags: S,
-    ) -> Result<Vec<SimulatedTransaction>, ProviderError>
+    ) -> Result<SimulateTransactionsResult, ProviderError>
     where
         B: AsRef<BlockId> + Send + Sync,
         TX: AsRef<[BroadcastedTransaction]> + Send + Sync,
@@ -1105,14 +1146,16 @@ where
     async fn trace_block_transactions<B>(
         &self,
         block_id: B,
-    ) -> Result<Vec<TransactionTraceWithHash>, ProviderError>
+        trace_flags: Option<&[TraceFlag]>,
+    ) -> Result<TraceBlockTransactionsResult, ProviderError>
     where
         B: AsRef<ConfirmedBlockId> + Send + Sync,
     {
         self.send_request(
             JsonRpcMethod::TraceBlockTransactions,
-            TraceBlockTransactionsRequestRef {
+            TraceBlockTransactionsParams {
                 block_id: block_id.as_ref(),
+                trace_flags,
             },
         )
         .await
@@ -1691,5 +1734,103 @@ impl Display for JsonRpcError {
                 )
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+    use starknet_rust_core::types::{BlockTag, ConfirmedBlockId};
+
+    fn as_object(value: &Value) -> &serde_json::Map<String, Value> {
+        value.as_object().expect("object params")
+    }
+
+    #[test]
+    fn response_flags_omitted_when_none() {
+        let block_id = BlockId::Tag(BlockTag::Latest);
+        let tx_hash = FeltPrimitive::ONE;
+        let params = vec![
+            serde_json::to_value(GetBlockWithTxsParams {
+                block_id: &block_id,
+                response_flags: None,
+            })
+            .unwrap(),
+            serde_json::to_value(GetBlockWithReceiptsParams {
+                block_id: &block_id,
+                response_flags: None,
+            })
+            .unwrap(),
+            serde_json::to_value(GetTransactionByHashParams {
+                transaction_hash: &tx_hash,
+                response_flags: None,
+            })
+            .unwrap(),
+            serde_json::to_value(GetTransactionByBlockIdAndIndexParams {
+                block_id: &block_id,
+                index: 1,
+                response_flags: None,
+            })
+            .unwrap(),
+        ];
+
+        for value in params {
+            assert!(!as_object(&value).contains_key("response_flags"));
+        }
+    }
+
+    #[test]
+    fn response_flags_serialized_when_present() {
+        let block_id = BlockId::Tag(BlockTag::Latest);
+        let tx_hash = FeltPrimitive::ONE;
+        let flags = [TransactionResponseFlag::IncludeProofFacts];
+
+        let params = vec![
+            serde_json::to_value(GetBlockWithTxsParams {
+                block_id: &block_id,
+                response_flags: Some(&flags),
+            })
+            .unwrap(),
+            serde_json::to_value(GetBlockWithReceiptsParams {
+                block_id: &block_id,
+                response_flags: Some(&flags),
+            })
+            .unwrap(),
+            serde_json::to_value(GetTransactionByHashParams {
+                transaction_hash: &tx_hash,
+                response_flags: Some(&flags),
+            })
+            .unwrap(),
+            serde_json::to_value(GetTransactionByBlockIdAndIndexParams {
+                block_id: &block_id,
+                index: 1,
+                response_flags: Some(&flags),
+            })
+            .unwrap(),
+        ];
+
+        for value in params {
+            assert_eq!(
+                as_object(&value).get("response_flags"),
+                Some(&serde_json::json!(["INCLUDE_PROOF_FACTS"]))
+            );
+        }
+    }
+
+    #[test]
+    fn trace_flags_serialized_when_present() {
+        let block_id = ConfirmedBlockId::Latest;
+        let flags = [TraceFlag::ReturnInitialReads];
+        let value = serde_json::to_value(TraceBlockTransactionsParams {
+            block_id: &block_id,
+            trace_flags: Some(&flags),
+        })
+        .unwrap();
+
+        assert_eq!(
+            as_object(&value).get("trace_flags"),
+            Some(&serde_json::json!(["RETURN_INITIAL_READS"]))
+        );
     }
 }
