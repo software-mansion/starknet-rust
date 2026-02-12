@@ -224,9 +224,8 @@ impl StreamWriteDriver {
                         ProviderRequestData::Unsubscribe(UnsubscribeRequest { subscription_id }),
                     )
                     .await
-                    && let Some(result) = result
                 {
-                    let _ = result.send(err.into());
+                    Self::send_unsubscribe_error(result, err);
                 }
 
                 HandleActionResult::Success
@@ -336,6 +335,12 @@ impl StreamWriteDriver {
                 sender_address,
                 tags,
             }),
+        }
+    }
+
+    fn send_unsubscribe_error(result: Option<UnboundedSender<UnsubscribeResult>>, err: SendError) {
+        if let Some(result) = result {
+            let _ = result.send(err.into());
         }
     }
 }
