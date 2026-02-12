@@ -169,50 +169,8 @@ impl StreamWriteDriver {
                     return HandleActionResult::Success;
                 }
 
-                if let Err(err) = self
-                    .send_request(
-                        req_id,
-                        match data {
-                            SubscribeWriteData::NewHeads { block_id } => {
-                                ProviderRequestData::SubscribeNewHeads(SubscribeNewHeadsRequest {
-                                    block_id: Some(block_id),
-                                })
-                            }
-                            SubscribeWriteData::Events { options } => {
-                                ProviderRequestData::SubscribeEvents(SubscribeEventsRequest {
-                                    from_address: options.from_address,
-                                    keys: options.keys,
-                                    block_id: Some(options.block_id),
-                                    finality_status: Some(options.finality_status),
-                                })
-                            }
-                            SubscribeWriteData::TransactionStatus { transaction_hash } => {
-                                ProviderRequestData::SubscribeTransactionStatus(
-                                    SubscribeTransactionStatusRequest { transaction_hash },
-                                )
-                            }
-                            SubscribeWriteData::NewTransactionReceipts {
-                                finality_status,
-                                sender_address,
-                            } => ProviderRequestData::SubscribeNewTransactionReceipts(
-                                SubscribeNewTransactionReceiptsRequest {
-                                    finality_status,
-                                    sender_address,
-                                },
-                            ),
-                            SubscribeWriteData::NewTransactions {
-                                finality_status,
-                                sender_address,
-                            } => ProviderRequestData::SubscribeNewTransactions(
-                                SubscribeNewTransactionsRequest {
-                                    finality_status,
-                                    sender_address,
-                                },
-                            ),
-                        },
-                    )
-                    .await
-                {
+                let request = Self::build_subscribe_request(data);
+                if let Err(err) = self.send_request(req_id, request).await {
                     let _ = result.send(err.into());
                 }
 
@@ -335,6 +293,45 @@ impl StreamWriteDriver {
         tokio::select! {
             result = send => result.map_err(SendError::Transport),
             () = tokio::time::sleep(self.timeout) => Err(SendError::Timeout),
+        }
+    }
+
+    fn build_subscribe_request(data: SubscribeWriteData) -> ProviderRequestData {
+        match data {
+            SubscribeWriteData::NewHeads { block_id } => {
+                ProviderRequestData::SubscribeNewHeads(SubscribeNewHeadsRequest {
+                    block_id: Some(block_id),
+                })
+            }
+            SubscribeWriteData::Events { options } => {
+                ProviderRequestData::SubscribeEvents(SubscribeEventsRequest {
+                    from_address: options.from_address,
+                    keys: options.keys,
+                    block_id: Some(options.block_id),
+                    finality_status: Some(options.finality_status),
+                })
+            }
+            SubscribeWriteData::TransactionStatus { transaction_hash } => {
+                ProviderRequestData::SubscribeTransactionStatus(SubscribeTransactionStatusRequest {
+                    transaction_hash,
+                })
+            }
+            SubscribeWriteData::NewTransactionReceipts {
+                finality_status,
+                sender_address,
+            } => ProviderRequestData::SubscribeNewTransactionReceipts(
+                SubscribeNewTransactionReceiptsRequest {
+                    finality_status,
+                    sender_address,
+                },
+            ),
+            SubscribeWriteData::NewTransactions {
+                finality_status,
+                sender_address,
+            } => ProviderRequestData::SubscribeNewTransactions(SubscribeNewTransactionsRequest {
+                finality_status,
+                sender_address,
+            }),
         }
     }
 }
