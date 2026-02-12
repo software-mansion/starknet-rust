@@ -83,12 +83,21 @@ where
     }
 }
 
-const fn is_nonce_related_error<S>(err: &AccountError<S>) -> bool {
+fn is_retryable_nonce_starknet_error(err: &StarknetError) -> bool {
+    match err {
+        StarknetError::DuplicateTx | StarknetError::InvalidTransactionNonce(_) => true,
+        StarknetError::TransactionExecutionError(data) => {
+            format!("{:?}", data.execution_error).contains("Invalid transaction nonce")
+        }
+        _ => false,
+    }
+}
+
+fn is_nonce_related_error<S>(err: &AccountError<S>) -> bool {
     matches!(
         err,
-        AccountError::Provider(ProviderError::StarknetError(
-            StarknetError::DuplicateTx | StarknetError::InvalidTransactionNonce(_),
-        ))
+        AccountError::Provider(ProviderError::StarknetError(starknet_error))
+            if is_retryable_nonce_starknet_error(starknet_error)
     )
 }
 
@@ -103,7 +112,7 @@ const fn is_transient_account_error<S>(err: &AccountError<S>) -> bool {
     )
 }
 
-const fn is_retryable_account_error<S>(err: &AccountError<S>) -> bool {
+fn is_retryable_account_error<S>(err: &AccountError<S>) -> bool {
     is_nonce_related_error(err) || is_transient_account_error(err)
 }
 
