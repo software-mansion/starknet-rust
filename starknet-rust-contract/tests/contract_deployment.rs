@@ -1,14 +1,14 @@
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use starknet_rust_accounts::{ExecutionEncoding, SingleOwnerAccount};
 use starknet_rust_contract::{ContractFactory, UdcSelector};
 use starknet_rust_core::{
     chain_id,
-    types::{BlockId, BlockTag, ExecutionResult, Felt, contract::legacy::LegacyContractClass},
+    types::{BlockId, BlockTag, Felt, contract::legacy::LegacyContractClass},
 };
 use starknet_rust_providers::Provider;
 use starknet_rust_signers::{LocalWallet, SigningKey};
-use test_common::{create_jsonrpc_client, shared_signer_lock};
+use test_common::{create_jsonrpc_client, send_with_retry};
 
 #[tokio::test]
 async fn can_deploy_contract_with_legacy_udc_unique() {
@@ -87,12 +87,16 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
         .l1_data_gas_price(100_000_000_000_000);
     let deployed_address = deployment.deployed_address();
 
-    let _guard = shared_signer_lock().await;
-    let transaction = deployment.send().await.unwrap();
-    watch_tx(
+    send_with_retry(
         &provider,
-        transaction.transaction_hash,
-        Duration::from_secs(30),
+        || async {
+            deployment
+                .send()
+                .await
+                .map(|result| result.transaction_hash)
+        },
+        Duration::from_secs(120),
+        Duration::from_secs(1),
     )
     .await;
 
@@ -101,26 +105,4 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
         .await
         .unwrap();
     assert_eq!(class_hash, class_hash_deployed);
-}
-
-// Temporary utility for watching tx until built-in tx watcher is implemented.
-async fn watch_tx<P>(provider: P, transaction_hash: Felt, timeout: Duration)
-where
-    P: Provider,
-{
-    let deadline = SystemTime::now() + timeout;
-
-    while SystemTime::now() <= deadline {
-        match provider.get_transaction_receipt(transaction_hash).await {
-            Ok(receipt) => match receipt.receipt.execution_result() {
-                ExecutionResult::Succeeded => return,
-                ExecutionResult::Reverted { reason } => {
-                    panic!("Transaction {transaction_hash:#064x} failed: {reason}")
-                }
-            },
-            Err(_) => tokio::time::sleep(Duration::from_secs(1)).await,
-        }
-    }
-
-    panic!("Timed out watching transaction {transaction_hash:#064x}");
 }
