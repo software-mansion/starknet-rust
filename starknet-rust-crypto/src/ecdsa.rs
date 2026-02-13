@@ -112,7 +112,7 @@ pub fn sign(private_key: &Felt, message: &Felt, k: &Felt) -> Result<ExtendedSign
     let k_inv = k.mod_inverse(ec_order_nz).unwrap();
 
     let s = &r.mul_mod(private_key, ec_order_nz);
-    let s = add_unbounded(&s, message);
+    let s = add_unbounded(s, message);
     let s = bigint_mul_mod_floor(s, &k_inv, &EC_ORDER);
 
     if s == Felt::ZERO || s >= ELEMENT_UPPER_BOUND {
@@ -147,7 +147,7 @@ pub fn verify(public_key: &Felt, message: &Felt, r: &Felt, s: &Felt) -> Result<b
     }
 
     let full_public_key =
-        AffinePoint::new_from_x(&public_key, false).ok_or(VerifyError::InvalidPublicKey)?;
+        AffinePoint::new_from_x(public_key, false).ok_or(VerifyError::InvalidPublicKey)?;
 
     let ec_order_nz = NonZeroFelt::from_felt_unchecked(EC_ORDER);
 
@@ -187,7 +187,7 @@ pub fn recover(message: &Felt, r: &Felt, s: &Felt, v: &Felt) -> Result<Felt, Rec
         return Err(RecoverError::InvalidV);
     }
 
-    let full_r = AffinePoint::new_from_x(&r, false).ok_or(RecoverError::InvalidR)?;
+    let full_r = AffinePoint::new_from_x(r, false).ok_or(RecoverError::InvalidR)?;
     let full_rs = &full_r * *s;
 
     let zg = &GENERATOR * *message;
