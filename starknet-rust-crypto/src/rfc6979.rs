@@ -73,7 +73,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::field_element_from_be_hex;
     #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
 
@@ -105,10 +104,10 @@ mod tests {
         let test_vectors: Vec<Rfc6979TestVecotr<'_>> = serde_json::from_str(json_str).unwrap();
 
         for test_vector in &test_vectors {
-            let msg_hash = field_element_from_be_hex(test_vector.msg_hash);
-            let priv_key = field_element_from_be_hex(test_vector.priv_key);
-            let seed = field_element_from_be_hex(test_vector.seed);
-            let expected_k = field_element_from_be_hex(test_vector.k);
+            let msg_hash = Felt::from_hex_unchecked(test_vector.msg_hash);
+            let priv_key = Felt::from_hex_unchecked(test_vector.priv_key);
+            let seed = Felt::from_hex_unchecked(test_vector.seed);
+            let expected_k = Felt::from_hex_unchecked(test_vector.k);
 
             let k = generate_k(&msg_hash, &priv_key, Some(&seed));
 
