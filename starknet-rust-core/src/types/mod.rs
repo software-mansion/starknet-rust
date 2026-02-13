@@ -18,20 +18,20 @@ pub use typed_data::TypedData;
 // TODO: better namespacing of exports?
 mod codegen;
 pub use codegen::{
-    AddressFilter, BinaryNode, BlockHeader, BlockStatus, BlockTag, BlockWithReceipts,
-    BlockWithTxHashes, BlockWithTxs, BroadcastedDeclareTransaction,
-    BroadcastedDeclareTransactionV3, BroadcastedDeployAccountTransaction,
-    BroadcastedDeployAccountTransactionV3, BroadcastedInvokeTransaction,
-    BroadcastedInvokeTransactionV3, CallType, CompressedLegacyContractClass, ContractErrorData,
-    ContractLeafData, ContractStorageDiffItem, ContractStorageKeys, ContractsProof,
-    DataAvailabilityMode, DeclareTransactionReceipt, DeclareTransactionTrace, DeclareTransactionV0,
-    DeclareTransactionV0Content, DeclareTransactionV1, DeclareTransactionV1Content,
-    DeclareTransactionV2, DeclareTransactionV2Content, DeclareTransactionV3,
-    DeclareTransactionV3Content, DeclaredClassItem, DeployAccountTransactionReceipt,
-    DeployAccountTransactionTrace, DeployAccountTransactionV1, DeployAccountTransactionV1Content,
-    DeployAccountTransactionV3, DeployAccountTransactionV3Content, DeployTransaction,
-    DeployTransactionContent, DeployTransactionReceipt, DeployedContractItem, EdgeNode,
-    EmittedEvent, EmittedEventWithFinality, EntryPointType, EntryPointsByType, Event, EventFilter,
+    BinaryNode, BlockHeader, BlockStatus, BlockTag, BlockWithReceipts, BlockWithTxHashes,
+    BlockWithTxs, BroadcastedDeclareTransaction, BroadcastedDeclareTransactionV3,
+    BroadcastedDeployAccountTransaction, BroadcastedDeployAccountTransactionV3,
+    BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3, CallType,
+    CompressedLegacyContractClass, ContractErrorData, ContractLeafData, ContractStorageDiffItem,
+    ContractStorageKeys, ContractsProof, DataAvailabilityMode, DeclareTransactionReceipt,
+    DeclareTransactionTrace, DeclareTransactionV0, DeclareTransactionV0Content,
+    DeclareTransactionV1, DeclareTransactionV1Content, DeclareTransactionV2,
+    DeclareTransactionV2Content, DeclareTransactionV3, DeclareTransactionV3Content,
+    DeclaredClassItem, DeployAccountTransactionReceipt, DeployAccountTransactionTrace,
+    DeployAccountTransactionV1, DeployAccountTransactionV1Content, DeployAccountTransactionV3,
+    DeployAccountTransactionV3Content, DeployTransaction, DeployTransactionContent,
+    DeployTransactionReceipt, DeployedContractItem, EdgeNode, EmittedEvent,
+    EmittedEventWithFinality, EntryPointType, EntryPointsByType, Event, EventFilter,
     EventFilterWithPage, EventsChunk, ExecutionResources, FeeEstimate, FeePayment,
     FlattenedSierraClass, FunctionCall, FunctionInvocation, FunctionStateMutability, GlobalRoots,
     InnerCallExecutionResources, InnerContractExecutionError, InvokeTransactionReceipt,
@@ -45,13 +45,23 @@ pub use codegen::{
     MigratedCompiledClassItem, MsgFromL1, MsgToL1, NewTransactionStatus, NoTraceAvailableErrorData,
     NonceUpdate, OrderedEvent, OrderedMessage, PreConfirmedBlockWithReceipts,
     PreConfirmedBlockWithTxHashes, PreConfirmedBlockWithTxs, PreConfirmedStateUpdate, PriceUnit,
-    ReorgData, ReplacedClassItem, ResourceBounds, ResourceBoundsMapping, ResourcePrice,
-    ResultPageRequest, RevertedInvocation, SequencerTransactionStatus, SierraEntryPoint,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError, StateDiff,
-    StateUpdate, StorageEntry, StorageKey, StorageProof, SubscriptionId, SubscriptionTag,
-    SyncStatus, TraceFlag, TransactionExecutionErrorData, TransactionExecutionStatus,
-    TransactionFinalityStatus, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
-    TransactionTraceWithHash, TransactionWithL2Status, TransactionWithReceipt,
+    PriceUnitFri, PriceUnitWei, ReorgData, ReplacedClassItem, ResourceBounds,
+    ResourceBoundsMapping, ResourcePrice, ResultPageRequest, RevertedInvocation,
+    SequencerTransactionStatus, SierraEntryPoint, SimulatedTransaction, SimulationFlag,
+    SimulationFlagForEstimateFee, StarknetError, StateDiff, StateUpdate, StorageEntry, StorageKey,
+    StorageProof, SubscriptionId, SubscriptionTag, SyncStatus, TraceFlag,
+    TransactionExecutionErrorData, TransactionExecutionStatus, TransactionFinalityStatus,
+    TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionTraceWithHash,
+    TransactionWithL2Status, TransactionWithReceipt,
+};
+pub use codegen::{
+    InitialReads as GeneratedInitialReads,
+    InitialReadsClassHashEntry as GeneratedInitialReadsClassHashEntry,
+    InitialReadsDeclaredContractEntry as GeneratedInitialReadsDeclaredContractEntry,
+    InitialReadsNonceEntry as GeneratedInitialReadsNonceEntry,
+    InitialReadsStorageEntry as GeneratedInitialReadsStorageEntry,
+    SimulateTransactionsResult as GeneratedSimulateTransactionsResult,
+    TraceBlockTransactionsResult as GeneratedTraceBlockTransactionsResult,
 };
 
 /// Module containing the [`U256`] type.
@@ -179,6 +189,17 @@ pub struct EventsPage {
     /// use `contains_key` as a check for the last page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation_token: Option<String>,
+}
+
+/// A contract address or a list of addresses.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AddressFilter {
+    /// A single address.
+    Single(#[serde_as(as = "UfeHex")] Felt),
+    /// A list of addresses.
+    Multiple(#[serde_as(as = "Vec<UfeHex>")] Vec<Felt>),
 }
 
 /// Cached state reads returned by `RETURN_INITIAL_READS`.

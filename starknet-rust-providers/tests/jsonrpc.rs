@@ -1,13 +1,13 @@
 use starknet_rust_core::{
     types::{
-        BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedTransaction, ConfirmedBlockId,
-        ContractClass, ContractStorageKeys, DataAvailabilityMode, DeclareTransaction,
-        DeployAccountTransaction, EthAddress, EventFilter, ExecuteInvocation, ExecutionResult,
-        Felt, FunctionCall, Hash256, InvokeTransaction, MaybePreConfirmedBlockWithReceipts,
-        MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
-        MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds, ResourceBoundsMapping,
-        StarknetError, StorageKey, SyncStatusType, Transaction, TransactionFinalityStatus,
-        TransactionReceipt, TransactionStatus, TransactionTrace,
+        BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3,
+        BroadcastedTransaction, ConfirmedBlockId, ContractClass, ContractStorageKeys,
+        DataAvailabilityMode, DeclareTransaction, DeployAccountTransaction, EthAddress,
+        EventFilter, ExecuteInvocation, ExecutionResult, Felt, FunctionCall, Hash256,
+        InvokeTransaction, MaybePreConfirmedBlockWithReceipts, MaybePreConfirmedBlockWithTxHashes,
+        MaybePreConfirmedBlockWithTxs, MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds,
+        ResourceBoundsMapping, StarknetError, StorageKey, SyncStatusType, Transaction,
+        TransactionFinalityStatus, TransactionReceipt, TransactionStatus, TransactionTrace,
         requests::{CallRequest, GetBlockTransactionCountRequest},
     },
     utils::{get_selector_from_name, get_storage_var_address},
@@ -727,56 +727,60 @@ async fn jsonrpc_estimate_fee() {
     let estimate = rpc_client
         .estimate_fee_single(
             BroadcastedTransaction::Invoke(BroadcastedInvokeTransaction {
-                signature: vec![
-                    Felt::from_hex(
-                        "000e25bc2c344b9a64887c614cebdf50c8c1a8b3e1af7f22e5bd9958ada216a6",
+                broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3 {
+                    signature: vec![
+                        Felt::from_hex(
+                            "000e25bc2c344b9a64887c614cebdf50c8c1a8b3e1af7f22e5bd9958ada216a6",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "01f676fc74cd4dd50ad0cc7a0131fed16d235f3d0afca51bcb4946dc7855b1ff",
+                        )
+                        .unwrap(),
+                    ],
+                    nonce: Felt::ONE,
+                    sender_address: Felt::from_hex(
+                        "052d6e8f4fcebd83f4f5fdb7244cc917eadebf3a64109d4e8c2af09b7682a190",
                     )
                     .unwrap(),
-                    Felt::from_hex(
-                        "01f676fc74cd4dd50ad0cc7a0131fed16d235f3d0afca51bcb4946dc7855b1ff",
-                    )
-                    .unwrap(),
-                ],
-                nonce: Felt::ONE,
-                sender_address: Felt::from_hex(
-                    "052d6e8f4fcebd83f4f5fdb7244cc917eadebf3a64109d4e8c2af09b7682a190",
-                )
-                .unwrap(),
-                calldata: vec![
-                    Felt::from_hex("1").unwrap(),
-                    Felt::from_hex(
-                        "04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-                    )
-                    .unwrap(),
-                    Felt::from_hex(
-                        "0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-                    )
-                    .unwrap(),
-                    Felt::from_hex("3").unwrap(),
-                    Felt::from_hex("1234").unwrap(),
-                    Felt::from_hex("1").unwrap(),
-                    Felt::from_hex("0").unwrap(),
-                ],
-                is_query: true,
-                resource_bounds: ResourceBoundsMapping {
-                    l1_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
+                    calldata: vec![
+                        Felt::from_hex("1").unwrap(),
+                        Felt::from_hex(
+                            "04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                        )
+                        .unwrap(),
+                        Felt::from_hex("3").unwrap(),
+                        Felt::from_hex("1234").unwrap(),
+                        Felt::from_hex("1").unwrap(),
+                        Felt::from_hex("0").unwrap(),
+                    ],
+                    is_query: true,
+                    resource_bounds: ResourceBoundsMapping {
+                        l1_gas: ResourceBounds {
+                            max_amount: 0,
+                            max_price_per_unit: 0,
+                        },
+                        l1_data_gas: ResourceBounds {
+                            max_amount: 0,
+                            max_price_per_unit: 0,
+                        },
+                        l2_gas: ResourceBounds {
+                            max_amount: 0,
+                            max_price_per_unit: 0,
+                        },
                     },
-                    l1_data_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
-                    },
-                    l2_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
-                    },
+                    tip: Default::default(),
+                    paymaster_data: Vec::default(),
+                    account_deployment_data: Vec::default(),
+                    nonce_data_availability_mode: DataAvailabilityMode::L1,
+                    fee_data_availability_mode: DataAvailabilityMode::L1,
+                    proof_facts: None,
                 },
-                tip: Default::default(),
-                paymaster_data: Vec::default(),
-                account_deployment_data: Vec::default(),
-                nonce_data_availability_mode: DataAvailabilityMode::L1,
-                fee_data_availability_mode: DataAvailabilityMode::L1,
+                proof: None,
             }),
             [],
             BlockId::Tag(BlockTag::Latest),

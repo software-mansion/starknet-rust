@@ -3,8 +3,8 @@ use std::time::Duration;
 use futures_util::{SinkExt, stream::SplitSink};
 use rand::{RngCore, thread_rng};
 use starknet_rust_core::types::{
-    AddressFilter, ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus,
-    SubscriptionId, SubscriptionTag,
+    ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus, SubscriptionId,
+    SubscriptionTag,
     requests::{
         SubscribeEventsRequest, SubscribeNewHeadsRequest, SubscribeNewTransactionReceiptsRequest,
         SubscribeNewTransactionsRequest, SubscribeTransactionStatusRequest, UnsubscribeRequest,
@@ -306,7 +306,7 @@ impl StreamWriteDriver {
             }
             SubscribeWriteData::Events { options } => {
                 ProviderRequestData::SubscribeEvents(SubscribeEventsRequest {
-                    from_address: options.from_address.map(AddressFilter::Single),
+                    from_address: options.from_address,
                     keys: options.keys,
                     block_id: Some(options.block_id),
                     finality_status: Some(options.finality_status),

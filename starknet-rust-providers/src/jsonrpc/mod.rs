@@ -634,6 +634,7 @@ where
             JsonRpcMethod::GetBlockWithTxHashes,
             GetBlockWithTxHashesRequestRef {
                 block_id: block_id.as_ref(),
+                response_flags: None,
             },
         )
         .await
@@ -748,6 +749,7 @@ where
             JsonRpcMethod::GetTransactionStatus,
             GetTransactionStatusRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags: None,
             },
         )
         .await
@@ -805,6 +807,7 @@ where
             JsonRpcMethod::GetTransactionReceipt,
             GetTransactionReceiptRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
+                response_flags: None,
             },
         )
         .await
