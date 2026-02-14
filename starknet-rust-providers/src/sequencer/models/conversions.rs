@@ -63,8 +63,18 @@ impl TryFrom<Block> for core::MaybePreConfirmedBlockWithTxHashes {
                     transaction_commitment: value.transaction_commitment.unwrap_or_default(),
                     receipt_commitment: value.receipt_commitment.unwrap_or_default(),
                     state_diff_commitment: value.state_diff_commitment.unwrap_or_default(),
-                    event_count: value.event_count,
-                    transaction_count: value.transaction_count,
+                    event_count: value
+                        .transaction_receipts
+                        .iter()
+                        .map(|receipt| receipt.events.len())
+                        .sum::<usize>()
+                        .try_into()
+                        .map_err(|_| ConversionError)?,
+                    transaction_count: value
+                        .transactions
+                        .len()
+                        .try_into()
+                        .map_err(|_| ConversionError)?,
                     state_diff_length: value.state_diff_length.unwrap_or_default(),
                     transactions: value
                         .transactions
@@ -112,8 +122,18 @@ impl TryFrom<Block> for core::MaybePreConfirmedBlockWithTxs {
                     transaction_commitment: value.transaction_commitment.unwrap_or_default(),
                     receipt_commitment: value.receipt_commitment.unwrap_or_default(),
                     state_diff_commitment: value.state_diff_commitment.unwrap_or_default(),
-                    event_count: value.event_count,
-                    transaction_count: value.transaction_count,
+                    event_count: value
+                        .transaction_receipts
+                        .iter()
+                        .map(|receipt| receipt.events.len())
+                        .sum::<usize>()
+                        .try_into()
+                        .map_err(|_| ConversionError)?,
+                    transaction_count: value
+                        .transactions
+                        .len()
+                        .try_into()
+                        .map_err(|_| ConversionError)?,
                     state_diff_length: value.state_diff_length.unwrap_or_default(),
                     transactions: value
                         .transactions
@@ -141,17 +161,22 @@ impl TryFrom<Block> for core::MaybePreConfirmedBlockWithReceipts {
     type Error = ConversionError;
 
     fn try_from(value: Block) -> Result<Self, Self::Error> {
-        if value.transactions.len() != value.transaction_receipts.len() {
+        let transaction_count = value.transactions.len();
+
+        if transaction_count != value.transaction_receipts.len() {
             return Err(ConversionError);
         }
 
-        let mut transactions = vec![];
+        let mut transactions = Vec::with_capacity(transaction_count);
+        let mut event_count = 0;
 
         for (tx, receipt) in value
             .transactions
             .into_iter()
             .zip(value.transaction_receipts.into_iter())
         {
+            event_count += receipt.events.len();
+
             let core_tx = tx.clone().try_into()?;
 
             let tx_with_receipt = ConfirmedReceiptWithContext {
@@ -186,8 +211,8 @@ impl TryFrom<Block> for core::MaybePreConfirmedBlockWithReceipts {
                     transaction_commitment: value.transaction_commitment.unwrap_or_default(),
                     receipt_commitment: value.receipt_commitment.unwrap_or_default(),
                     state_diff_commitment: value.state_diff_commitment.unwrap_or_default(),
-                    event_count: value.event_count,
-                    transaction_count: value.transaction_count,
+                    event_count: event_count.try_into().map_err(|_| ConversionError)?,
+                    transaction_count: transaction_count.try_into().map_err(|_| ConversionError)?,
                     state_diff_length: value.state_diff_length.unwrap_or_default(),
                     transactions,
                 }))
