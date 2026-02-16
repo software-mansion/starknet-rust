@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-
-## [0.18.1] - 2026-02-04
 ### Fixed
+
 - Fix `StarkCurve` modulus in [starknet-rust-signers](../starknet-rs/starknet-signers)
