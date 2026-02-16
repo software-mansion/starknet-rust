@@ -39,7 +39,7 @@ impl SigningKey {
     /// Generates a new key pair from a cryptographically secure RNG.
     pub fn from_random() -> Self {
         let n =
-            U256::from_be_hex("800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f");
+            U256::from_be_hex("0800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f");
 
         loop {
             let mut buf = Zeroizing::new([0u8; 32]);
