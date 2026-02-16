@@ -9,4 +9,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix `StarkCurve` modulus in [starknet-rust-signers](../starknet-rs/starknet-signers)
+- `SigningKey::from_random()` uses now a correct value for [Stark curve's order](https://docs.starknet.io/learn/protocol/cryptography#the-stark-curve)
