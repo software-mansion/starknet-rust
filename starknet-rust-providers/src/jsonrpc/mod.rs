@@ -634,7 +634,6 @@ where
             JsonRpcMethod::GetBlockWithTxHashes,
             GetBlockWithTxHashesRequestRef {
                 block_id: block_id.as_ref(),
-                response_flags: None,
             },
         )
         .await
@@ -749,7 +748,6 @@ where
             JsonRpcMethod::GetTransactionStatus,
             GetTransactionStatusRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
-                response_flags: None,
             },
         )
         .await
@@ -807,7 +805,6 @@ where
             JsonRpcMethod::GetTransactionReceipt,
             GetTransactionReceiptRequestRef {
                 transaction_hash: transaction_hash.as_ref(),
-                response_flags: None,
             },
         )
         .await
@@ -1744,7 +1741,8 @@ impl Display for JsonRpcError {
 mod tests {
     use super::*;
     use serde_json::Value;
-    use starknet_rust_core::types::{BlockTag, ConfirmedBlockId};
+    use starknet_rust_core::types::requests::SubscribeEventsRequest;
+    use starknet_rust_core::types::{AddressFilter, BlockId, BlockTag, ConfirmedBlockId};
 
     fn as_object(value: &Value) -> &serde_json::Map<String, Value> {
         value.as_object().expect("object params")
@@ -1835,5 +1833,43 @@ mod tests {
             as_object(&value).get("trace_flags"),
             Some(&serde_json::json!(["RETURN_INITIAL_READS"]))
         );
+    }
+
+    #[test]
+    fn subscribe_events_from_address_serializes_single() {
+        let value = serde_json::to_value(ProviderRequestData::SubscribeEvents(
+            SubscribeEventsRequest {
+                from_address: Some(AddressFilter::Single(FeltPrimitive::ONE)),
+                keys: None,
+                block_id: None,
+                finality_status: None,
+            },
+        ))
+        .unwrap();
+
+        assert_eq!(value.get("from_address"), Some(&serde_json::json!("0x1")));
+        assert_eq!(value.get("keys"), None);
+    }
+
+    #[test]
+    fn subscribe_events_from_address_serializes_multiple() {
+        let value = serde_json::to_value(ProviderRequestData::SubscribeEvents(
+            SubscribeEventsRequest {
+                from_address: Some(AddressFilter::Multiple(vec![
+                    FeltPrimitive::from_hex("0x10").unwrap(),
+                    FeltPrimitive::from_hex("0x20").unwrap(),
+                ])),
+                keys: None,
+                block_id: None,
+                finality_status: None,
+            },
+        ))
+        .unwrap();
+
+        assert_eq!(
+            value.get("from_address"),
+            Some(&serde_json::json!(["0x10", "0x20"]))
+        );
+        assert_eq!(value.get("keys"), None);
     }
 }
