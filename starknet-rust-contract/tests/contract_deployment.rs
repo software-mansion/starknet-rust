@@ -1,18 +1,14 @@
 use std::time::{Duration, SystemTime};
 
-use starknet_rust_accounts::{AccountError, ExecutionEncoding, SingleOwnerAccount};
+use starknet_rust_accounts::{ExecutionEncoding, SingleOwnerAccount};
 use starknet_rust_contract::{ContractFactory, UdcSelector};
 use starknet_rust_core::{
     chain_id,
-    types::{
-        BlockId, BlockTag, ExecutionResult, Felt, StarknetError,
-        contract::legacy::LegacyContractClass,
-    },
+    types::{BlockId, BlockTag, ExecutionResult, Felt, contract::legacy::LegacyContractClass},
 };
-use starknet_rust_providers::{Provider, ProviderError};
+use starknet_rust_providers::Provider;
 use starknet_rust_signers::{LocalWallet, SigningKey};
 use test_common::{create_jsonrpc_client, shared_signer_lock};
-use tokio::time::Instant;
 
 #[tokio::test]
 async fn can_deploy_contract_with_legacy_udc_unique() {
@@ -91,24 +87,14 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
         .l1_data_gas_price(100_000_000_000_000);
     let deployed_address = deployment.deployed_address();
 
-    let timeout = Duration::new(120, 0);
-    let poll_interval = Duration::from_secs(1);
-    let deadline = Instant::now() + timeout;
-
-    loop {
-        let _guard = shared_signer_lock().await;
-
-        match deployment.send().await {
-            Ok(result) => {
-                watch_tx(&provider, result.transaction_hash, timeout).await;
-                break;
-            }
-            Err(err) if is_retryable_nonce_error(&err) && Instant::now() < deadline => {}
-            Err(err) => panic!("Failed to send deployment transaction: {err}"),
-        }
-
-        tokio::time::sleep(poll_interval).await;
-    }
+    let _guard = shared_signer_lock().await;
+    let transaction = deployment.send().await.unwrap();
+    watch_tx(
+        &provider,
+        transaction.transaction_hash,
+        Duration::from_secs(30),
+    )
+    .await;
 
     let class_hash_deployed = provider
         .get_class_hash_at(BlockId::Tag(BlockTag::PreConfirmed), deployed_address)
@@ -137,13 +123,4 @@ where
     }
 
     panic!("Timed out watching transaction {transaction_hash:#064x}");
-}
-
-const fn is_retryable_nonce_error<S>(err: &AccountError<S>) -> bool {
-    matches!(
-        err,
-        AccountError::Provider(ProviderError::StarknetError(
-            StarknetError::InvalidTransactionNonce(_) | StarknetError::DuplicateTx,
-        ))
-    )
 }
