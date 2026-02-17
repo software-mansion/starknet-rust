@@ -13,7 +13,7 @@ use std::time::Duration;
 use tokio::sync::{Mutex, MutexGuard};
 use tokio::time::{Instant, sleep};
 
-const DEFAULT_RETRY_TIMEOUT: Duration = Duration::from_secs(120);
+const DEFAULT_RETRY_TIMEOUT: Duration = Duration::new(120, 0);
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 
 pub fn create_jsonrpc_client() -> JsonRpcClient<HttpTransport> {
