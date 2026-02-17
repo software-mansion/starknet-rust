@@ -34,8 +34,10 @@ pub use codegen::{
     EmittedEventWithFinality, EntryPointType, EntryPointsByType, Event, EventFilter,
     EventFilterWithPage, EventsChunk, ExecutionResources, FeeEstimate, FeePayment,
     FlattenedSierraClass, FunctionCall, FunctionInvocation, FunctionStateMutability, GlobalRoots,
-    InnerCallExecutionResources, InnerContractExecutionError, InvokeTransactionReceipt,
-    InvokeTransactionTrace, InvokeTransactionV0, InvokeTransactionV0Content, InvokeTransactionV1,
+    InitialReads, InitialReadsClassHashEntry, InitialReadsDeclaredContractEntry,
+    InitialReadsNonceEntry, InitialReadsStorageEntry, InnerCallExecutionResources,
+    InnerContractExecutionError, InvokeTransactionReceipt, InvokeTransactionTrace,
+    InvokeTransactionV0, InvokeTransactionV0Content, InvokeTransactionV1,
     InvokeTransactionV1Content, InvokeTransactionV3, InvokeTransactionV3Content,
     L1DataAvailabilityMode, L1HandlerTransaction, L1HandlerTransactionContent,
     L1HandlerTransactionReceipt, L1HandlerTransactionTrace, L2TransactionFinalityStatus,
@@ -55,11 +57,6 @@ pub use codegen::{
     TransactionWithL2Status, TransactionWithReceipt,
 };
 pub use codegen::{
-    InitialReads as GeneratedInitialReads,
-    InitialReadsClassHashEntry as GeneratedInitialReadsClassHashEntry,
-    InitialReadsDeclaredContractEntry as GeneratedInitialReadsDeclaredContractEntry,
-    InitialReadsNonceEntry as GeneratedInitialReadsNonceEntry,
-    InitialReadsStorageEntry as GeneratedInitialReadsStorageEntry,
     SimulateTransactionsResult as GeneratedSimulateTransactionsResult,
     TraceBlockTransactionsResult as GeneratedTraceBlockTransactionsResult,
 };
@@ -200,72 +197,6 @@ pub enum AddressFilter {
     Single(#[serde_as(as = "UfeHex")] Felt),
     /// A list of addresses.
     Multiple(#[serde_as(as = "Vec<UfeHex>")] Vec<Felt>),
-}
-
-/// Cached state reads returned by `RETURN_INITIAL_READS`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InitialReads {
-    /// Storage entries read during execution.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub storage: Option<Vec<InitialReadsStorageEntry>>,
-    /// Contract nonces read during execution.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub nonces: Option<Vec<InitialReadsNonceEntry>>,
-    /// Contract class hashes read during execution.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub class_hashes: Option<Vec<InitialReadsClassHashEntry>>,
-    /// Class declaration statuses read during execution.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub declared_contracts: Option<Vec<InitialReadsDeclaredContractEntry>>,
-}
-
-/// A single storage read witness entry.
-#[serde_as]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InitialReadsStorageEntry {
-    /// Contract address that owns the storage slot.
-    #[serde_as(as = "UfeHex")]
-    pub contract_address: Felt,
-    /// Storage key read from the contract.
-    pub key: StorageKey,
-    /// Value read from the storage slot.
-    #[serde_as(as = "UfeHex")]
-    pub value: Felt,
-}
-
-/// A single nonce read witness entry.
-#[serde_as]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InitialReadsNonceEntry {
-    /// Contract address whose nonce was read.
-    #[serde_as(as = "UfeHex")]
-    pub contract_address: Felt,
-    /// Nonce value read for the contract.
-    #[serde_as(as = "UfeHex")]
-    pub nonce: Felt,
-}
-
-/// A single class hash read witness entry.
-#[serde_as]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InitialReadsClassHashEntry {
-    /// Contract address whose class hash was read.
-    #[serde_as(as = "UfeHex")]
-    pub contract_address: Felt,
-    /// Class hash read for the contract.
-    #[serde_as(as = "UfeHex")]
-    pub class_hash: Felt,
-}
-
-/// A single declaration-status read witness entry.
-#[serde_as]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InitialReadsDeclaredContractEntry {
-    /// Class hash whose declaration status was read.
-    #[serde_as(as = "UfeHex")]
-    pub class_hash: Felt,
-    /// Whether the class is declared.
-    pub is_declared: bool,
 }
 
 /// Result type for `starknet_simulateTransactions` that supports both 0.10.0 and 0.10.1 payloads.
