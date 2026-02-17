@@ -200,40 +200,48 @@ pub enum AddressFilter {
 }
 
 /// Result type for `starknet_simulateTransactions` that supports both 0.10.0 and 0.10.1 payloads.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct SimulateTransactionsResult {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum SimulateTransactionsResult {
     /// Simulated transactions and their traces.
-    pub simulated_transactions: Vec<SimulatedTransaction>,
-    /// Optional initial reads witness when requested.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub initial_reads: Option<InitialReads>,
+    Standard(Vec<SimulatedTransaction>),
+    /// Simulated transactions and their traces, along with initial reads witness when requested.
+    WithInitialReads {
+        /// Simulated transactions and their traces.
+        simulated_transactions: Vec<SimulatedTransaction>,
+        /// Initial reads witness for the simulation.
+        initial_reads: InitialReads,
+    },
 }
 
-impl<'de> Deserialize<'de> for SimulateTransactionsResult {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum Inner {
-            Legacy(Vec<SimulatedTransaction>),
-            V0101 {
-                simulated_transactions: Vec<SimulatedTransaction>,
-                #[serde(default)]
-                initial_reads: Option<InitialReads>,
-            },
+impl SimulateTransactionsResult {
+    /// Returns the simulated transactions regardless of payload shape.
+    pub fn simulated_transactions(&self) -> &[SimulatedTransaction] {
+        match self {
+            Self::Standard(simulated_transactions)
+            | Self::WithInitialReads {
+                simulated_transactions,
+                ..
+            } => simulated_transactions,
         }
+    }
 
-        match Inner::deserialize(deserializer)? {
-            Inner::Legacy(simulated_transactions) => Ok(Self {
+    /// Returns the optional initial reads witness.
+    pub const fn initial_reads(&self) -> Option<&InitialReads> {
+        match self {
+            Self::Standard(_) => None,
+            Self::WithInitialReads { initial_reads, .. } => Some(initial_reads),
+        }
+    }
+
+    /// Consumes the result and returns only the simulated transactions.
+    pub fn into_simulated_transactions(self) -> Vec<SimulatedTransaction> {
+        match self {
+            Self::Standard(simulated_transactions)
+            | Self::WithInitialReads {
                 simulated_transactions,
-                initial_reads: None,
-            }),
-            Inner::V0101 {
-                simulated_transactions,
-                initial_reads,
-            } => Ok(Self {
-                simulated_transactions,
-                initial_reads,
-            }),
+                ..
+            } => simulated_transactions,
         }
     }
 }
@@ -1315,8 +1323,9 @@ mod tests {
         }]);
 
         let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
-        assert_eq!(result.simulated_transactions.len(), 1);
-        assert!(result.initial_reads.is_none());
+        assert!(matches!(result, SimulateTransactionsResult::Standard(_)));
+        assert_eq!(result.simulated_transactions().len(), 1);
+        assert!(result.initial_reads().is_none());
     }
 
     #[test]
@@ -1331,7 +1340,7 @@ mod tests {
 
         let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
         let reads = result
-            .initial_reads
+            .initial_reads()
             .expect("initial_reads should be present");
         assert!(reads.storage.as_ref().is_some_and(|v| !v.is_empty()));
     }

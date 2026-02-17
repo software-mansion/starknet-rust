@@ -359,17 +359,18 @@ pub trait Provider {
         T: AsRef<BroadcastedTransaction> + Send + Sync,
         S: AsRef<[SimulationFlag]> + Send + Sync,
     {
-        let mut result = self
+        let result = self
             .simulate_transactions(
                 block_id,
                 [transaction.as_ref().to_owned()],
                 simulation_flags,
             )
             .await?;
+        let mut simulated_transactions = result.into_simulated_transactions();
 
-        if result.simulated_transactions.len() == 1 {
+        if simulated_transactions.len() == 1 {
             // Unwrapping here is safe becuase we already checked length
-            Ok(result.simulated_transactions.pop().unwrap())
+            Ok(simulated_transactions.pop().unwrap())
         } else {
             Err(ProviderError::ArrayLengthMismatch)
         }
