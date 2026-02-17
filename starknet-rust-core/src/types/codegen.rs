@@ -5,7 +5,7 @@
 //     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#eeb5b75471cbef2a23701c01c1b252b012a8f9f3
+//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#1891eba1a49886492158318468f747be10bb88bc
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -32,6 +32,7 @@
 // - `TXN`
 // - `TXN_CONTENT`
 // - `TXN_RECEIPT`
+
 #![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_const_for_fn)]
@@ -45,10 +46,12 @@ use serde_with::serde_as;
 use crate::serde::byte_array::base64;
 
 use super::{
-    AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId, ContractExecutionError,
-    EthAddress, ExecuteInvocation, ExecutionResult, Felt, Hash256, LegacyContractAbiEntry,
-    MerkleNode, ReceiptBlock, Transaction, TransactionContent, TransactionReceipt,
-    TransactionStatus, TransactionTrace, UfeHex, alloc,
+    AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId,
+    ContractExecutionError,
+    EthAddress, ExecuteInvocation, ExecutionResult, Felt, Hash256,
+    LegacyContractAbiEntry, MerkleNode, ReceiptBlock, Transaction,
+    TransactionContent, TransactionReceipt, TransactionStatus, TransactionTrace,
+    UfeHex, alloc,
     serde_impls::{MerkleNodeMap, NumAsHex, OwnedContractExecutionError},
 };
 
@@ -2266,9 +2269,7 @@ impl core::fmt::Display for StarknetError {
             Self::UnsupportedTxVersion => write!(f, "UnsupportedTxVersion"),
             Self::UnsupportedContractClassVersion => write!(f, "UnsupportedContractClassVersion"),
             Self::UnexpectedError(e) => write!(f, "UnexpectedError: {e:?}"),
-            Self::ReplacementTransactionUnderpriced => {
-                write!(f, "ReplacementTransactionUnderpriced")
-            }
+            Self::ReplacementTransactionUnderpriced => write!(f, "ReplacementTransactionUnderpriced"),
             Self::FeeBelowMinimum => write!(f, "FeeBelowMinimum"),
             Self::NoTraceAvailable(e) => write!(f, "NoTraceAvailable: {e:?}"),
             Self::InvalidSubscriptionId => write!(f, "InvalidSubscriptionId"),
