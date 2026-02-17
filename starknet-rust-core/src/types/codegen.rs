@@ -5,6 +5,8 @@
 //     https://github.com/Mohiiit/starknet-jsonrpc-codegen
 
 // Code generated with source commit:
+// TODO: Switch this URL to software-mansion-labs/starknet-jsonrpc-codegen
+// once these generator changes are merged upstream.
 //     Mohiiit/starknet-jsonrpc-codegen@8143dbe187921b6acd326e35208608a7c5235a02
 //     https://github.com/Mohiiit/starknet-jsonrpc-codegen/commit/8143dbe187921b6acd326e35208608a7c5235a02
 
