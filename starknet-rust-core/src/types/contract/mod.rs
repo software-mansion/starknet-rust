@@ -801,18 +801,16 @@ impl CompiledClass {
                     };
                     let is_used = visited_pc_after != visited_pc_before;
 
-                    if is_used {
-                        match visited_pc_before {
-                            Some(visited_pc_before) if visited_pc_before != *bytecode_offset => {
-                                return Err(ComputeClassHashError::InvalidBytecodeSegment(
-                                    InvalidBytecodeSegmentError {
-                                        visited_pc: visited_pc_before,
-                                        segment_start: *bytecode_offset,
-                                    },
-                                ));
-                            }
-                            _ => {}
-                        }
+                    if let Some(visited_pc_before) = visited_pc_before
+                        && is_used
+                        && visited_pc_before != *bytecode_offset
+                    {
+                        return Err(ComputeClassHashError::InvalidBytecodeSegment(
+                            InvalidBytecodeSegmentError {
+                                visited_pc: visited_pc_before,
+                                segment_start: *bytecode_offset,
+                            },
+                        ));
                     }
 
                     res.push(BytecodeSegment {
