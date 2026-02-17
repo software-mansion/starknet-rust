@@ -32,7 +32,6 @@
 // - `TXN`
 // - `TXN_CONTENT`
 // - `TXN_RECEIPT`
-
 #![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_const_for_fn)]
@@ -46,12 +45,10 @@ use serde_with::serde_as;
 use crate::serde::byte_array::base64;
 
 use super::{
-    AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId,
-    ContractExecutionError,
-    EthAddress, ExecuteInvocation, ExecutionResult, Felt, Hash256,
-    LegacyContractAbiEntry, MerkleNode, ReceiptBlock, Transaction,
-    TransactionContent, TransactionReceipt, TransactionStatus, TransactionTrace,
-    UfeHex, alloc,
+    AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId, ContractExecutionError,
+    EthAddress, ExecuteInvocation, ExecutionResult, Felt, Hash256, LegacyContractAbiEntry,
+    MerkleNode, ReceiptBlock, Transaction, TransactionContent, TransactionReceipt,
+    TransactionStatus, TransactionTrace, UfeHex, alloc,
     serde_impls::{MerkleNodeMap, NumAsHex, OwnedContractExecutionError},
 };
 
@@ -2269,7 +2266,9 @@ impl core::fmt::Display for StarknetError {
             Self::UnsupportedTxVersion => write!(f, "UnsupportedTxVersion"),
             Self::UnsupportedContractClassVersion => write!(f, "UnsupportedContractClassVersion"),
             Self::UnexpectedError(e) => write!(f, "UnexpectedError: {e:?}"),
-            Self::ReplacementTransactionUnderpriced => write!(f, "ReplacementTransactionUnderpriced"),
+            Self::ReplacementTransactionUnderpriced => {
+                write!(f, "ReplacementTransactionUnderpriced")
+            }
             Self::FeeBelowMinimum => write!(f, "FeeBelowMinimum"),
             Self::NoTraceAvailable(e) => write!(f, "NoTraceAvailable: {e:?}"),
             Self::InvalidSubscriptionId => write!(f, "InvalidSubscriptionId"),
