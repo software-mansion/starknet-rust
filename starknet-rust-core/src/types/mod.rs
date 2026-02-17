@@ -1,6 +1,6 @@
 use alloc::{string::String, vec::Vec};
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::serde::unsigned_field_element::UfeHex;
@@ -214,75 +214,19 @@ pub enum SimulateTransactionsResult {
     },
 }
 
-impl SimulateTransactionsResult {
-    /// Returns the simulated transactions regardless of payload shape.
-    pub fn simulated_transactions(&self) -> &[SimulatedTransaction] {
-        match self {
-            Self::Standard(simulated_transactions)
-            | Self::WithInitialReads {
-                simulated_transactions,
-                ..
-            } => simulated_transactions,
-        }
-    }
-
-    /// Returns the optional initial reads witness.
-    pub const fn initial_reads(&self) -> Option<&InitialReads> {
-        match self {
-            Self::Standard(_) => None,
-            Self::WithInitialReads { initial_reads, .. } => Some(initial_reads),
-        }
-    }
-
-    /// Consumes the result and returns only the simulated transactions.
-    pub fn into_simulated_transactions(self) -> Vec<SimulatedTransaction> {
-        match self {
-            Self::Standard(simulated_transactions)
-            | Self::WithInitialReads {
-                simulated_transactions,
-                ..
-            } => simulated_transactions,
-        }
-    }
-}
-
 /// Result type for `starknet_traceBlockTransactions` that supports both 0.10.0 and 0.10.1 payloads.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct TraceBlockTransactionsResult {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TraceBlockTransactionsResult {
     /// Traces for all transactions in the block.
-    pub traces: Vec<TransactionTraceWithHash>,
-    /// Optional initial reads witness when requested.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub initial_reads: Option<InitialReads>,
-}
-
-impl<'de> Deserialize<'de> for TraceBlockTransactionsResult {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum Inner {
-            Legacy(Vec<TransactionTraceWithHash>),
-            V0101 {
-                traces: Vec<TransactionTraceWithHash>,
-                #[serde(default)]
-                initial_reads: Option<InitialReads>,
-            },
-        }
-
-        match Inner::deserialize(deserializer)? {
-            Inner::Legacy(traces) => Ok(Self {
-                traces,
-                initial_reads: None,
-            }),
-            Inner::V0101 {
-                traces,
-                initial_reads,
-            } => Ok(Self {
-                traces,
-                initial_reads,
-            }),
-        }
-    }
+    Standard(Vec<TransactionTraceWithHash>),
+    /// Traces and initial reads witness when requested.
+    WithInitialReads {
+        /// Traces for all transactions in the block.
+        traces: Vec<TransactionTraceWithHash>,
+        /// Initial reads witness for the traced block.
+        initial_reads: InitialReads,
+    },
 }
 
 /// Response for broadcasting an `INVOKE` transaction.
@@ -1323,9 +1267,14 @@ mod tests {
         }]);
 
         let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
-        assert!(matches!(result, SimulateTransactionsResult::Standard(_)));
-        assert_eq!(result.simulated_transactions().len(), 1);
-        assert!(result.initial_reads().is_none());
+        match result {
+            SimulateTransactionsResult::Standard(simulated_transactions) => {
+                assert_eq!(simulated_transactions.len(), 1);
+            }
+            SimulateTransactionsResult::WithInitialReads { .. } => {
+                panic!("expected legacy array result");
+            }
+        }
     }
 
     #[test]
@@ -1339,10 +1288,23 @@ mod tests {
         });
 
         let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
-        let reads = result
-            .initial_reads()
-            .expect("initial_reads should be present");
-        assert!(reads.storage.as_ref().is_some_and(|v| !v.is_empty()));
+        match result {
+            SimulateTransactionsResult::Standard(_) => {
+                panic!("expected 0.10.1 object result");
+            }
+            SimulateTransactionsResult::WithInitialReads {
+                simulated_transactions,
+                initial_reads,
+            } => {
+                assert_eq!(simulated_transactions.len(), 1);
+                assert!(
+                    initial_reads
+                        .storage
+                        .as_ref()
+                        .is_some_and(|v| !v.is_empty())
+                );
+            }
+        }
     }
 
     #[test]
@@ -1353,8 +1315,14 @@ mod tests {
         }]);
 
         let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
-        assert_eq!(result.traces.len(), 1);
-        assert!(result.initial_reads.is_none());
+        match result {
+            TraceBlockTransactionsResult::Standard(traces) => {
+                assert_eq!(traces.len(), 1);
+            }
+            TraceBlockTransactionsResult::WithInitialReads { .. } => {
+                panic!("expected legacy array result");
+            }
+        }
     }
 
     #[test]
@@ -1368,9 +1336,22 @@ mod tests {
         });
 
         let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
-        let reads = result
-            .initial_reads
-            .expect("initial_reads should be present");
-        assert!(reads.class_hashes.as_ref().is_some_and(|v| !v.is_empty()));
+        match result {
+            TraceBlockTransactionsResult::Standard(_) => {
+                panic!("expected 0.10.1 object result");
+            }
+            TraceBlockTransactionsResult::WithInitialReads {
+                traces,
+                initial_reads,
+            } => {
+                assert_eq!(traces.len(), 1);
+                assert!(
+                    initial_reads
+                        .class_hashes
+                        .as_ref()
+                        .is_some_and(|v| !v.is_empty())
+                );
+            }
+        }
     }
 }

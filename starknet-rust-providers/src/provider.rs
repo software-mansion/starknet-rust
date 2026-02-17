@@ -366,7 +366,13 @@ pub trait Provider {
                 simulation_flags,
             )
             .await?;
-        let mut simulated_transactions = result.into_simulated_transactions();
+        let mut simulated_transactions = match result {
+            SimulateTransactionsResult::Standard(simulated_transactions)
+            | SimulateTransactionsResult::WithInitialReads {
+                simulated_transactions,
+                ..
+            } => simulated_transactions,
+        };
 
         if simulated_transactions.len() == 1 {
             // Unwrapping here is safe becuase we already checked length

@@ -2,10 +2,11 @@
 #![allow(clippy::unreadable_literal)]
 // AUTO-GENERATED CODE. DO NOT EDIT
 // To change the code generated, modify the codegen tool instead:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen
+//     https://github.com/Mohiiit/starknet-jsonrpc-codegen
 
-// Code generated with version:
-//     https://github.com/xJonathanLEI/starknet-jsonrpc-codegen#1891eba1a49886492158318468f747be10bb88bc
+// Code generated with source commit:
+//     Mohiiit/starknet-jsonrpc-codegen@8143dbe187921b6acd326e35208608a7c5235a02
+//     https://github.com/Mohiiit/starknet-jsonrpc-codegen/commit/8143dbe187921b6acd326e35208608a7c5235a02
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
