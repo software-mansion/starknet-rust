@@ -13,6 +13,9 @@ use std::time::Duration;
 use tokio::sync::{Mutex, MutexGuard};
 use tokio::time::{Instant, sleep};
 
+const DEFAULT_RETRY_TIMEOUT: Duration = Duration::from_secs(120);
+const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(1);
+
 pub fn create_jsonrpc_client() -> JsonRpcClient<HttpTransport> {
     let url = url::Url::parse("http://188.34.188.184:7070/rpc/v0_10").unwrap();
     JsonRpcClient::new(HttpTransport::new(url))
@@ -28,6 +31,24 @@ pub async fn shared_signer_lock() -> MutexGuard<'static, ()> {
 }
 
 pub async fn wait_for_receipt<P>(
+    provider: &P,
+    transaction_hash: Felt,
+    require_successful_execution: bool,
+) -> TransactionReceiptWithBlockInfo
+where
+    P: Provider + Sync,
+{
+    wait_for_receipt_with_timeout(
+        provider,
+        transaction_hash,
+        DEFAULT_RETRY_TIMEOUT,
+        DEFAULT_POLL_INTERVAL,
+        require_successful_execution,
+    )
+    .await
+}
+
+async fn wait_for_receipt_with_timeout<P>(
     provider: &P,
     transaction_hash: Felt,
     timeout: Duration,
@@ -116,108 +137,90 @@ fn is_retryable_account_error<S>(err: &AccountError<S>) -> bool {
     is_nonce_related_error(err) || is_transient_account_error(err)
 }
 
-pub async fn retry_provider_call<T, Op, Fut>(
-    mut operation: Op,
-    timeout: Duration,
-    poll_interval: Duration,
-) -> T
+pub async fn retry_provider_call<T, Op, Fut>(mut operation: Op) -> T
 where
     Op: FnMut() -> Fut + Send,
     Fut: Future<Output = Result<T, ProviderError>> + Send,
 {
-    let deadline = Instant::now() + timeout;
+    let deadline = Instant::now() + DEFAULT_RETRY_TIMEOUT;
     let mut last_error: Option<ProviderError> = None;
 
     loop {
         if Instant::now() >= deadline {
             if let Some(last_error) = last_error {
                 panic!(
-                    "Timed out retrying provider call for {timeout:?}. Last error: {last_error}"
+                    "Timed out retrying provider call for {DEFAULT_RETRY_TIMEOUT:?}. Last error: {last_error}"
                 );
             }
 
-            panic!("Timed out retrying provider call for {timeout:?}.");
+            panic!("Timed out retrying provider call for {DEFAULT_RETRY_TIMEOUT:?}.");
         }
 
         match operation().await {
             Ok(value) => return value,
             Err(err) if is_transient_provider_error(&err) => {
                 last_error = Some(err);
-                sleep(poll_interval).await;
+                sleep(DEFAULT_POLL_INTERVAL).await;
             }
             Err(err) => panic!("Provider call failed: {err}"),
         }
     }
 }
 
-pub async fn retry_account_call<T, S, Op, Fut>(
-    mut operation: Op,
-    timeout: Duration,
-    poll_interval: Duration,
-) -> T
+pub async fn retry_account_call<T, S, Op, Fut>(mut operation: Op) -> T
 where
     Op: FnMut() -> Fut + Send,
     Fut: Future<Output = Result<T, AccountError<S>>> + Send,
     S: Error + Send + Sync,
 {
-    let deadline = Instant::now() + timeout;
+    let deadline = Instant::now() + DEFAULT_RETRY_TIMEOUT;
     let mut last_error: Option<AccountError<S>> = None;
 
     loop {
         if Instant::now() >= deadline {
             if let Some(last_error) = last_error {
-                panic!("Timed out retrying account call for {timeout:?}. Last error: {last_error}");
+                panic!(
+                    "Timed out retrying account call for {DEFAULT_RETRY_TIMEOUT:?}. Last error: {last_error}"
+                );
             }
 
-            panic!("Timed out retrying account call for {timeout:?}.");
+            panic!("Timed out retrying account call for {DEFAULT_RETRY_TIMEOUT:?}.");
         }
 
         match operation().await {
             Ok(value) => return value,
             Err(err) if is_transient_account_error(&err) => {
                 last_error = Some(err);
-                sleep(poll_interval).await;
+                sleep(DEFAULT_POLL_INTERVAL).await;
             }
             Err(err) => panic!("Account call failed: {err}"),
         }
     }
 }
 
-pub async fn send_with_retry<P, S, SendFn, Fut>(
-    provider: &P,
-    mut send: SendFn,
-    timeout: Duration,
-    poll_interval: Duration,
-) -> Felt
+pub async fn send_with_retry<P, S, SendFn, Fut>(provider: &P, mut send: SendFn) -> Felt
 where
     P: Provider + Sync,
     SendFn: FnMut() -> Fut + Send,
     Fut: Future<Output = Result<Felt, AccountError<S>>> + Send,
     S: Error + Send + Sync,
 {
-    send_with_retry_inner(provider, &mut send, timeout, poll_interval, true).await
+    send_with_retry_inner(provider, &mut send, true).await
 }
 
-pub async fn send_with_retry_allow_revert<P, S, SendFn, Fut>(
-    provider: &P,
-    mut send: SendFn,
-    timeout: Duration,
-    poll_interval: Duration,
-) -> Felt
+pub async fn send_with_retry_allow_revert<P, S, SendFn, Fut>(provider: &P, mut send: SendFn) -> Felt
 where
     P: Provider + Sync,
     SendFn: FnMut() -> Fut + Send,
     Fut: Future<Output = Result<Felt, AccountError<S>>> + Send,
     S: Error + Send + Sync,
 {
-    send_with_retry_inner(provider, &mut send, timeout, poll_interval, false).await
+    send_with_retry_inner(provider, &mut send, false).await
 }
 
 async fn send_with_retry_inner<P, S, SendFn, Fut>(
     provider: &P,
     send: &mut SendFn,
-    timeout: Duration,
-    poll_interval: Duration,
     require_successful_execution: bool,
 ) -> Felt
 where
@@ -228,16 +231,18 @@ where
 {
     let _guard = shared_signer_lock().await;
 
-    let deadline = Instant::now() + timeout;
+    let deadline = Instant::now() + DEFAULT_RETRY_TIMEOUT;
     let mut last_error: Option<AccountError<S>> = None;
 
     loop {
         if Instant::now() >= deadline {
             if let Some(last_error) = last_error {
-                panic!("Timed out retrying send for {timeout:?}. Last error: {last_error}");
+                panic!(
+                    "Timed out retrying send for {DEFAULT_RETRY_TIMEOUT:?}. Last error: {last_error}"
+                );
             }
 
-            panic!("Timed out retrying send for {timeout:?}.");
+            panic!("Timed out retrying send for {DEFAULT_RETRY_TIMEOUT:?}.");
         }
 
         match send().await {
@@ -245,11 +250,11 @@ where
                 let remaining = deadline
                     .checked_duration_since(Instant::now())
                     .unwrap_or_default();
-                wait_for_receipt(
+                wait_for_receipt_with_timeout(
                     provider,
                     transaction_hash,
                     remaining,
-                    poll_interval,
+                    DEFAULT_POLL_INTERVAL,
                     require_successful_execution,
                 )
                 .await;
@@ -257,7 +262,7 @@ where
             }
             Err(err) if is_retryable_account_error(&err) => {
                 last_error = Some(err);
-                sleep(poll_interval).await;
+                sleep(DEFAULT_POLL_INTERVAL).await;
             }
             Err(err) => {
                 panic!("Failed to send transaction: {err}");

@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use starknet_rust_accounts::{ExecutionEncoding, SingleOwnerAccount};
 use starknet_rust_contract::{ContractFactory, UdcSelector};
 use starknet_rust_core::{
@@ -87,24 +85,17 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
         .l1_data_gas_price(100_000_000_000_000);
     let deployed_address = deployment.deployed_address();
 
-    send_with_retry(
-        &provider,
-        || async {
-            deployment
-                .send()
-                .await
-                .map(|result| result.transaction_hash)
-        },
-        Duration::new(120, 0),
-        Duration::from_secs(1),
-    )
+    send_with_retry(&provider, || async {
+        deployment
+            .send()
+            .await
+            .map(|result| result.transaction_hash)
+    })
     .await;
 
-    let class_hash_deployed = retry_provider_call(
-        || provider.get_class_hash_at(BlockId::Tag(BlockTag::PreConfirmed), deployed_address),
-        Duration::new(120, 0),
-        Duration::from_secs(1),
-    )
+    let class_hash_deployed = retry_provider_call(|| {
+        provider.get_class_hash_at(BlockId::Tag(BlockTag::PreConfirmed), deployed_address)
+    })
     .await;
     assert_eq!(class_hash, class_hash_deployed);
 }
