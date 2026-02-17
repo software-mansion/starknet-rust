@@ -204,9 +204,9 @@ pub enum AddressFilter {
 #[serde(untagged)]
 pub enum SimulateTransactionsResult {
     /// Simulated transactions and their traces.
-    Standard(Vec<SimulatedTransaction>),
+    Transactions(Vec<SimulatedTransaction>),
     /// Simulated transactions and their traces, along with initial reads witness when requested.
-    WithInitialReads {
+    TransactionsWithInitialReads {
         /// Simulated transactions and their traces.
         simulated_transactions: Vec<SimulatedTransaction>,
         /// Initial reads witness for the simulation.
@@ -219,9 +219,9 @@ pub enum SimulateTransactionsResult {
 #[serde(untagged)]
 pub enum TraceBlockTransactionsResult {
     /// Traces for all transactions in the block.
-    Standard(Vec<TransactionTraceWithHash>),
+    Traces(Vec<TransactionTraceWithHash>),
     /// Traces and initial reads witness when requested.
-    WithInitialReads {
+    TracesWithInitialReads {
         /// Traces for all transactions in the block.
         traces: Vec<TransactionTraceWithHash>,
         /// Initial reads witness for the traced block.
@@ -1178,7 +1178,7 @@ mod tests {
     }
 
     #[test]
-    fn v0101_address_filter_accepts_single() {
+    fn test_parse_address_filter_single() {
         let input = serde_json::json!({
             "address": "0x1"
         });
@@ -1191,7 +1191,7 @@ mod tests {
     }
 
     #[test]
-    fn v0101_address_filter_accepts_multiple() {
+    fn test_parse_address_filter_multiple() {
         let input = serde_json::json!({
             "address": ["0x10", "0x20"]
         });
@@ -1207,7 +1207,7 @@ mod tests {
     }
 
     #[test]
-    fn v0101_address_filter_serializes_single() {
+    fn test_serialize_address_filter_single() {
         let filter = EventFilter {
             from_block: None,
             to_block: None,
@@ -1220,7 +1220,7 @@ mod tests {
     }
 
     #[test]
-    fn v0101_address_filter_serializes_multiple() {
+    fn test_serialize_address_filter_multiple() {
         let filter = EventFilter {
             from_block: None,
             to_block: None,
@@ -1236,31 +1236,31 @@ mod tests {
     }
 
     #[test]
-    fn v0101_simulation_flag_return_initial_reads_serde() {
+    fn test_serialize_simulation_flag_return_initial_reads() {
         let value = serde_json::to_value(SimulationFlag::ReturnInitialReads).unwrap();
         assert_eq!(value, serde_json::json!("RETURN_INITIAL_READS"));
     }
 
     #[test]
-    fn v0101_trace_flag_return_initial_reads_serde() {
+    fn test_serialize_trace_flag_return_initial_reads() {
         let value = serde_json::to_value(TraceFlag::ReturnInitialReads).unwrap();
         assert_eq!(value, serde_json::json!("RETURN_INITIAL_READS"));
     }
 
     #[test]
-    fn v0101_transaction_response_flag_include_proof_facts_serde() {
+    fn test_serialize_transaction_response_flag_include_proof_facts() {
         let value = serde_json::to_value(TransactionResponseFlag::IncludeProofFacts).unwrap();
         assert_eq!(value, serde_json::json!("INCLUDE_PROOF_FACTS"));
     }
 
     #[test]
-    fn v0101_subscription_tag_include_proof_facts_serde() {
+    fn test_serialize_trace_response_flag_include_proof_facts() {
         let value = serde_json::to_value(SubscriptionTag::IncludeProofFacts).unwrap();
         assert_eq!(value, serde_json::json!("INCLUDE_PROOF_FACTS"));
     }
 
     #[test]
-    fn v0101_simulate_transactions_legacy_array_deser() {
+    fn test_parse_simulate_transactions_result() {
         let input = serde_json::json!([{
             "transaction_trace": minimal_invoke_trace_json(),
             "fee_estimation": sample_fee_estimation_json()
@@ -1268,17 +1268,17 @@ mod tests {
 
         let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
         match result {
-            SimulateTransactionsResult::Standard(simulated_transactions) => {
+            SimulateTransactionsResult::Transactions(simulated_transactions) => {
                 assert_eq!(simulated_transactions.len(), 1);
             }
-            SimulateTransactionsResult::WithInitialReads { .. } => {
+            SimulateTransactionsResult::TransactionsWithInitialReads { .. } => {
                 panic!("expected legacy array result");
             }
         }
     }
 
     #[test]
-    fn v0101_simulate_transactions_initial_reads_non_empty() {
+    fn test_parse_simulate_transactions_result_with_initial_reads() {
         let input = serde_json::json!({
             "simulated_transactions": [{
                 "transaction_trace": minimal_invoke_trace_json(),
@@ -1289,10 +1289,10 @@ mod tests {
 
         let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
         match result {
-            SimulateTransactionsResult::Standard(_) => {
+            SimulateTransactionsResult::Transactions(_) => {
                 panic!("expected 0.10.1 object result");
             }
-            SimulateTransactionsResult::WithInitialReads {
+            SimulateTransactionsResult::TransactionsWithInitialReads {
                 simulated_transactions,
                 initial_reads,
             } => {
@@ -1308,7 +1308,7 @@ mod tests {
     }
 
     #[test]
-    fn v0101_trace_block_transactions_legacy_array_deser() {
+    fn test_parse_trace_block_transactions_result() {
         let input = serde_json::json!([{
             "transaction_hash": "0x1",
             "trace_root": minimal_invoke_trace_json()
@@ -1316,17 +1316,17 @@ mod tests {
 
         let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
         match result {
-            TraceBlockTransactionsResult::Standard(traces) => {
+            TraceBlockTransactionsResult::Traces(traces) => {
                 assert_eq!(traces.len(), 1);
             }
-            TraceBlockTransactionsResult::WithInitialReads { .. } => {
+            TraceBlockTransactionsResult::TracesWithInitialReads { .. } => {
                 panic!("expected legacy array result");
             }
         }
     }
 
     #[test]
-    fn v0101_trace_block_transactions_initial_reads_non_empty() {
+    fn test_parse_trace_block_transactions_result_with_initial_reads() {
         let input = serde_json::json!({
             "traces": [{
                 "transaction_hash": "0x1",
@@ -1337,10 +1337,10 @@ mod tests {
 
         let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
         match result {
-            TraceBlockTransactionsResult::Standard(_) => {
+            TraceBlockTransactionsResult::Traces(_) => {
                 panic!("expected 0.10.1 object result");
             }
-            TraceBlockTransactionsResult::WithInitialReads {
+            TraceBlockTransactionsResult::TracesWithInitialReads {
                 traces,
                 initial_reads,
             } => {

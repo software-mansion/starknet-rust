@@ -367,8 +367,8 @@ pub trait Provider {
             )
             .await?;
         let mut simulated_transactions = match result {
-            SimulateTransactionsResult::Standard(simulated_transactions)
-            | SimulateTransactionsResult::WithInitialReads {
+            SimulateTransactionsResult::Transactions(simulated_transactions)
+            | SimulateTransactionsResult::TransactionsWithInitialReads {
                 simulated_transactions,
                 ..
             } => simulated_transactions,
