@@ -48,6 +48,8 @@ impl<'a, A> ExecutionV3<'a, A> {
             gas_estimate_multiplier: 1.5,
             gas_price_estimate_multiplier: 1.5,
             tip: None,
+            proof_facts: None,
+            proof: None,
         }
     }
 
@@ -135,6 +137,22 @@ impl<'a, A> ExecutionV3<'a, A> {
         }
     }
 
+    /// Returns a new [`ExecutionV3`] with the `proof_facts`.
+    pub fn proof_facts(self, proof_facts: Vec<Felt>) -> Self {
+        Self {
+            proof_facts: Some(proof_facts),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `proof`.
+    pub fn proof(self, proof: Vec<u64>) -> Self {
+        Self {
+            proof: Some(proof),
+            ..self
+        }
+    }
+
     /// Calling this function after manually specifying `nonce`, `gas` and `gas_price` turns
     /// [`ExecutionV3`] into [`PreparedExecutionV3`]. Returns `Err` if any field is `None`.
     pub fn prepared(self) -> Result<PreparedExecutionV3<'a, A>, NotPreparedError> {
@@ -159,6 +177,8 @@ impl<'a, A> ExecutionV3<'a, A> {
                 l1_data_gas,
                 l1_data_gas_price,
                 tip,
+                proof_facts: self.proof_facts,
+                proof: self.proof,
             },
         })
     }
@@ -365,6 +385,8 @@ where
                 l1_data_gas,
                 l1_data_gas_price,
                 tip,
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         })
     }
@@ -389,6 +411,8 @@ where
                 l1_data_gas: 0,
                 l1_data_gas_price: 0,
                 tip: 0,
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         };
         let invoke = prepared
@@ -444,6 +468,8 @@ where
                 l1_data_gas: self.l1_data_gas.unwrap_or_default(),
                 l1_data_gas_price: self.l1_data_gas_price.unwrap_or_default(),
                 tip: self.tip.unwrap_or_default(),
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         };
         let invoke = prepared
@@ -674,10 +700,10 @@ where
                 // Hard-coded L1 DA mode for nonce and fee
                 nonce_data_availability_mode: DataAvailabilityMode::L1,
                 fee_data_availability_mode: DataAvailabilityMode::L1,
-                proof_facts: None,
+                proof_facts: self.inner.proof_facts.clone(),
                 is_query: query_only,
             },
-            proof: None,
+            proof: self.inner.proof.clone(),
         })
     }
 }

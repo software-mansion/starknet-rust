@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use starknet_rust_core::types::{ConfirmedBlockId, Felt};
+use starknet_rust_core::types::{AddressFilter, ConfirmedBlockId, Felt};
 use starknet_rust_tokio_tungstenite::{
     EventSubscriptionOptions, EventsUpdate, NewHeadsUpdate, NewTransactionReceiptsUpdate,
     NewTransactionsUpdate, TransactionStatusUpdate, TungsteniteStream,
@@ -60,9 +60,9 @@ async fn websocket_events_subscription() {
     // Subscribe to STRK events
     let mut subscription = stream
         .subscribe_events(EventSubscriptionOptions::default().with_from_address(
-            Felt::from_hex_unchecked(
+            AddressFilter::Single(Felt::from_hex_unchecked(
                 "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-            ),
+            )),
         ))
         .await
         .unwrap();

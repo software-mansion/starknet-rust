@@ -161,17 +161,10 @@ impl EventSubscriptionOptions {
         Self::default()
     }
 
-    /// Sets the contract address to filter events by.
+    /// Sets the contract address or list of addresses to filter events by.
     #[must_use]
-    pub fn with_from_address(mut self, from_address: Felt) -> Self {
-        self.from_address = Some(AddressFilter::Single(from_address));
-        self
-    }
-
-    /// Sets the contract addresses to filter events by.
-    #[must_use]
-    pub fn with_from_addresses(mut self, from_address: Vec<Felt>) -> Self {
-        self.from_address = Some(AddressFilter::Multiple(from_address));
+    pub fn with_from_address(mut self, from_address: AddressFilter) -> Self {
+        self.from_address = Some(from_address);
         self
     }
 
