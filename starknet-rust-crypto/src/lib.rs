@@ -29,9 +29,6 @@ mod pedersen_hash;
 mod poseidon_hash;
 mod rfc6979;
 
-#[cfg(test)]
-mod test_utils;
-
 pub use starknet_types_core::felt::Felt;
 
 pub use pedersen_hash::{PedersenHasher, pedersen_hash};
