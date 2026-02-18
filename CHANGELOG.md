@@ -17,4 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed `event_count` and `transaction_count` from `sequencer::models::Block` in `starknet-rust-providers`, as these fields are not part of sequencer gateway block responses ([#101])
 
+
+### Removed
+
+- Removed `event_count` and `transaction_count` from `sequencer::models::Block` in `starknet-rust-providers`, as these fields are not part of sequencer gateway block responses ([#101])
+
+[#98]: https://github.com/software-mansion/starknet-rust/pull/98
 [#101]: https://github.com/software-mansion/starknet-rust/pull/101
