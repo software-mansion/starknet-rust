@@ -2628,6 +2628,7 @@ dependencies = [
  "speculos-client",
  "starknet-rust-core",
  "starknet-rust-crypto",
+ "starknet-rust-curve",
  "starknet-rust-signers",
  "thiserror 2.0.17",
  "tokio",

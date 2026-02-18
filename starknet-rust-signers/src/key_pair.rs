@@ -6,6 +6,7 @@ use starknet_rust_core::{
     types::Felt,
 };
 use starknet_rust_crypto::get_public_key;
+use starknet_rust_curve::curve_params::EC_ORDER;
 use zeroize::Zeroizing;
 
 /// A ECDSA signing (private) key on the STARK curve.
@@ -38,8 +39,7 @@ pub enum KeystoreError {
 impl SigningKey {
     /// Generates a new key pair from a cryptographically secure RNG.
     pub fn from_random() -> Self {
-        let n =
-            U256::from_be_hex("0800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f");
+        let n = U256::from_be_slice(&EC_ORDER.to_bytes_be());
 
         loop {
             let mut buf = Zeroizing::new([0u8; 32]);
