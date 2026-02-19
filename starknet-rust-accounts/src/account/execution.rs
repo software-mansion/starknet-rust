@@ -541,13 +541,15 @@ impl RawExecutionV3 {
             resource_buffer[(8 + 8)..].copy_from_slice(&self.l2_gas_price.to_be_bytes());
             fee_hasher.update(Felt::from_bytes_be(&resource_buffer));
 
-            let mut resource_buffer = [
-                0, b'L', b'1', b'_', b'D', b'A', b'T', b'A', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            ];
-            resource_buffer[8..(8 + 8)].copy_from_slice(&self.l1_data_gas.to_be_bytes());
-            resource_buffer[(8 + 8)..].copy_from_slice(&self.l1_data_gas_price.to_be_bytes());
-            fee_hasher.update(Felt::from_bytes_be(&resource_buffer));
+            if self.l1_data_gas != 0 || self.l1_data_gas_price != 0 {
+                let mut resource_buffer = [
+                    0, b'L', b'1', b'_', b'D', b'A', b'T', b'A', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ];
+                resource_buffer[8..(8 + 8)].copy_from_slice(&self.l1_data_gas.to_be_bytes());
+                resource_buffer[(8 + 8)..].copy_from_slice(&self.l1_data_gas_price.to_be_bytes());
+                fee_hasher.update(Felt::from_bytes_be(&resource_buffer));
+            }
 
             fee_hasher.finalize()
         });
@@ -574,6 +576,20 @@ impl RawExecutionV3 {
 
             calldata_hasher.finalize()
         });
+
+        if let Some(proof_facts) = &self.proof_facts
+            && !proof_facts.is_empty()
+        {
+            hasher.update({
+                let mut proof_facts_hasher = PoseidonHasher::new();
+
+                for proof_fact in proof_facts {
+                    proof_facts_hasher.update(*proof_fact);
+                }
+
+                proof_facts_hasher.finalize()
+            });
+        }
 
         hasher.finalize()
     }
@@ -705,5 +721,67 @@ where
             },
             proof: self.inner.proof.clone(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use starknet_rust_core::utils::cairo_short_string_to_felt;
+
+    struct StaticEncoder;
+
+    impl ExecutionEncoder for StaticEncoder {
+        fn encode_calls(&self, _calls: &[Call]) -> Vec<Felt> {
+            vec![
+                Felt::from_hex_unchecked("0x1"),
+                Felt::from_hex_unchecked(
+                    "0x4c0a5193d58f74fbace4b74dcf65481e734ed1714121bdc571da345540efa05",
+                ),
+                Felt::from_hex_unchecked(
+                    "0x3943907ef0ef6f9d2e2408b05e520a66daaf74293dbf665e5a20b117676170e",
+                ),
+                Felt::from_hex_unchecked("0x2"),
+                Felt::from_hex_unchecked(
+                    "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                ),
+                Felt::from_hex_unchecked("0x16345785d8a0000"),
+            ]
+        }
+    }
+
+    #[test]
+    fn invoke_v3_hash_matches_transaction_hash_json_proof_facts_vector() {
+        let execution = RawExecutionV3 {
+            calls: vec![],
+            nonce: Felt::from_hex_unchecked("0x9d"),
+            l1_gas: 0xa9e,
+            l1_gas_price: 0x7f2a_1ad4_f2f1,
+            l2_gas: 0,
+            l2_gas_price: 0,
+            l1_data_gas: 0,
+            l1_data_gas_price: 0,
+            tip: 0,
+            proof_facts: Some(vec![
+                Felt::from_hex_unchecked("0x1"),
+                Felt::from_hex_unchecked("0x2"),
+                Felt::from_hex_unchecked("0x3"),
+            ]),
+            proof: None,
+        };
+
+        let actual = execution.transaction_hash(
+            cairo_short_string_to_felt("SN_MAIN").unwrap(),
+            Felt::from_hex_unchecked(
+                "0x69c0f9bcd79697bdceaf7748e3ff8f34aa39e4063ce44896af664c0c96f6c10",
+            ),
+            false,
+            StaticEncoder,
+        );
+        let expected = Felt::from_hex_unchecked(
+            "0x6d885b1a2b7cb7946480c63aa1697888a33e9ccd0b1516f41c41731a1628726",
+        );
+
+        assert_eq!(actual, expected);
     }
 }
