@@ -60,7 +60,7 @@ async fn websocket_events_subscription() {
     // Subscribe to STRK events
     let mut subscription = stream
         .subscribe_events(EventSubscriptionOptions::default().with_from_address(
-            Felt::from_hex_unchecked(
+            Felt::from_hex_unwrap(
                 "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
             ),
         ))
@@ -83,7 +83,7 @@ async fn websocket_transaction_status_subscription() {
     let stream = create_stream().await;
 
     let mut subscription = stream
-        .subscribe_transaction_status(Felt::from_hex_unchecked(
+        .subscribe_transaction_status(Felt::from_hex_unwrap(
             "0x03f786ecc4955a2602c91a291328518ef866cb7f3d50e4b16fd42282952623aa",
         ))
         .await
