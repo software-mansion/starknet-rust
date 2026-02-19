@@ -14,6 +14,7 @@ keywords.workspace = true
 [dependencies]
 starknet-rust-core = { workspace = true, features = ["std"] }
 starknet-rust-crypto = { workspace = true, features = ["std"] }
+starknet-rust-curve = { workspace = true }
 async-trait.workspace = true
 auto_impl.workspace = true
 thiserror.workspace = true
@@ -22,6 +23,7 @@ rand = { workspace = true, features = ["std_rng"] }
 coins-bip32 = { workspace = true, optional = true }
 coins-ledger = { workspace = true, optional = true }
 semver = { workspace = true, optional = true }
+zeroize.workspace = true
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 eth-keystore.workspace = true

@@ -1,10 +1,13 @@
-use crypto_bigint::{NonZero, U256};
-use rand::{Rng, SeedableRng, rngs::StdRng};
+use crypto_bigint::{U256, Zero};
+use rand::rngs::OsRng;
+use rand::{RngCore, SeedableRng, rngs::StdRng};
 use starknet_rust_core::{
     crypto::{EcdsaSignError, EcdsaVerifyError, Signature, ecdsa_sign, ecdsa_verify},
     types::Felt,
 };
 use starknet_rust_crypto::get_public_key;
+use starknet_rust_curve::curve_params::EC_ORDER;
+use zeroize::Zeroizing;
 
 /// A ECDSA signing (private) key on the STARK curve.
 #[derive(Debug, Clone)]
@@ -36,22 +39,22 @@ pub enum KeystoreError {
 impl SigningKey {
     /// Generates a new key pair from a cryptographically secure RNG.
     pub fn from_random() -> Self {
-        let prime: NonZero<U256> = NonZero::new(U256::from_be_hex(
-            "0800000000000011000000000000000000000000000000000000000000000001",
-        ))
-        .unwrap();
+        let n = U256::from_be_slice(&EC_ORDER.to_bytes_be());
 
-        let mut rng = StdRng::from_entropy();
-        let mut buffer = [0u8; 32];
-        rng.fill(&mut buffer);
+        loop {
+            let mut buf = Zeroizing::new([0u8; 32]);
+            OsRng.fill_bytes(&mut *buf);
 
-        let random_u256 = U256::from_be_slice(&buffer);
-        let secret_scalar = random_u256.rem(&prime);
+            // Keep only 252 bits (clear the top 4 bits).
+            buf[0] &= 0x0f;
 
-        // It's safe to unwrap here as we're 100% sure it's not out of range
-        let secret_scalar = Felt::from_bytes_be_slice(&secret_scalar.to_be_bytes());
+            let x = U256::from_be_slice(buf.as_ref());
 
-        Self { secret_scalar }
+            if !bool::from(x.is_zero()) && x < n {
+                let secret_scalar = Felt::from_bytes_be_slice(&x.to_be_bytes());
+                return Self { secret_scalar };
+            }
+        }
     }
 
     /// Constructs [`SigningKey`] directly from a secret scalar.
