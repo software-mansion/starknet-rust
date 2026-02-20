@@ -1,6 +1,6 @@
 use starknet_rust_core::types::{
-    BlockHeader, ConfirmedBlockId, EmittedEventWithFinality, Felt, L2TransactionFinalityStatus,
-    NewTransactionStatus, ReorgData, StarknetError, SubscriptionId,
+    AddressFilter, BlockHeader, ConfirmedBlockId, EmittedEventWithFinality, Felt,
+    L2TransactionFinalityStatus, NewTransactionStatus, ReorgData, StarknetError, SubscriptionId,
     TransactionReceiptWithBlockInfo, TransactionWithL2Status,
 };
 use starknet_rust_providers::StreamUpdateData;
@@ -137,8 +137,8 @@ pub enum NewTransactionsUpdate {
 /// Options for subscribing to Starknet events.
 #[derive(Debug, Clone)]
 pub struct EventSubscriptionOptions {
-    /// Filter events by contract address.
-    pub from_address: Option<Felt>,
+    /// Filter events by contract address or list of contract addresses.
+    pub from_address: Option<AddressFilter>,
     /// Filter events by keys (array of event key arrays).
     pub keys: Option<Vec<Vec<Felt>>>,
     /// The block from which to start receiving events.
@@ -161,9 +161,9 @@ impl EventSubscriptionOptions {
         Self::default()
     }
 
-    /// Sets the contract address to filter events by.
+    /// Sets the contract address or list of addresses to filter events by.
     #[must_use]
-    pub const fn with_from_address(mut self, from_address: Felt) -> Self {
+    pub fn with_from_address(mut self, from_address: AddressFilter) -> Self {
         self.from_address = Some(from_address);
         self
     }

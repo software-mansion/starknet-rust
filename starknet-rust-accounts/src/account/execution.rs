@@ -5,9 +5,9 @@ use super::{
 use crate::ExecutionEncoder;
 
 use starknet_rust_core::types::{
-    BroadcastedInvokeTransactionV3, BroadcastedTransaction, Call, DataAvailabilityMode,
-    FeeEstimate, Felt, InvokeTransactionResult, ResourceBounds, ResourceBoundsMapping,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
+    BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3, BroadcastedTransaction, Call,
+    DataAvailabilityMode, FeeEstimate, Felt, InvokeTransactionResult, ResourceBounds,
+    ResourceBoundsMapping, SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
 };
 use starknet_rust_crypto::PoseidonHasher;
 use starknet_rust_providers::Provider;
@@ -48,6 +48,8 @@ impl<'a, A> ExecutionV3<'a, A> {
             gas_estimate_multiplier: 1.5,
             gas_price_estimate_multiplier: 1.5,
             tip: None,
+            proof_facts: None,
+            proof: None,
         }
     }
 
@@ -135,6 +137,22 @@ impl<'a, A> ExecutionV3<'a, A> {
         }
     }
 
+    /// Returns a new [`ExecutionV3`] with the `proof_facts`.
+    pub fn proof_facts(self, proof_facts: Vec<Felt>) -> Self {
+        Self {
+            proof_facts: Some(proof_facts),
+            ..self
+        }
+    }
+
+    /// Returns a new [`ExecutionV3`] with the `proof`.
+    pub fn proof(self, proof: Vec<u64>) -> Self {
+        Self {
+            proof: Some(proof),
+            ..self
+        }
+    }
+
     /// Calling this function after manually specifying `nonce`, `gas` and `gas_price` turns
     /// [`ExecutionV3`] into [`PreparedExecutionV3`]. Returns `Err` if any field is `None`.
     pub fn prepared(self) -> Result<PreparedExecutionV3<'a, A>, NotPreparedError> {
@@ -159,6 +177,8 @@ impl<'a, A> ExecutionV3<'a, A> {
                 l1_data_gas,
                 l1_data_gas_price,
                 tip,
+                proof_facts: self.proof_facts,
+                proof: self.proof,
             },
         })
     }
@@ -280,7 +300,7 @@ where
                         let block = self
                             .account
                             .provider()
-                            .get_block_with_txs(self.account.block_id())
+                            .get_block_with_txs(self.account.block_id(), None)
                             .await
                             .map_err(AccountError::Provider)?;
                         (
@@ -346,7 +366,7 @@ where
                 None => self
                     .account
                     .provider()
-                    .get_block_with_txs(self.account.block_id())
+                    .get_block_with_txs(self.account.block_id(), None)
                     .await
                     .map_err(AccountError::Provider)?,
             };
@@ -365,6 +385,8 @@ where
                 l1_data_gas,
                 l1_data_gas_price,
                 tip,
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         })
     }
@@ -389,6 +411,8 @@ where
                 l1_data_gas: 0,
                 l1_data_gas_price: 0,
                 tip: 0,
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         };
         let invoke = prepared
@@ -444,6 +468,8 @@ where
                 l1_data_gas: self.l1_data_gas.unwrap_or_default(),
                 l1_data_gas_price: self.l1_data_gas_price.unwrap_or_default(),
                 tip: self.tip.unwrap_or_default(),
+                proof_facts: self.proof_facts.clone(),
+                proof: self.proof.clone(),
             },
         };
         let invoke = prepared
@@ -549,6 +575,21 @@ impl RawExecutionV3 {
             calldata_hasher.finalize()
         });
 
+        // TODO: add a deterministic invoke-v3 tx-hash test vector that includes proof_facts.
+        if let Some(proof_facts) = &self.proof_facts
+            && !proof_facts.is_empty()
+        {
+            hasher.update({
+                let mut proof_facts_hasher = PoseidonHasher::new();
+
+                for proof_fact in proof_facts {
+                    proof_facts_hasher.update(*proof_fact);
+                }
+
+                proof_facts_hasher.finalize()
+            });
+        }
+
         hasher.finalize()
     }
 
@@ -639,41 +680,45 @@ where
         &self,
         query_only: bool,
         skip_signature: bool,
-    ) -> Result<BroadcastedInvokeTransactionV3, A::SignError> {
-        Ok(BroadcastedInvokeTransactionV3 {
-            sender_address: self.account.address(),
-            calldata: self.account.encode_calls(&self.inner.calls),
-            signature: if skip_signature {
-                vec![]
-            } else {
-                self.account
-                    .sign_execution_v3(&self.inner, query_only)
-                    .await?
+    ) -> Result<BroadcastedInvokeTransaction, A::SignError> {
+        Ok(BroadcastedInvokeTransaction {
+            broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3 {
+                sender_address: self.account.address(),
+                calldata: self.account.encode_calls(&self.inner.calls),
+                signature: if skip_signature {
+                    vec![]
+                } else {
+                    self.account
+                        .sign_execution_v3(&self.inner, query_only)
+                        .await?
+                },
+                nonce: self.inner.nonce,
+                resource_bounds: ResourceBoundsMapping {
+                    l1_gas: ResourceBounds {
+                        max_amount: self.inner.l1_gas,
+                        max_price_per_unit: self.inner.l1_gas_price,
+                    },
+                    l1_data_gas: ResourceBounds {
+                        max_amount: self.inner.l1_data_gas,
+                        max_price_per_unit: self.inner.l1_data_gas_price,
+                    },
+                    l2_gas: ResourceBounds {
+                        max_amount: self.inner.l2_gas,
+                        max_price_per_unit: self.inner.l2_gas_price,
+                    },
+                },
+                tip: self.inner.tip,
+                // Hard-coded empty `paymaster_data`
+                paymaster_data: vec![],
+                // Hard-coded empty `account_deployment_data`
+                account_deployment_data: vec![],
+                // Hard-coded L1 DA mode for nonce and fee
+                nonce_data_availability_mode: DataAvailabilityMode::L1,
+                fee_data_availability_mode: DataAvailabilityMode::L1,
+                proof_facts: self.inner.proof_facts.clone(),
+                is_query: query_only,
             },
-            nonce: self.inner.nonce,
-            resource_bounds: ResourceBoundsMapping {
-                l1_gas: ResourceBounds {
-                    max_amount: self.inner.l1_gas,
-                    max_price_per_unit: self.inner.l1_gas_price,
-                },
-                l1_data_gas: ResourceBounds {
-                    max_amount: self.inner.l1_data_gas,
-                    max_price_per_unit: self.inner.l1_data_gas_price,
-                },
-                l2_gas: ResourceBounds {
-                    max_amount: self.inner.l2_gas,
-                    max_price_per_unit: self.inner.l2_gas_price,
-                },
-            },
-            tip: self.inner.tip,
-            // Hard-coded empty `paymaster_data`
-            paymaster_data: vec![],
-            // Hard-coded empty `account_deployment_data`
-            account_deployment_data: vec![],
-            // Hard-coded L1 DA mode for nonce and fee
-            nonce_data_availability_mode: DataAvailabilityMode::L1,
-            fee_data_availability_mode: DataAvailabilityMode::L1,
-            is_query: query_only,
+            proof: self.inner.proof.clone(),
         })
     }
 }

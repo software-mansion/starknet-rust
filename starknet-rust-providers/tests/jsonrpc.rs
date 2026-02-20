@@ -1,13 +1,13 @@
 use starknet_rust_core::{
     types::{
-        BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedTransaction, ConfirmedBlockId,
-        ContractClass, ContractStorageKeys, DataAvailabilityMode, DeclareTransaction,
-        DeployAccountTransaction, EthAddress, EventFilter, ExecuteInvocation, ExecutionResult,
-        Felt, FunctionCall, Hash256, InvokeTransaction, MaybePreConfirmedBlockWithReceipts,
-        MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
-        MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds, ResourceBoundsMapping,
-        StarknetError, StorageKey, SyncStatusType, Transaction, TransactionFinalityStatus,
-        TransactionReceipt, TransactionStatus, TransactionTrace,
+        BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3,
+        BroadcastedTransaction, ConfirmedBlockId, ContractClass, ContractStorageKeys,
+        DataAvailabilityMode, DeclareTransaction, DeployAccountTransaction, EthAddress,
+        EventFilter, ExecuteInvocation, ExecutionResult, Felt, FunctionCall, Hash256,
+        InvokeTransaction, MaybePreConfirmedBlockWithReceipts, MaybePreConfirmedBlockWithTxHashes,
+        MaybePreConfirmedBlockWithTxs, MaybePreConfirmedStateUpdate, MsgFromL1, ResourceBounds,
+        ResourceBoundsMapping, StarknetError, StorageKey, SyncStatusType, Transaction,
+        TransactionFinalityStatus, TransactionReceipt, TransactionStatus, TransactionTrace,
         requests::{CallRequest, GetBlockTransactionCountRequest},
     },
     utils::{get_selector_from_name, get_storage_var_address},
@@ -79,7 +79,7 @@ async fn jsonrpc_get_block_with_txs_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_txs(BlockId::Tag(BlockTag::Latest))
+        .get_block_with_txs(BlockId::Tag(BlockTag::Latest), None)
         .await
         .unwrap();
 
@@ -98,7 +98,7 @@ async fn jsonrpc_get_block_with_txs_with_l1_accepted() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_txs(BlockId::Tag(BlockTag::L1Accepted))
+        .get_block_with_txs(BlockId::Tag(BlockTag::L1Accepted), None)
         .await
         .unwrap();
 
@@ -117,7 +117,7 @@ async fn jsonrpc_get_block_with_receipts_with_latest() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_receipts(BlockId::Tag(BlockTag::Latest))
+        .get_block_with_receipts(BlockId::Tag(BlockTag::Latest), None)
         .await
         .unwrap();
 
@@ -136,7 +136,7 @@ async fn jsonrpc_get_block_with_receipts_with_l1_accepted() {
     let rpc_client = create_jsonrpc_client();
 
     let block = rpc_client
-        .get_block_with_receipts(BlockId::Tag(BlockTag::L1Accepted))
+        .get_block_with_receipts(BlockId::Tag(BlockTag::L1Accepted), None)
         .await
         .unwrap();
 
@@ -280,6 +280,7 @@ async fn jsonrpc_get_transaction_by_hash_invoke_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("03f786ecc4955a2602c91a291328518ef866cb7f3d50e4b16fd42282952623aa")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -299,6 +300,7 @@ async fn jsonrpc_get_transaction_by_hash_l1_handler() {
         .get_transaction_by_hash(
             Felt::from_hex("0785c2ada3f53fbc66078d47715c27718f92e6e48b96372b36e5197de69b82b5")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -318,6 +320,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v0() {
         .get_transaction_by_hash(
             Felt::from_hex("030a541df2547ed9f94602c35daf61ce3a8e179ec75d26cbe34e0ec61f823695")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -337,6 +340,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("01936a09e5aaee208fc0f7cc826e126d421c3ac9aca2c789605e1e919e399185")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -356,6 +360,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v2() {
         .get_transaction_by_hash(
             Felt::from_hex("004cacc2bbdd5ec77b20e908f311ab27d6495b69761e929bb24ba02632716944")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -375,6 +380,7 @@ async fn jsonrpc_get_transaction_by_hash_declare_v3() {
         .get_transaction_by_hash(
             Felt::from_hex("054270d103c875a613e013d1fd555edcff2085feca9d7b4532243a8257fd5cf3")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -397,6 +403,7 @@ async fn jsonrpc_get_transaction_by_hash_deploy_account_v1() {
         .get_transaction_by_hash(
             Felt::from_hex("024ed6b82e2f6d3a811ec180a25c1ccd0bdc7bdba8ebd709de2ed697a1e82193")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -416,6 +423,7 @@ async fn jsonrpc_get_transaction_by_hash_deploy_account_v3() {
         .get_transaction_by_hash(
             Felt::from_hex("011c67fb3a9a623b3190c9ac41ebf7f5dd421f2583344c498a30a7280c660f01")
                 .unwrap(),
+            None,
         )
         .await
         .unwrap();
@@ -432,7 +440,7 @@ async fn jsonrpc_get_transaction_by_block_id_and_index() {
     let rpc_client = create_jsonrpc_client();
 
     let tx = rpc_client
-        .get_transaction_by_block_id_and_index(BlockId::Number(10_000), 1)
+        .get_transaction_by_block_id_and_index(BlockId::Number(10_000), 1, None)
         .await
         .unwrap();
 
@@ -448,7 +456,7 @@ async fn jsonrpc_get_transaction_by_hash_non_existent_tx() {
     let rpc_client = create_jsonrpc_client();
 
     let err = rpc_client
-        .get_transaction_by_hash(Felt::from_hex("1234").unwrap())
+        .get_transaction_by_hash(Felt::from_hex("1234").unwrap(), None)
         .await
         .unwrap_err();
 
@@ -515,7 +523,10 @@ async fn jsonrpc_get_transaction_receipt_l1_handler() {
     let tx_hash =
         Felt::from_hex("0785c2ada3f53fbc66078d47715c27718f92e6e48b96372b36e5197de69b82b5").unwrap();
 
-    let tx = rpc_client.get_transaction_by_hash(tx_hash).await.unwrap();
+    let tx = rpc_client
+        .get_transaction_by_hash(tx_hash, None)
+        .await
+        .unwrap();
     let receipt = rpc_client.get_transaction_receipt(tx_hash).await.unwrap();
 
     let Transaction::L1Handler(tx) = tx else {
@@ -716,56 +727,60 @@ async fn jsonrpc_estimate_fee() {
     let estimate = rpc_client
         .estimate_fee_single(
             BroadcastedTransaction::Invoke(BroadcastedInvokeTransaction {
-                signature: vec![
-                    Felt::from_hex(
-                        "000e25bc2c344b9a64887c614cebdf50c8c1a8b3e1af7f22e5bd9958ada216a6",
+                broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3 {
+                    signature: vec![
+                        Felt::from_hex(
+                            "000e25bc2c344b9a64887c614cebdf50c8c1a8b3e1af7f22e5bd9958ada216a6",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "01f676fc74cd4dd50ad0cc7a0131fed16d235f3d0afca51bcb4946dc7855b1ff",
+                        )
+                        .unwrap(),
+                    ],
+                    nonce: Felt::ONE,
+                    sender_address: Felt::from_hex(
+                        "052d6e8f4fcebd83f4f5fdb7244cc917eadebf3a64109d4e8c2af09b7682a190",
                     )
                     .unwrap(),
-                    Felt::from_hex(
-                        "01f676fc74cd4dd50ad0cc7a0131fed16d235f3d0afca51bcb4946dc7855b1ff",
-                    )
-                    .unwrap(),
-                ],
-                nonce: Felt::ONE,
-                sender_address: Felt::from_hex(
-                    "052d6e8f4fcebd83f4f5fdb7244cc917eadebf3a64109d4e8c2af09b7682a190",
-                )
-                .unwrap(),
-                calldata: vec![
-                    Felt::from_hex("1").unwrap(),
-                    Felt::from_hex(
-                        "04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-                    )
-                    .unwrap(),
-                    Felt::from_hex(
-                        "0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-                    )
-                    .unwrap(),
-                    Felt::from_hex("3").unwrap(),
-                    Felt::from_hex("1234").unwrap(),
-                    Felt::from_hex("1").unwrap(),
-                    Felt::from_hex("0").unwrap(),
-                ],
-                is_query: true,
-                resource_bounds: ResourceBoundsMapping {
-                    l1_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
+                    calldata: vec![
+                        Felt::from_hex("1").unwrap(),
+                        Felt::from_hex(
+                            "04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                        )
+                        .unwrap(),
+                        Felt::from_hex(
+                            "0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                        )
+                        .unwrap(),
+                        Felt::from_hex("3").unwrap(),
+                        Felt::from_hex("1234").unwrap(),
+                        Felt::from_hex("1").unwrap(),
+                        Felt::from_hex("0").unwrap(),
+                    ],
+                    is_query: true,
+                    resource_bounds: ResourceBoundsMapping {
+                        l1_gas: ResourceBounds {
+                            max_amount: 0,
+                            max_price_per_unit: 0,
+                        },
+                        l1_data_gas: ResourceBounds {
+                            max_amount: 0,
+                            max_price_per_unit: 0,
+                        },
+                        l2_gas: ResourceBounds {
+                            max_amount: 0,
+                            max_price_per_unit: 0,
+                        },
                     },
-                    l1_data_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
-                    },
-                    l2_gas: ResourceBounds {
-                        max_amount: 0,
-                        max_price_per_unit: 0,
-                    },
+                    tip: Default::default(),
+                    paymaster_data: Vec::default(),
+                    account_deployment_data: Vec::default(),
+                    nonce_data_availability_mode: DataAvailabilityMode::L1,
+                    fee_data_availability_mode: DataAvailabilityMode::L1,
+                    proof_facts: None,
                 },
-                tip: Default::default(),
-                paymaster_data: Vec::default(),
-                account_deployment_data: Vec::default(),
-                nonce_data_availability_mode: DataAvailabilityMode::L1,
-                fee_data_availability_mode: DataAvailabilityMode::L1,
+                proof: None,
             }),
             [],
             BlockId::Tag(BlockTag::Latest),
