@@ -4,9 +4,8 @@
 // To change the code generated, modify the codegen tool instead:
 //     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen
 
-// Code generated with source commit:
-//     software-mansion-labs/starknet-jsonrpc-codegen@267739d8b42e938914fec03b7171f5f98fb72901
-//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen/commit/267739d8b42e938914fec03b7171f5f98fb72901
+// Code generated with version:
+//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#267739d8b42e938914fec03b7171f5f98fb72901
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
