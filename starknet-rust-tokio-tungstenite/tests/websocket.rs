@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use starknet_rust_core::types::{ConfirmedBlockId, Felt};
+use starknet_rust_core::types::{AddressFilter, ConfirmedBlockId, Felt};
 use starknet_rust_tokio_tungstenite::{
     EventSubscriptionOptions, EventsUpdate, NewHeadsUpdate, NewTransactionReceiptsUpdate,
     NewTransactionsUpdate, TransactionStatusUpdate, TungsteniteStream,
@@ -60,9 +60,9 @@ async fn websocket_events_subscription() {
     // Subscribe to STRK events
     let mut subscription = stream
         .subscribe_events(EventSubscriptionOptions::default().with_from_address(
-            Felt::from_hex_unchecked(
+            AddressFilter::Single(Felt::from_hex_unchecked(
                 "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-            ),
+            )),
         ))
         .await
         .unwrap();
@@ -130,7 +130,10 @@ async fn websocket_new_transaction_receipts_subscription() {
 async fn websocket_new_transactions_subscription() {
     let stream = create_stream().await;
 
-    let mut subscription = stream.subscribe_new_transactions(None, None).await.unwrap();
+    let mut subscription = stream
+        .subscribe_new_transactions(None, None, None)
+        .await
+        .unwrap();
 
     // There should be at least one transaction in 20 seconds
     let NewTransactionsUpdate::Transaction(tx) =

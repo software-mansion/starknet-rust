@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support Starknet JSON-RPC `v0.10.1-rc.2` ([#103]).
+
 ### Fixed
 
 - `SigningKey::from_random` uses now a correct value for [Stark curve's order](https://docs.starknet.io/learn/protocol/cryptography#the-stark-curve) ([#98])
@@ -17,3 +21,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#98]: https://github.com/software-mansion/starknet-rust/pull/98
 [#101]: https://github.com/software-mansion/starknet-rust/pull/101
+[#103]: https://github.com/software-mansion/starknet-rust/pull/103
