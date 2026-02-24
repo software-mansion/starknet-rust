@@ -16,3 +16,5 @@ sed -i.bak -e '/^\[workspace\.dependencies\]$/,/^\[/{' \
            -e '/^[[:space:]]*starknet-rust[^[:space:]]*[[:space:]]*=/ s/version = "[^"]*"/version = "'"${VERSION}"'"/g' \
            -e '}' Cargo.toml
 rm -f Cargo.toml.bak 2>/dev/null
+
+cargo check --workspace
