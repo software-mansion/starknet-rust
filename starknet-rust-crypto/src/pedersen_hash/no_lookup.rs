@@ -28,7 +28,8 @@ pub fn pedersen_hash(x: &Felt, y: &Felt) -> Felt {
             13441546676070136227,
         ]),
         Felt::ONE,
-    ).unwrap();
+    )
+    .unwrap();
     let p1_projective: ProjectivePoint = ProjectivePoint::new(
         Felt::from_raw([
             253000153565733272,
@@ -43,7 +44,8 @@ pub fn pedersen_hash(x: &Felt, y: &Felt) -> Felt {
             13950428914333633429,
         ]),
         Felt::ONE,
-    ).unwrap();
+    )
+    .unwrap();
     let p2_projective: ProjectivePoint = ProjectivePoint::new(
         Felt::from_raw([
             338510149841406402,
@@ -58,7 +60,8 @@ pub fn pedersen_hash(x: &Felt, y: &Felt) -> Felt {
             12352616181161700245,
         ]),
         Felt::ONE,
-    ).unwrap();
+    )
+    .unwrap();
     let p3_projective: ProjectivePoint = ProjectivePoint::new(
         Felt::from_raw([
             425493972656615276,
@@ -73,7 +76,8 @@ pub fn pedersen_hash(x: &Felt, y: &Felt) -> Felt {
             8187986478389849302,
         ]),
         Felt::ONE,
-    ).unwrap();
+    )
+    .unwrap();
 
     let processed_x = process_element(x, &p0_projective, &p1_projective);
     let processed_y = process_element(y, &p2_projective, &p3_projective);
