@@ -17,4 +17,8 @@ sed -i.bak -e '/^\[workspace\.dependencies\]$/,/^\[/{' \
            -e '}' Cargo.toml
 rm -f Cargo.toml.bak 2>/dev/null
 
+# Update version in README.md
+sed -i.bak "s/starknet-rust = \"[^\"]*\"/starknet-rust = \"${VERSION}\"/g" README.md
+rm -f README.md.bak
+
 cargo check --workspace
