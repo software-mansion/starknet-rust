@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.18.0"
+version = "0.19.0-rc.0"
 edition = "2024"
 authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
 license = "MIT OR Apache-2.0"
@@ -40,16 +40,16 @@ members = [
 ]
 
 [workspace.dependencies]
-starknet-rust-core = { version = "0.18.0", path = "./starknet-rust-core", default-features = false }
-starknet-rust-core-derive = { version = "0.18.0", path = "./starknet-rust-core-derive" }
-starknet-rust-providers = { version = "0.18.0", path = "./starknet-rust-providers", default-features = false }
-starknet-rust-contract = { version = "0.18.0", path = "./starknet-rust-contract", default-features = false }
-starknet-rust-crypto = { version = "0.18.0", path = "./starknet-rust-crypto", default-features = false }
-starknet-rust-signers = { version = "0.18.0", path = "./starknet-rust-signers", default-features = false }
-starknet-rust-accounts = { version = "0.18.0", path = "./starknet-rust-accounts", default-features = false }
-starknet-rust-macros = { version = "0.18.0", path = "./starknet-rust-macros" }
-starknet-rust-curve = { version = "0.18.0", path = "./starknet-rust-curve", default-features = false }
-starknet-rust-tokio-tungstenite = { version = "0.18.0", path = "./starknet-rust-tokio-tungstenite" }
+starknet-rust-core = { version = "0.19.0-rc.0", path = "./starknet-rust-core", default-features = false }
+starknet-rust-core-derive = { version = "0.19.0-rc.0", path = "./starknet-rust-core-derive" }
+starknet-rust-providers = { version = "0.19.0-rc.0", path = "./starknet-rust-providers", default-features = false }
+starknet-rust-contract = { version = "0.19.0-rc.0", path = "./starknet-rust-contract", default-features = false }
+starknet-rust-crypto = { version = "0.19.0-rc.0", path = "./starknet-rust-crypto", default-features = false }
+starknet-rust-signers = { version = "0.19.0-rc.0", path = "./starknet-rust-signers", default-features = false }
+starknet-rust-accounts = { version = "0.19.0-rc.0", path = "./starknet-rust-accounts", default-features = false }
+starknet-rust-macros = { version = "0.19.0-rc.0", path = "./starknet-rust-macros" }
+starknet-rust-curve = { version = "0.19.0-rc.0", path = "./starknet-rust-curve", default-features = false }
+starknet-rust-tokio-tungstenite = { version = "0.19.0-rc.0", path = "./starknet-rust-tokio-tungstenite" }
 test-common = { path = "./utils/test-common" }
 
 async-trait = "0.1.89"
