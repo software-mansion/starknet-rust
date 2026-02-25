@@ -8,7 +8,10 @@ use starknet_rust_core::{
 use starknet_rust_providers::{Provider, ProviderError, SequencerGatewayProvider};
 use starknet_rust_signers::{LocalWallet, SigningKey};
 use std::sync::Arc;
-use test_common::{create_jsonrpc_client, shared_signer_lock};
+use test_common::{
+    create_jsonrpc_client, retry_account_call, retry_provider_call, send_with_retry,
+    send_with_retry_allow_revert, shared_signer_lock,
+};
 
 /// Cairo short string encoding for `SN_SEPOLIA`.
 const CHAIN_ID: Felt = Felt::from_raw([
@@ -109,7 +112,9 @@ async fn can_get_nonce_inner<P: Provider + Send + Sync>(provider: P, address: &s
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
-    assert_ne!(account.get_nonce().await.unwrap(), Felt::ZERO);
+    let nonce = retry_provider_call(|| account.get_nonce()).await;
+
+    assert_ne!(nonce, Felt::ZERO);
 }
 
 async fn can_estimate_invoke_v3_fee_inner<P: Provider + Send + Sync>(provider: P, address: &str) {
@@ -123,15 +128,17 @@ async fn can_estimate_invoke_v3_fee_inner<P: Provider + Send + Sync>(provider: P
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
-    let fee_estimate = account
-        .execute_v3(vec![Call {
-            to: eth_token_address,
-            selector: get_selector_from_name("transfer").unwrap(),
-            calldata: vec![Felt::from_hex("0x1234").unwrap(), Felt::ONE, Felt::ZERO],
-        }])
-        .estimate_fee()
-        .await
-        .unwrap();
+    let fee_estimate = retry_account_call(|| async {
+        account
+            .execute_v3(vec![Call {
+                to: eth_token_address,
+                selector: get_selector_from_name("transfer").unwrap(),
+                calldata: vec![Felt::from_hex("0x1234").unwrap(), Felt::ONE, Felt::ZERO],
+            }])
+            .estimate_fee()
+            .await
+    })
+    .await;
 
     assert!(fee_estimate.overall_fee > 0);
 }
@@ -150,29 +157,34 @@ async fn can_parse_fee_estimation_error_inner<P: Provider + Send + Sync>(
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
-    match account
-        .execute_v3(vec![Call {
-            to: eth_token_address,
-            selector: get_selector_from_name("transfer").unwrap(),
-            calldata: vec![
-                address,
-                Felt::from_dec_str("1000000000000000000000").unwrap(),
-                Felt::ZERO,
-            ],
-        }])
-        .estimate_fee()
-        .await
-    {
-        Ok(_) => panic!("unexpected successful fee estimation"),
-        Err(AccountError::Provider(ProviderError::StarknetError(
-            StarknetError::TransactionExecutionError(err_data),
-        ))) => match err_data.execution_error {
-            ContractExecutionError::Nested(_) => {}
-            ContractExecutionError::Message(_) => {
-                panic!("unexpected error data type")
-            }
-        },
-        _ => panic!("unexpected error type"),
+    let err_data = retry_account_call(|| async {
+        match account
+            .execute_v3(vec![Call {
+                to: eth_token_address,
+                selector: get_selector_from_name("transfer").unwrap(),
+                calldata: vec![
+                    address,
+                    Felt::from_dec_str("1000000000000000000000").unwrap(),
+                    Felt::ZERO,
+                ],
+            }])
+            .estimate_fee()
+            .await
+        {
+            Ok(_) => panic!("unexpected successful fee estimation"),
+            Err(AccountError::Provider(ProviderError::StarknetError(
+                StarknetError::TransactionExecutionError(err_data),
+            ))) => Ok(err_data),
+            Err(err) => Err(err),
+        }
+    })
+    .await;
+
+    match err_data.execution_error {
+        ContractExecutionError::Nested(_) => {}
+        ContractExecutionError::Message(_) => {
+            panic!("unexpected error data type")
+        }
     }
 }
 
@@ -197,18 +209,20 @@ async fn can_execute_eth_transfer_invoke_v3_inner<P: Provider + Send + Sync>(
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
-    let _guard = shared_signer_lock().await;
-    let result = account
-        .execute_v3(vec![Call {
-            to: eth_token_address,
-            selector: get_selector_from_name("transfer").unwrap(),
-            calldata: vec![Felt::from_hex("0x1234").unwrap(), Felt::ONE, Felt::ZERO],
-        }])
-        .send()
-        .await
-        .unwrap();
+    let transaction_hash = send_with_retry(account.provider(), || async {
+        account
+            .execute_v3(vec![Call {
+                to: eth_token_address,
+                selector: get_selector_from_name("transfer").unwrap(),
+                calldata: vec![Felt::from_hex("0x1234").unwrap(), Felt::ONE, Felt::ZERO],
+            }])
+            .send()
+            .await
+            .map(|result| result.transaction_hash)
+    })
+    .await;
 
-    assert!(result.transaction_hash > Felt::ZERO);
+    assert!(transaction_hash > Felt::ZERO);
 }
 
 async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + Send + Sync>(
@@ -229,30 +243,32 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + 
     let account =
         SingleOwnerAccount::new(provider, signer, address, CHAIN_ID, ExecutionEncoding::New);
 
-    let _guard = shared_signer_lock().await;
-    let result = account
-        .execute_v3(vec![Call {
-            to: eth_token_address,
-            selector: get_selector_from_name("transfer").unwrap(),
-            calldata: vec![
-                Felt::from_hex("0x1234").unwrap(),
-                Felt::from_dec_str("10000000000000000000").unwrap(),
-                Felt::ZERO,
-            ],
-        }])
-        .l1_gas(0)
-        .l1_gas_price(1_000_000_000_000_000)
-        .l2_gas(1_000_000)
-        .l2_gas_price(10_000_000_000)
-        .l1_data_gas(1000)
-        .l1_data_gas_price(100_000_000_000_000)
-        // This tx costs around 10^6 L2 gas. So a tip of 10^10 is around 10^16 FRI (0.01 STRK).
-        .tip(10_000_000_000)
-        .send()
-        .await
-        .unwrap();
+    let transaction_hash = send_with_retry_allow_revert(account.provider(), || async {
+        account
+            .execute_v3(vec![Call {
+                to: eth_token_address,
+                selector: get_selector_from_name("transfer").unwrap(),
+                calldata: vec![
+                    Felt::from_hex("0x1234").unwrap(),
+                    Felt::from_dec_str("10000000000000000000").unwrap(),
+                    Felt::ZERO,
+                ],
+            }])
+            .l1_gas(0)
+            .l1_gas_price(1_000_000_000_000_000)
+            .l2_gas(1_000_000)
+            .l2_gas_price(10_000_000_000)
+            .l1_data_gas(1000)
+            .l1_data_gas_price(100_000_000_000_000)
+            // This tx costs around 10^6 L2 gas. So a tip of 10^10 is around 10^16 FRI (0.01 STRK).
+            .tip(10_000_000_000)
+            .send()
+            .await
+            .map(|result| result.transaction_hash)
+    })
+    .await;
 
-    assert!(result.transaction_hash > Felt::ZERO);
+    assert!(transaction_hash > Felt::ZERO);
 }
 
 async fn can_estimate_declare_v3_fee_inner<P: Provider + Send + Sync>(provider: P, address: &str) {

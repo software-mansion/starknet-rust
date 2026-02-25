@@ -2787,6 +2787,8 @@ dependencies = [
 name = "test-common"
 version = "0.1.0"
 dependencies = [
+ "starknet-rust-accounts",
+ "starknet-rust-core",
  "starknet-rust-providers",
  "tokio",
  "url",
