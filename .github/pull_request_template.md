@@ -1,16 +1,10 @@
-<!-- Reference any GitHub issues resolved by this PR -->
-
 Closes #
 
 ## Introduced changes
 
-<!-- A brief description of the changes -->
-
 -
 
 ## Checklist
-
-<!-- Make sure all of these are complete -->
 
 - [ ] Linked relevant issue
 - [ ] Added relevant tests
