@@ -6,10 +6,16 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    DeriveInput, Fields, LitInt, LitStr, Meta, Token,
+    DeriveInput, Fields, Lifetime, LifetimeParam, LitInt, LitStr, Meta, Path, Token,
     parse::{Error as ParseError, Parse, ParseStream},
-    parse_macro_input,
+    parse_macro_input, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
 };
+
+use crate::generics_visitor::GenericsVisitor;
+
+mod generics_visitor;
 
 #[derive(Default)]
 struct Args {
@@ -66,14 +72,18 @@ mod kw {
 /// Derives the `Encode` trait.
 #[proc_macro_derive(Encode, attributes(starknet))]
 pub fn derive_encode(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
+    let mut input: DeriveInput = parse_macro_input!(input);
     let ident = &input.ident;
 
     let core = derive_core_path(&input);
 
-    let impl_block = match input.data {
+    let mut visitor = GenericsVisitor::new(&input.generics);
+
+    let impl_block = match &input.data {
         syn::Data::Struct(data) => {
             let field_impls = data.fields.iter().enumerate().map(|(ind_field, field)| {
+                visitor.visit_field(field);
+
                 let field_ident = field.ident.as_ref().map_or_else(
                     || {
                         let ind_field = syn::Index::from(ind_field);
@@ -109,6 +119,8 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
                                     .map(|field| field.ident.as_ref().unwrap());
 
                                 let field_impls = fields_named.named.iter().map(|field| {
+                                    visitor.visit_field(field);
+
                                     let field_ident = field.ident.as_ref().unwrap();
                                     let field_type = &field.ty;
 
@@ -137,6 +149,8 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
 
                                 let field_impls = fields_unnamed.unnamed.iter().enumerate().map(
                                     |(ind_field, field)| {
+                                        visitor.visit_field(field);
+
                                         let field_ident = syn::Ident::new(
                                             &format!("field_{ind_field}"),
                                             Span::call_site(),
@@ -176,9 +190,15 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
         syn::Data::Union(_) => panic!("union type not supported"),
     };
 
+    let encode_path = parse_quote!(#core::codec::Encode);
+
+    visitor.extend_where_clause(input.generics.make_where_clause(), &encode_path);
+
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
     quote! {
         #[automatically_derived]
-        impl #core::codec::Encode for #ident {
+        impl #impl_generics #encode_path for #ident #ty_generics #where_clause {
             fn encode<W: #core::codec::FeltWriter>(&self, writer: &mut W)
                 -> ::core::result::Result<(), #core::codec::Error> {
                 #impl_block
@@ -190,18 +210,39 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
     .into()
 }
 
+const DECODE_LIFETIME_IDENT: &str = "'de";
+
 /// Derives the `Decode` trait.
 #[proc_macro_derive(Decode, attributes(starknet))]
 pub fn derive_decode(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    let ident = &input.ident;
+    let mut input: DeriveInput = parse_macro_input!(input);
 
+    if let Some(lt) = input
+        .generics
+        .lifetimes()
+        .find(|lt| lt.lifetime.ident == DECODE_LIFETIME_IDENT)
+    {
+        return syn::Error::new(
+            lt.span(),
+            format!(
+                "cannot decode when there is a lifetime parameter called {DECODE_LIFETIME_IDENT}"
+            ),
+        )
+        .into_compile_error()
+        .into();
+    }
+
+    let ident = &input.ident;
     let core = derive_core_path(&input);
 
-    let impl_block = match input.data {
+    let mut visitor = GenericsVisitor::new(&input.generics);
+
+    let impl_block = match &input.data {
         syn::Data::Struct(data) => match &data.fields {
             Fields::Named(fields_named) => {
                 let field_impls = fields_named.named.iter().map(|field| {
+                    visitor.visit_field(field);
+
                     let field_ident = &field.ident;
                     let field_type = &field.ty;
 
@@ -219,6 +260,8 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
             }
             Fields::Unnamed(fields_unnamed) => {
                 let field_impls = fields_unnamed.unnamed.iter().map(|field| {
+                    visitor.visit_field(field);
+
                     let field_type = &field.ty;
                     quote! {
                         <#field_type as #core::codec::Decode>::decode_iter(iter)?
@@ -249,6 +292,8 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
                     let decode_impl = match &variant.fields {
                         Fields::Named(fields_named) => {
                             let field_impls = fields_named.named.iter().map(|field| {
+                                visitor.visit_field(field);
+
                                 let field_ident = field.ident.as_ref().unwrap();
                                 let field_type = &field.ty;
 
@@ -266,6 +311,8 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
                         }
                         Fields::Unnamed(fields_unnamed) => {
                             let field_impls = fields_unnamed.unnamed.iter().map(|field| {
+                                visitor.visit_field(field);
+
                                 let field_type = &field.ty;
 
                                 quote! {
@@ -304,12 +351,35 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
         syn::Data::Union(_) => panic!("union type not supported"),
     };
 
+    let decode_path: Path = parse_quote!(#core::codec::Decode);
+    let de_lifetime = Lifetime::new(DECODE_LIFETIME_IDENT, Span::call_site());
+
+    visitor.extend_where_clause(
+        input.generics.make_where_clause(),
+        &parse_quote!(#decode_path<#de_lifetime>),
+    );
+
+    let generics_without_decode_lt = input.generics.clone();
+    let (_, ty_generics, where_clause) = generics_without_decode_lt.split_for_impl();
+
+    input
+        .generics
+        .params
+        .push(syn::GenericParam::Lifetime(LifetimeParam {
+            attrs: vec![],
+            lifetime: de_lifetime.clone(),
+            bounds: Punctuated::new(),
+            colon_token: None,
+        }));
+
+    let (impl_generics, _, _) = input.generics.split_for_impl();
+
     quote! {
         #[automatically_derived]
-        impl<'a> #core::codec::Decode<'a> for #ident {
-            fn decode_iter<T>(iter: &mut T) -> ::core::result::Result<Self, #core::codec::Error>
+        impl #impl_generics #decode_path<#de_lifetime> for #ident #ty_generics #where_clause {
+            fn decode_iter<__T>(iter: &mut __T) -> ::core::result::Result<Self, #core::codec::Error>
             where
-                T: ::core::iter::Iterator<Item = &'a #core::types::Felt>
+                __T: ::core::iter::Iterator<Item = &#de_lifetime #core::types::Felt>
             {
                 #impl_block
             }
@@ -319,7 +389,7 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
 }
 
 /// Determines the path to the `starknet-rust-core` crate root.
-fn derive_core_path(input: &DeriveInput) -> proc_macro2::TokenStream {
+fn derive_core_path(input: &DeriveInput) -> Path {
     let mut attr_args = Args::default();
 
     for attr in &input.attrs {
@@ -343,14 +413,14 @@ fn derive_core_path(input: &DeriveInput) -> proc_macro2::TokenStream {
     attr_args.core.map_or_else(
         || {
             #[cfg(not(feature = "import_from_starknet"))]
-            quote! {
+            parse_quote! {
                 ::starknet_rust_core
             }
 
             // This feature is enabled by the `starknet-rust` crate. When using `starknet` it's assumed
             // that users would not have imported `starknet-rust-core` directly.
             #[cfg(feature = "import_from_starknet")]
-            quote! {
+            parse_quote! {
                 ::starknet_rust::core
             }
         },
@@ -359,7 +429,7 @@ fn derive_core_path(input: &DeriveInput) -> proc_macro2::TokenStream {
 }
 
 /// Turns an integer into an optimal `TokenStream` that constructs a `Felt` with the same value.
-fn int_to_felt(int: usize, core: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+fn int_to_felt(int: usize, core: &Path) -> proc_macro2::TokenStream {
     match int {
         0 => quote! { #core::types::Felt::ZERO },
         1 => quote! { #core::types::Felt::ONE },
