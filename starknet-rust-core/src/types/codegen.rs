@@ -43,6 +43,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::serde_as;
 
 use crate::serde::byte_array::base64;
+use crate::serde::byte_array::option_base64_u64_vec;
 
 use super::{
     AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId, ContractExecutionError,
@@ -421,8 +422,12 @@ pub struct BroadcastedDeployAccountTransactionV3 {
 pub struct BroadcastedInvokeTransaction {
     #[serde(flatten)]
     pub broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3,
-    /// Optional proof for the transaction
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Optional proof for the transaction (base64-encoded binary)
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        with = "option_base64_u64_vec"
+    )]
     pub proof: Option<Vec<u64>>,
 }
 
