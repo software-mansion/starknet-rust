@@ -4,11 +4,11 @@ use starknet_rust_core::types::{
     BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
     ConfirmedBlockId, ContractClass, ContractStorageKeys, DeclareTransactionResult,
     DeployAccountTransactionResult, EventFilter, EventsPage, FeeEstimate, Felt, FunctionCall,
-    Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
+    GetStorageAtResult, Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
     SimulateTransactionsResult, SimulationFlag, SimulationFlagForEstimateFee, StorageProof,
-    SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
+    StorageResponseFlag, SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
     TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionStatus, TransactionTrace,
 };
 
@@ -158,7 +158,8 @@ impl Provider for AnyProvider {
         contract_address: A,
         key: K,
         block_id: B,
-    ) -> Result<Felt, ProviderError>
+        response_flags: Option<&[StorageResponseFlag]>,
+    ) -> Result<GetStorageAtResult, ProviderError>
     where
         A: AsRef<Felt> + Send + Sync,
         K: AsRef<Felt> + Send + Sync,
@@ -171,6 +172,7 @@ impl Provider for AnyProvider {
                     contract_address,
                     key,
                     block_id,
+                    response_flags,
                 )
                 .await
             }
@@ -180,6 +182,7 @@ impl Provider for AnyProvider {
                     contract_address,
                     key,
                     block_id,
+                    response_flags,
                 )
                 .await
             }

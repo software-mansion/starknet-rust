@@ -8,12 +8,13 @@ use starknet_rust_core::types::{
     BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
     ConfirmedBlockId, ContractClass, ContractStorageKeys, DeclareTransactionResult,
     DeployAccountTransactionResult, EventFilter, EventsPage, FeeEstimate, Felt, FunctionCall,
-    Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
+    GetStorageAtResult, Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
     SimulateTransactionsResult, SimulationFlag, SimulationFlagForEstimateFee, StarknetError,
-    StorageProof, SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
-    TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionStatus, TransactionTrace,
+    StorageProof, StorageResponseFlag, SyncStatusType, TraceBlockTransactionsResult, TraceFlag,
+    Transaction, TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionStatus,
+    TransactionTrace,
 };
 
 use crate::{
@@ -99,10 +100,11 @@ impl Provider for SequencerGatewayProvider {
 
     async fn get_storage_at<A, K, B>(
         &self,
-        contract_address: A,
-        key: K,
-        block_id: B,
-    ) -> Result<Felt, ProviderError>
+        _contract_address: A,
+        _key: K,
+        _block_id: B,
+        _response_flags: Option<&[StorageResponseFlag]>,
+    ) -> Result<GetStorageAtResult, ProviderError>
     where
         A: AsRef<Felt> + Send + Sync,
         K: AsRef<Felt> + Send + Sync,

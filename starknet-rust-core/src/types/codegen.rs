@@ -5,7 +5,7 @@
 //     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#267739d8b42e938914fec03b7171f5f98fb72901
+//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#8333fdcee9ae73bc5546c3d2049bbff938d62b3a
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -28,6 +28,8 @@
 // - `INVOKE_TXN`
 // - `INVOKE_TXN_CONTENT`
 // - `MERKLE_NODE`
+// - `SIMULATE_TRANSACTIONS_RESULT`
+// - `TRACE_BLOCK_TRANSACTIONS_RESULT`
 // - `TRANSACTION_TRACE`
 // - `TXN`
 // - `TXN_CONTENT`
@@ -421,9 +423,10 @@ pub struct BroadcastedDeployAccountTransactionV3 {
 pub struct BroadcastedInvokeTransaction {
     #[serde(flatten)]
     pub broadcasted_invoke_txn_v3: BroadcastedInvokeTransactionV3,
-    /// Optional proof for the transaction
+    /// Optional proof for the transaction, encoded as a base-64 string of big-endian packed u32
+    /// values
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub proof: Option<Vec<u64>>,
+    pub proof: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -449,7 +452,8 @@ pub struct BroadcastedInvokeTransactionV3 {
     pub nonce_data_availability_mode: DataAvailabilityMode,
     /// The storage domain of the account's balance from which fee will be charged
     pub fee_data_availability_mode: DataAvailabilityMode,
-    /// Optional proof facts for the transaction
+    /// Proof facts for the transaction. An empty array is returned if no proof facts exist for the
+    /// transaction
     pub proof_facts: Option<Vec<Felt>>,
     /// If set to `true`, uses a query-only transaction version that's invalid for execution
     pub is_query: bool,
@@ -1459,7 +1463,8 @@ pub struct InvokeTransactionV3 {
     pub nonce_data_availability_mode: DataAvailabilityMode,
     /// The storage domain of the account's balance from which fee will be charged
     pub fee_data_availability_mode: DataAvailabilityMode,
-    /// Optional proof facts for the transaction
+    /// Proof facts for the transaction. An empty array is returned if no proof facts exist for the
+    /// transaction
     pub proof_facts: Option<Vec<Felt>>,
 }
 
@@ -1489,7 +1494,8 @@ pub struct InvokeTransactionV3Content {
     pub nonce_data_availability_mode: DataAvailabilityMode,
     /// The storage domain of the account's balance from which fee will be charged
     pub fee_data_availability_mode: DataAvailabilityMode,
-    /// Optional proof facts for the transaction
+    /// Proof facts for the transaction. An empty array is returned if no proof facts exist for the
+    /// transaction
     pub proof_facts: Option<Vec<Felt>>,
 }
 
@@ -2114,20 +2120,6 @@ pub struct SierraEntryPoint {
     pub function_idx: u64,
 }
 
-/// Simulate transactions result.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
-pub struct SimulateTransactionsResult {
-    /// The execution trace and consumed resources of the required transactions
-    pub simulated_transactions: Vec<SimulatedTransaction>,
-    /// The set of state values fetched from the underlying state reader during execution for all
-    /// transactions in the simulation. This provides a complete witness sufficient to reconstruct
-    /// the cached state needed for re-execution. Only included when return_initial_reads is present
-    /// in simulation_flags.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub initial_reads: Option<InitialReads>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct SimulatedTransaction {
@@ -2223,6 +2215,8 @@ pub enum StarknetError {
     ReplacementTransactionUnderpriced,
     /// Transaction fee below minimum
     FeeBelowMinimum,
+    /// The proof field in the invoke v3 transaction is invalid
+    InvalidProof,
     /// No trace available for transaction
     NoTraceAvailable(NoTraceAvailableErrorData),
     /// Invalid subscription id
@@ -2270,6 +2264,7 @@ impl core::fmt::Display for StarknetError {
                 write!(f, "ReplacementTransactionUnderpriced")
             }
             Self::FeeBelowMinimum => write!(f, "FeeBelowMinimum"),
+            Self::InvalidProof => write!(f, "InvalidProof"),
             Self::NoTraceAvailable(e) => write!(f, "NoTraceAvailable: {e:?}"),
             Self::InvalidSubscriptionId => write!(f, "InvalidSubscriptionId"),
             Self::TooManyAddressesInFilter => write!(f, "TooManyAddressesInFilter"),
@@ -2310,6 +2305,7 @@ impl StarknetError {
             Self::UnexpectedError(_) => 63,
             Self::ReplacementTransactionUnderpriced => 64,
             Self::FeeBelowMinimum => 65,
+            Self::InvalidProof => 69,
             Self::NoTraceAvailable(_) => 10,
             Self::InvalidSubscriptionId => 66,
             Self::TooManyAddressesInFilter => 67,
@@ -2358,6 +2354,7 @@ impl StarknetError {
             Self::UnexpectedError(_) => "An unexpected error occurred",
             Self::ReplacementTransactionUnderpriced => "Replacement transaction is underpriced",
             Self::FeeBelowMinimum => "Transaction fee below minimum",
+            Self::InvalidProof => "The proof field in the invoke v3 transaction is invalid",
             Self::NoTraceAvailable(_) => "No trace available for transaction",
             Self::InvalidSubscriptionId => "Invalid subscription id",
             Self::TooManyAddressesInFilter => "Too many addresses in filter sender_address filter",
@@ -2439,6 +2436,30 @@ pub struct StorageProof {
     pub global_roots: GlobalRoots,
 }
 
+/// Flags that control what additional fields are included in storage responses.
+/// Include_last_update_block: changes the return type to include the block number of the most
+/// recent block that modified this storage slot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StorageResponseFlag {
+    #[serde(rename = "INCLUDE_LAST_UPDATE_BLOCK")]
+    IncludeLastUpdateBlock,
+}
+
+/// Storage result with metadata.
+///
+/// The storage value along with additional metadata about the storage slot.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
+pub struct StorageResult {
+    /// The value at the given key for the given contract. 0 if no value is found
+    #[serde_as(as = "UfeHex")]
+    pub value: Felt,
+    /// The block number of the most recent block that included a modification to this storage slot.
+    /// 0 if the storage slot has never been modified (i.e. The value is 0)
+    pub last_update_block: u64,
+}
+
 /// Subscription id.
 ///
 /// An identifier for this subscription stream used to associate events with this subscription.
@@ -2446,8 +2467,8 @@ pub struct StorageProof {
 pub struct SubscriptionId(pub String);
 
 /// Tags that control what additional fields are included in subscription responses.
-/// Include_proof_facts: include proof_facts field when available (only for invoke transactions with
-/// version 3).
+/// Include_proof_facts: include proof_facts field in the response (an empty array is returned if no
+/// proof facts exist for the transaction; only applicable to invoke transactions with version 3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SubscriptionTag {
     #[serde(rename = "INCLUDE_PROOF_FACTS")]
@@ -2476,20 +2497,6 @@ pub struct SyncStatus {
     pub highest_block_hash: Felt,
     /// The number (height) of the estimated highest block to be synchronized
     pub highest_block_num: u64,
-}
-
-/// Trace block transactions result.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
-pub struct TraceBlockTransactionsResult {
-    /// The traces of all transactions in the block
-    pub traces: Vec<TransactionTraceWithHash>,
-    /// The set of state values fetched from the underlying state reader during execution for all
-    /// transactions in the block. This provides a complete witness sufficient to reconstruct the
-    /// cached state needed for re-execution. Only included when return_initial_reads is present in
-    /// trace_flags.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub initial_reads: Option<InitialReads>,
 }
 
 /// Flags that indicate what additional information should be included in the trace. When
@@ -2547,8 +2554,8 @@ pub struct TransactionReceiptWithBlockInfo {
 }
 
 /// Flags that control what additional fields are included in transaction responses.
-/// Include_proof_facts: include proof_facts field when available (only for transactions submitted
-/// through the gateway with proof facts).
+/// Include_proof_facts: include proof_facts field in the response (an empty array is returned if no
+/// proof facts exist for the transaction).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransactionResponseFlag {
     #[serde(rename = "INCLUDE_PROOF_FACTS")]
@@ -2838,12 +2845,16 @@ pub struct GetNonceRequestRef<'a> {
 pub struct GetStateUpdateRequest {
     /// The hash of the requested block, or number (height) of the requested block, or a block tag
     pub block_id: BlockId,
+    /// If specified, only state diffs related to these contract addresses will be returned. Class
+    /// declarations are unaffected by this filter. If omitted, the full state diff is returned.
+    pub contract_addresses: Option<Vec<Felt>>,
 }
 
 /// Reference version of [GetStateUpdateRequest].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetStateUpdateRequestRef<'a> {
     pub block_id: &'a BlockId,
+    pub contract_addresses: Option<&'a [Felt]>,
 }
 
 /// Request for method starknet_getStorageAt
@@ -2855,6 +2866,8 @@ pub struct GetStorageAtRequest {
     pub key: StorageKey,
     /// The hash of the requested block, or number (height) of the requested block, or a block tag
     pub block_id: BlockId,
+    /// Flags that control what additional fields are included in the response
+    pub response_flags: Option<Vec<StorageResponseFlag>>,
 }
 
 /// Reference version of [GetStorageAtRequest].
@@ -2863,6 +2876,7 @@ pub struct GetStorageAtRequestRef<'a> {
     pub contract_address: &'a Felt,
     pub key: &'a StorageKey,
     pub block_id: &'a BlockId,
+    pub response_flags: Option<&'a [StorageResponseFlag]>,
 }
 
 /// Request for method starknet_getStorageProof
@@ -8098,6 +8112,8 @@ impl Serialize for GetStateUpdateRequest {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            contract_addresses: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -8106,11 +8122,23 @@ impl Serialize for GetStateUpdateRequest {
             pub value: &'a BlockId,
         }
 
+        #[serde_as]
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            #[serde_as(as = "[UfeHex]")]
+            pub value: &'a [Felt],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: &self.block_id,
                 },
+                contract_addresses: self
+                    .contract_addresses
+                    .as_ref()
+                    .map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -8122,6 +8150,8 @@ impl Serialize for GetStateUpdateRequestRef<'_> {
         #[derive(Serialize)]
         struct AsObject<'a> {
             block_id: Field0<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            contract_addresses: Option<Field1<'a>>,
         }
 
         #[derive(Serialize)]
@@ -8130,11 +8160,23 @@ impl Serialize for GetStateUpdateRequestRef<'_> {
             pub value: &'a BlockId,
         }
 
+        #[serde_as]
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field1<'a> {
+            #[serde_as(as = "[UfeHex]")]
+            pub value: &'a [Felt],
+        }
+
         AsObject::serialize(
             &AsObject {
                 block_id: Field0 {
                     value: self.block_id,
                 },
+                contract_addresses: self
+                    .contract_addresses
+                    .as_ref()
+                    .map(|f| Field1 { value: f }),
             },
             serializer,
         )
@@ -8146,6 +8188,8 @@ impl<'de> Deserialize<'de> for GetStateUpdateRequest {
         #[derive(Deserialize)]
         struct AsObject {
             block_id: Field0,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            contract_addresses: Option<Field1>,
         }
 
         #[derive(Deserialize)]
@@ -8154,9 +8198,28 @@ impl<'de> Deserialize<'de> for GetStateUpdateRequest {
             pub value: BlockId,
         }
 
+        #[serde_as]
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field1 {
+            #[serde_as(as = "Vec<UfeHex>")]
+            pub value: Vec<Felt>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field1 = if element_count > 1 {
+                Some(
+                    serde_json::from_value::<Field1>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field0 = serde_json::from_value::<Field0>(
                 elements
                     .pop()
@@ -8166,10 +8229,12 @@ impl<'de> Deserialize<'de> for GetStateUpdateRequest {
 
             Ok(Self {
                 block_id: field0.value,
+                contract_addresses: field1.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 block_id: object.block_id.value,
+                contract_addresses: object.contract_addresses.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))
@@ -8184,6 +8249,8 @@ impl Serialize for GetStorageAtRequest {
             contract_address: Field0<'a>,
             key: Field1<'a>,
             block_id: Field2<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field3<'a>>,
         }
 
         #[serde_as]
@@ -8206,6 +8273,12 @@ impl Serialize for GetStorageAtRequest {
             pub value: &'a BlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field3<'a> {
+            pub value: &'a [StorageResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 contract_address: Field0 {
@@ -8215,6 +8288,7 @@ impl Serialize for GetStorageAtRequest {
                 block_id: Field2 {
                     value: &self.block_id,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field3 { value: f }),
             },
             serializer,
         )
@@ -8228,6 +8302,8 @@ impl Serialize for GetStorageAtRequestRef<'_> {
             contract_address: Field0<'a>,
             key: Field1<'a>,
             block_id: Field2<'a>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field3<'a>>,
         }
 
         #[serde_as]
@@ -8250,6 +8326,12 @@ impl Serialize for GetStorageAtRequestRef<'_> {
             pub value: &'a BlockId,
         }
 
+        #[derive(Serialize)]
+        #[serde(transparent)]
+        struct Field3<'a> {
+            pub value: &'a [StorageResponseFlag],
+        }
+
         AsObject::serialize(
             &AsObject {
                 contract_address: Field0 {
@@ -8259,6 +8341,7 @@ impl Serialize for GetStorageAtRequestRef<'_> {
                 block_id: Field2 {
                     value: self.block_id,
                 },
+                response_flags: self.response_flags.as_ref().map(|f| Field3 { value: f }),
             },
             serializer,
         )
@@ -8272,6 +8355,8 @@ impl<'de> Deserialize<'de> for GetStorageAtRequest {
             contract_address: Field0,
             key: Field1,
             block_id: Field2,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response_flags: Option<Field3>,
         }
 
         #[serde_as]
@@ -8294,9 +8379,26 @@ impl<'de> Deserialize<'de> for GetStorageAtRequest {
             pub value: BlockId,
         }
 
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Field3 {
+            pub value: Vec<StorageResponseFlag>,
+        }
+
         let temp = serde_json::Value::deserialize(deserializer)?;
 
         if let Ok(mut elements) = Vec::<serde_json::Value>::deserialize(&temp) {
+            let element_count = elements.len();
+
+            let field3 = if element_count > 3 {
+                Some(
+                    serde_json::from_value::<Field3>(elements.pop().unwrap()).map_err(|err| {
+                        serde::de::Error::custom(format!("failed to parse element: {err}"))
+                    })?,
+                )
+            } else {
+                None
+            };
             let field2 = serde_json::from_value::<Field2>(
                 elements
                     .pop()
@@ -8320,12 +8422,14 @@ impl<'de> Deserialize<'de> for GetStorageAtRequest {
                 contract_address: field0.value,
                 key: field1.value,
                 block_id: field2.value,
+                response_flags: field3.map(|f| f.value),
             })
         } else if let Ok(object) = AsObject::deserialize(&temp) {
             Ok(Self {
                 contract_address: object.contract_address.value,
                 key: object.key.value,
                 block_id: object.block_id.value,
+                response_flags: object.response_flags.map(|f| f.value),
             })
         } else {
             Err(serde::de::Error::custom("invalid sequence length"))

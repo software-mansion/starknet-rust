@@ -174,7 +174,7 @@ pub struct ExecutionV3<'a, A> {
     gas_price_estimate_multiplier: f64,
     tip: Option<u64>,
     proof_facts: Option<Vec<Felt>>,
-    proof: Option<Vec<u64>>,
+    proof: Option<String>,
 }
 
 /// Abstraction over `DECLARE` transactions from accounts for invoking contracts. This struct uses
@@ -213,7 +213,7 @@ pub struct RawExecutionV3 {
     l1_data_gas_price: u128,
     tip: u64,
     proof_facts: Option<Vec<Felt>>,
-    proof: Option<Vec<u64>>,
+    proof: Option<String>,
 }
 
 /// [`DeclarationV3`] but with `nonce` and other transaction fee options already determined.

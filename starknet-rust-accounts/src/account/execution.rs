@@ -146,7 +146,7 @@ impl<'a, A> ExecutionV3<'a, A> {
     }
 
     /// Returns a new [`ExecutionV3`] with the `proof`.
-    pub fn proof(self, proof: Vec<u64>) -> Self {
+    pub fn proof(self, proof: String) -> Self {
         Self {
             proof: Some(proof),
             ..self

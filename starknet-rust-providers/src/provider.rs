@@ -6,13 +6,13 @@ use starknet_rust_core::types::{
     BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
     ConfirmedBlockId, ContractClass, ContractStorageKeys, DeclareTransactionResult,
     DeployAccountTransactionResult, EventFilter, EventsPage, FeeEstimate, Felt, FunctionCall,
-    Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
+    GetStorageAtResult, Hash256, InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
     MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
     MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
     SimulateTransactionsResult, SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee,
-    StarknetError, StorageProof, SubscriptionId, SyncStatusType, TraceBlockTransactionsResult,
-    TraceFlag, Transaction, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
-    TransactionStatus, TransactionTrace,
+    StarknetError, StorageProof, StorageResponseFlag, SubscriptionId, SyncStatusType,
+    TraceBlockTransactionsResult, TraceFlag, Transaction, TransactionReceiptWithBlockInfo,
+    TransactionResponseFlag, TransactionStatus, TransactionTrace,
     requests::{
         AddDeclareTransactionRequest, AddDeployAccountTransactionRequest,
         AddInvokeTransactionRequest, BlockHashAndNumberRequest, BlockNumberRequest, CallRequest,
@@ -95,7 +95,8 @@ pub trait Provider {
         contract_address: A,
         key: K,
         block_id: B,
-    ) -> Result<Felt, ProviderError>
+        response_flags: Option<&[StorageResponseFlag]>,
+    ) -> Result<GetStorageAtResult, ProviderError>
     where
         A: AsRef<Felt> + Send + Sync,
         K: AsRef<Felt> + Send + Sync,
@@ -518,7 +519,7 @@ pub enum ProviderResponseData {
     /// Response data for `starknet_getStateUpdate`.
     GetStateUpdate(MaybePreConfirmedStateUpdate),
     /// Response data for `starknet_getStorageAt`.
-    GetStorageAt(Felt),
+    GetStorageAt(GetStorageAtResult),
     /// Response data for `starknet_getMessagesStatus`.
     GetMessagesStatus(Vec<MessageStatus>),
     /// Response data for `starknet_getTransactionStatus`.

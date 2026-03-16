@@ -201,11 +201,12 @@ async fn jsonrpc_get_storage_at() {
             )
             .unwrap(),
             BlockId::Tag(BlockTag::Latest),
+            None,
         )
         .await
         .unwrap();
 
-    assert!(eth_balance > Felt::ZERO);
+    assert!(eth_balance.value() > Felt::ZERO);
 }
 
 #[tokio::test]

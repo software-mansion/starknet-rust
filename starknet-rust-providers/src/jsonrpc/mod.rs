@@ -10,13 +10,13 @@ use starknet_rust_core::{
         BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
         ConfirmedBlockId, ContractClass, ContractErrorData, ContractStorageKeys,
         DeclareTransactionResult, DeployAccountTransactionResult, EventFilter, EventFilterWithPage,
-        EventsPage, FeeEstimate, Felt as FeltPrimitive, FunctionCall, Hash256,
+        EventsPage, FeeEstimate, Felt as FeltPrimitive, FunctionCall, GetStorageAtResult, Hash256,
         InvokeTransactionResult, MaybePreConfirmedBlockWithReceipts,
         MaybePreConfirmedBlockWithTxHashes, MaybePreConfirmedBlockWithTxs,
         MaybePreConfirmedStateUpdate, MessageFeeEstimate, MessageStatus, MsgFromL1,
         NoTraceAvailableErrorData, ResultPageRequest, SimulateTransactionsResult, SimulationFlag,
-        SimulationFlagForEstimateFee, StarknetError, StorageKey, StorageProof, SubscriptionId,
-        SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
+        SimulationFlagForEstimateFee, StarknetError, StorageKey, StorageProof, StorageResponseFlag,
+        SubscriptionId, SyncStatusType, TraceBlockTransactionsResult, TraceFlag, Transaction,
         TransactionExecutionErrorData, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
         TransactionStatus, TransactionTrace,
         requests::{
@@ -341,7 +341,7 @@ where
             .await
             .map_err(JsonRpcClientError::TransportError)?;
 
-        for (request, response) in requests.as_ref().iter().zip(responses.into_iter()) {
+        for (request, response) in requests.as_ref().iter().zip(responses) {
             match response {
                 JsonRpcResponse::Success { result, .. } => {
                     let result = match request {
@@ -374,9 +374,8 @@ where
                             )
                         }
                         ProviderRequestData::GetStorageAt(_) => ProviderResponseData::GetStorageAt(
-                            Felt::deserialize(result)
-                                .map_err(JsonRpcClientError::<T::Error>::JsonError)?
-                                .0,
+                            GetStorageAtResult::deserialize(result)
+                                .map_err(JsonRpcClientError::<T::Error>::JsonError)?,
                         ),
                         ProviderRequestData::GetMessagesStatus(_) => {
                             ProviderResponseData::GetMessagesStatus(
@@ -656,6 +655,7 @@ where
             JsonRpcMethod::GetStateUpdate,
             GetStateUpdateRequestRef {
                 block_id: block_id.as_ref(),
+                contract_addresses: None,
             },
         )
         .await
@@ -667,24 +667,24 @@ where
         contract_address: A,
         key: K,
         block_id: B,
-    ) -> Result<FeltPrimitive, ProviderError>
+        response_flags: Option<&[StorageResponseFlag]>,
+    ) -> Result<GetStorageAtResult, ProviderError>
     where
         A: AsRef<FeltPrimitive> + Send + Sync,
         K: AsRef<FeltPrimitive> + Send + Sync,
         B: AsRef<BlockId> + Send + Sync,
     {
         // TODO: (#9)
-        Ok(self
-            .send_request::<_, Felt>(
-                JsonRpcMethod::GetStorageAt,
-                GetStorageAtRequestRef {
-                    contract_address: contract_address.as_ref(),
-                    key: &StorageKey(format!("{:#x}", key.as_ref())),
-                    block_id: block_id.as_ref(),
-                },
-            )
-            .await?
-            .0)
+        self.send_request(
+            JsonRpcMethod::GetStorageAt,
+            GetStorageAtRequestRef {
+                contract_address: contract_address.as_ref(),
+                key: &StorageKey(format!("{:#x}", key.as_ref())),
+                block_id: block_id.as_ref(),
+                response_flags,
+            },
+        )
+        .await
     }
 
     /// Given an l1 tx hash, returns the associated `l1_handler` tx hashes and statuses for all L1 ->

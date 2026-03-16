@@ -51,14 +51,10 @@ pub use codegen::{
     ResourceBoundsMapping, ResourcePrice, ResultPageRequest, RevertedInvocation,
     SequencerTransactionStatus, SierraEntryPoint, SimulatedTransaction, SimulationFlag,
     SimulationFlagForEstimateFee, StarknetError, StateDiff, StateUpdate, StorageEntry, StorageKey,
-    StorageProof, SubscriptionId, SubscriptionTag, SyncStatus, TraceFlag,
-    TransactionExecutionErrorData, TransactionExecutionStatus, TransactionFinalityStatus,
-    TransactionReceiptWithBlockInfo, TransactionResponseFlag, TransactionTraceWithHash,
-    TransactionWithL2Status, TransactionWithReceipt,
-};
-pub use codegen::{
-    SimulateTransactionsResult as GeneratedSimulateTransactionsResult,
-    TraceBlockTransactionsResult as GeneratedTraceBlockTransactionsResult,
+    StorageProof, StorageResponseFlag, StorageResult, SubscriptionId, SubscriptionTag, SyncStatus,
+    TraceFlag, TransactionExecutionErrorData, TransactionExecutionStatus,
+    TransactionFinalityStatus, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
+    TransactionTraceWithHash, TransactionWithL2Status, TransactionWithReceipt,
 };
 
 /// Module containing the [`U256`] type.
@@ -212,6 +208,37 @@ pub enum SimulateTransactionsResult {
         /// Initial reads witness for the simulation.
         initial_reads: InitialReads,
     },
+}
+
+/// Result type for `starknet_getStorageAt` that supports both plain `Felt` and `StorageResult`
+/// response shapes, depending on whether `response_flags` (e.g. `INCLUDE_LAST_UPDATE_BLOCK`) were
+/// set in the request.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GetStorageAtResult {
+    /// Plain storage value (no response flags).
+    Value(#[serde_as(as = "UfeHex")] Felt),
+    /// Storage value with metadata (when `INCLUDE_LAST_UPDATE_BLOCK` is set).
+    ValueWithMetadata(StorageResult),
+}
+
+impl GetStorageAtResult {
+    /// Returns the storage value regardless of the response shape.
+    pub const fn value(&self) -> Felt {
+        match self {
+            Self::Value(felt) => *felt,
+            Self::ValueWithMetadata(result) => result.value,
+        }
+    }
+
+    /// Returns the last update block number, if available.
+    pub const fn last_update_block(&self) -> Option<u64> {
+        match self {
+            Self::Value(_) => None,
+            Self::ValueWithMetadata(result) => Some(result.last_update_block),
+        }
+    }
 }
 
 /// Result type for `starknet_traceBlockTransactions` that supports both 0.10.0 and 0.10.1 payloads.
@@ -1323,6 +1350,137 @@ mod tests {
                 panic!("expected legacy array result");
             }
         }
+    }
+
+    #[test]
+    fn test_serialize_storage_response_flag_include_last_update_block() {
+        let value = serde_json::to_value(StorageResponseFlag::IncludeLastUpdateBlock).unwrap();
+        assert_eq!(value, serde_json::json!("INCLUDE_LAST_UPDATE_BLOCK"));
+    }
+
+    #[test]
+    fn test_parse_storage_result() {
+        let input = serde_json::json!({
+            "value": "0xabc",
+            "last_update_block": 42
+        });
+
+        let result: StorageResult = serde_json::from_value(input).unwrap();
+        assert_eq!(result.value, Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(result.last_update_block, 42);
+    }
+
+    #[test]
+    fn test_parse_get_storage_at_result() {
+        let input = serde_json::json!("0xabc");
+
+        let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
+        match result {
+            GetStorageAtResult::Value(felt) => {
+                assert_eq!(felt, Felt::from_hex_unchecked("0xabc"));
+            }
+            GetStorageAtResult::ValueWithMetadata(_) => {
+                panic!("expected plain value result");
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_get_storage_at_result_with_metadata() {
+        let input = serde_json::json!({
+            "value": "0xabc",
+            "last_update_block": 42
+        });
+
+        let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
+        match result {
+            GetStorageAtResult::Value(_) => {
+                panic!("expected value with metadata result");
+            }
+            GetStorageAtResult::ValueWithMetadata(sr) => {
+                assert_eq!(sr.value, Felt::from_hex_unchecked("0xabc"));
+                assert_eq!(sr.last_update_block, 42);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_get_storage_at_result_zero_value() {
+        let input = serde_json::json!("0x0");
+
+        let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
+        match result {
+            GetStorageAtResult::Value(felt) => {
+                assert_eq!(felt, Felt::ZERO);
+            }
+            GetStorageAtResult::ValueWithMetadata(_) => {
+                panic!("expected plain value result");
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_get_storage_at_result_with_metadata_zero_block() {
+        let input = serde_json::json!({
+            "value": "0x0",
+            "last_update_block": 0
+        });
+
+        let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
+        match result {
+            GetStorageAtResult::Value(_) => {
+                panic!("expected value with metadata result");
+            }
+            GetStorageAtResult::ValueWithMetadata(sr) => {
+                assert_eq!(sr.value, Felt::ZERO);
+                assert_eq!(sr.last_update_block, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_get_storage_at_result_value_accessor() {
+        let plain = GetStorageAtResult::Value(Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(plain.value(), Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(plain.last_update_block(), None);
+
+        let with_meta = GetStorageAtResult::ValueWithMetadata(StorageResult {
+            value: Felt::from_hex_unchecked("0xabc"),
+            last_update_block: 42,
+        });
+        assert_eq!(with_meta.value(), Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(with_meta.last_update_block(), Some(42));
+    }
+
+    #[test]
+    fn test_get_storage_at_result_serde_roundtrip() {
+        let plain = GetStorageAtResult::Value(Felt::from_hex_unchecked("0xabc"));
+        let json = serde_json::to_value(&plain).unwrap();
+        assert_eq!(json, serde_json::json!("0xabc"));
+        let back: GetStorageAtResult = serde_json::from_value(json).unwrap();
+        assert_eq!(back, plain);
+
+        let with_meta = GetStorageAtResult::ValueWithMetadata(StorageResult {
+            value: Felt::from_hex_unchecked("0xabc"),
+            last_update_block: 42,
+        });
+        let json = serde_json::to_value(&with_meta).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({"value": "0xabc", "last_update_block": 42})
+        );
+        let back: GetStorageAtResult = serde_json::from_value(json).unwrap();
+        assert_eq!(back, with_meta);
+    }
+
+    #[test]
+    fn test_starknet_error_invalid_proof() {
+        let error = StarknetError::InvalidProof;
+        assert_eq!(error.code(), 69);
+        assert_eq!(
+            error.message(),
+            "The proof field in the invoke v3 transaction is invalid"
+        );
     }
 
     #[test]
