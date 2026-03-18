@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install Rust
-      - uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e
+        uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e
         with:
           toolchain: stable
 
