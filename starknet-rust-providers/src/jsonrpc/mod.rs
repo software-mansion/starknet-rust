@@ -1664,6 +1664,7 @@ impl TryFrom<&JsonRpcError> for StarknetError {
             66 => Ok(Self::InvalidSubscriptionId),
             67 => Ok(Self::TooManyAddressesInFilter),
             68 => Ok(Self::TooManyBlocksBack),
+            69 => Ok(Self::InvalidProof),
             10 => {
                 let data = NoTraceAvailableErrorData::deserialize(
                     value
