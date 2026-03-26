@@ -34,6 +34,7 @@ getrandom = { workspace = true, features = ["js"] }
 starknet-rust-providers = { path = ".", features = ["no_unknown_fields"] }
 tokio = { workspace = true, features = ["full"] }
 test-common.workspace = true
+reqwest = { workspace = true, features = ["native-tls"] }
 
 [features]
 default = ["std"]
