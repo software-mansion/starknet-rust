@@ -34,11 +34,11 @@ getrandom = { workspace = true, features = ["js"] }
 starknet-rust-providers = { path = ".", features = ["no_unknown_fields"] }
 tokio = { workspace = true, features = ["full"] }
 test-common.workspace = true
-reqwest = { workspace = true, features = ["native-tls"] }
 
 [features]
 default = ["std"]
 std = ["starknet-rust-core/std"]
+tls = ["reqwest/native-tls"]
 no_unknown_fields = [
     "starknet-rust-core/no_unknown_fields"
 ]
