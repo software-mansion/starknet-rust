@@ -107,6 +107,10 @@ Examples can be found in the [examples folder](./examples):
 
 16. [Inspecting a erased provider-specific error type](./examples/downcast_provider_error.rs)
 
+## Testing
+
+By default, JSON-RPC tests are using hardcoded rpc node URL, but it is possible to provide a custom URL via `TEST_NODE_URL` env variable.
+
 ## License
 
 Licensed under either of
