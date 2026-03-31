@@ -1120,7 +1120,7 @@ mod tests {
         assert_eq!(
             GetStorageProofRequest {
                 block_id: ConfirmedBlockId::Number(200),
-                class_hashes: Some(vec![Felt::from_hex_unwrap("0x123")]),
+                class_hashes: Some(vec![Felt::from_hex_unchecked("0x123")]),
                 contract_addresses: None,
                 contracts_storage_keys: None
             },
@@ -1130,7 +1130,7 @@ mod tests {
         assert_eq!(
             GetStorageProofRequest {
                 block_id: ConfirmedBlockId::Number(200),
-                class_hashes: Some(vec![Felt::from_hex_unwrap("0x123")]),
+                class_hashes: Some(vec![Felt::from_hex_unchecked("0x123")]),
                 contract_addresses: None,
                 contracts_storage_keys: None
             },
@@ -1213,7 +1213,7 @@ mod tests {
         let filter: EventFilter = serde_json::from_value(input).unwrap();
         assert_eq!(
             filter.address,
-            Some(AddressFilter::Single(Felt::from_hex_unwrap("0x1")))
+            Some(AddressFilter::Single(Felt::from_hex_unchecked("0x1")))
         );
     }
 
@@ -1227,8 +1227,8 @@ mod tests {
         assert_eq!(
             filter.address,
             Some(AddressFilter::Multiple(vec![
-                Felt::from_hex_unwrap("0x10"),
-                Felt::from_hex_unwrap("0x20"),
+                Felt::from_hex_unchecked("0x10"),
+                Felt::from_hex_unchecked("0x20"),
             ]))
         );
     }
@@ -1238,7 +1238,7 @@ mod tests {
         let filter = EventFilter {
             from_block: None,
             to_block: None,
-            address: Some(AddressFilter::Single(Felt::from_hex_unwrap("0x1"))),
+            address: Some(AddressFilter::Single(Felt::from_hex_unchecked("0x1"))),
             keys: None,
         };
 
@@ -1252,8 +1252,8 @@ mod tests {
             from_block: None,
             to_block: None,
             address: Some(AddressFilter::Multiple(vec![
-                Felt::from_hex_unwrap("0x10"),
-                Felt::from_hex_unwrap("0x20"),
+                Felt::from_hex_unchecked("0x10"),
+                Felt::from_hex_unchecked("0x20"),
             ])),
             keys: None,
         };
@@ -1366,7 +1366,7 @@ mod tests {
         });
 
         let result: StorageResult = serde_json::from_value(input).unwrap();
-        assert_eq!(result.value, Felt::from_hex_unwrap("0xabc"));
+        assert_eq!(result.value, Felt::from_hex_unchecked("0xabc"));
         assert_eq!(result.last_update_block, 42);
     }
 
@@ -1377,7 +1377,7 @@ mod tests {
         let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
         match result {
             GetStorageAtResult::Value(felt) => {
-                assert_eq!(felt, Felt::from_hex_unwrap("0xabc"));
+                assert_eq!(felt, Felt::from_hex_unchecked("0xabc"));
             }
             GetStorageAtResult::ValueWithMetadata(_) => {
                 panic!("expected plain value result");
@@ -1398,7 +1398,7 @@ mod tests {
                 panic!("expected value with metadata result");
             }
             GetStorageAtResult::ValueWithMetadata(sr) => {
-                assert_eq!(sr.value, Felt::from_hex_unwrap("0xabc"));
+                assert_eq!(sr.value, Felt::from_hex_unchecked("0xabc"));
                 assert_eq!(sr.last_update_block, 42);
             }
         }
@@ -1440,28 +1440,28 @@ mod tests {
 
     #[test]
     fn test_get_storage_at_result_value_accessor() {
-        let plain = GetStorageAtResult::Value(Felt::from_hex_unwrap("0xabc"));
-        assert_eq!(plain.value(), Felt::from_hex_unwrap("0xabc"));
+        let plain = GetStorageAtResult::Value(Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(plain.value(), Felt::from_hex_unchecked("0xabc"));
         assert_eq!(plain.last_update_block(), None);
 
         let with_meta = GetStorageAtResult::ValueWithMetadata(StorageResult {
-            value: Felt::from_hex_unwrap("0xabc"),
+            value: Felt::from_hex_unchecked("0xabc"),
             last_update_block: 42,
         });
-        assert_eq!(with_meta.value(), Felt::from_hex_unwrap("0xabc"));
+        assert_eq!(with_meta.value(), Felt::from_hex_unchecked("0xabc"));
         assert_eq!(with_meta.last_update_block(), Some(42));
     }
 
     #[test]
     fn test_get_storage_at_result_serde_roundtrip() {
-        let plain = GetStorageAtResult::Value(Felt::from_hex_unwrap("0xabc"));
+        let plain = GetStorageAtResult::Value(Felt::from_hex_unchecked("0xabc"));
         let json = serde_json::to_value(&plain).unwrap();
         assert_eq!(json, serde_json::json!("0xabc"));
         let back: GetStorageAtResult = serde_json::from_value(json).unwrap();
         assert_eq!(back, plain);
 
         let with_meta = GetStorageAtResult::ValueWithMetadata(StorageResult {
-            value: Felt::from_hex_unwrap("0xabc"),
+            value: Felt::from_hex_unchecked("0xabc"),
             last_update_block: 42,
         });
         let json = serde_json::to_value(&with_meta).unwrap();

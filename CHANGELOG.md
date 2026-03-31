@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Upgraded `starknet-types-core` from `0.2.4` to `1.0.0` ([#129]).
-
 ## [0.19.0-rc.2] - 2026-03-23
 
 - `StarknetError::InvalidProof` error is now correctly mapped ([#125]).
@@ -48,4 +46,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#103]: https://github.com/software-mansion/starknet-rust/pull/103
 [#120]: https://github.com/software-mansion/starknet-rust/pull/120
 [#125]: https://github.com/software-mansion/starknet-rust/pull/125
-[#129]: https://github.com/software-mansion/starknet-rust/pull/129
