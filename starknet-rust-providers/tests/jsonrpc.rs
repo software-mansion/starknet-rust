@@ -21,7 +21,7 @@ async fn jsonrpc_spec_version() {
 
     let version = rpc_client.spec_version().await.unwrap();
 
-    assert_eq!(version, "0.10.0");
+    assert_eq!(version, "0.10.1");
 }
 
 #[tokio::test]
@@ -33,7 +33,7 @@ async fn jsonrpc_starknet_version() {
         .await
         .unwrap();
 
-    assert_eq!(version, "0.14.1");
+    assert_eq!(version, "0.14.2");
 }
 
 #[tokio::test]
