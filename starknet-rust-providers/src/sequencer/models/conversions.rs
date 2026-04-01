@@ -173,7 +173,7 @@ impl TryFrom<Block> for core::MaybePreConfirmedBlockWithReceipts {
         for (tx, receipt) in value
             .transactions
             .into_iter()
-            .zip(value.transaction_receipts.into_iter())
+            .zip(value.transaction_receipts)
         {
             event_count += receipt.events.len();
 

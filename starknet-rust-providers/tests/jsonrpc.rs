@@ -21,7 +21,7 @@ async fn jsonrpc_spec_version() {
 
     let version = rpc_client.spec_version().await.unwrap();
 
-    assert_eq!(version, "0.10.0");
+    assert_eq!(version, "0.10.2");
 }
 
 #[tokio::test]
@@ -33,7 +33,7 @@ async fn jsonrpc_starknet_version() {
         .await
         .unwrap();
 
-    assert_eq!(version, "0.14.1");
+    assert_eq!(version, "0.14.2");
 }
 
 #[tokio::test]
@@ -201,11 +201,12 @@ async fn jsonrpc_get_storage_at() {
             )
             .unwrap(),
             BlockId::Tag(BlockTag::Latest),
+            None,
         )
         .await
         .unwrap();
 
-    assert!(eth_balance > Felt::ZERO);
+    assert!(eth_balance.value() > Felt::ZERO);
 }
 
 #[tokio::test]
@@ -916,7 +917,7 @@ async fn jsonrpc_get_storage_proof() {
                     "04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
                 )
                 .unwrap(),
-                storage_keys: vec![StorageKey("1".to_string())],
+                storage_keys: vec![StorageKey("0x1".to_string())],
             }],
         )
         .await
