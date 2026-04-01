@@ -38,10 +38,8 @@ test-common.workspace = true
 [features]
 default = ["std"]
 std = ["starknet-rust-core/std"]
-tls = ["reqwest/native-tls"]
-no_unknown_fields = [
-    "starknet-rust-core/no_unknown_fields"
-]
+rustls-tls = ["reqwest/rustls"]
+no_unknown_fields = ["starknet-rust-core/no_unknown_fields"]
 
 [lints]
 workspace = true
