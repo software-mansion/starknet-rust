@@ -1,6 +1,6 @@
 use core::{fmt::Display, str};
 
-use crypto_bigint::{ArrayEncoding, CheckedAdd, CheckedMul, CheckedSub, Zero};
+use crypto_bigint::{ArrayEncoding, CheckedAdd, CheckedSub};
 
 use crate::types::Felt;
 
@@ -14,7 +14,7 @@ impl U256 {
     /// Constructs a [U256] from the low 128 bits and the high 128 bits, similar to how they're
     /// represented in Cairo.
     pub const fn from_words(low: u128, high: u128) -> Self {
-        #[cfg(target_pointer_width = "64")]
+        #[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
         {
             Self(crypto_bigint::U256::from_words([
                 low as u64,
@@ -24,7 +24,7 @@ impl U256 {
             ]))
         }
 
-        #[cfg(target_pointer_width = "32")]
+        #[cfg(all(target_pointer_width = "32", not(target_arch = "wasm32")))]
         {
             Self(crypto_bigint::U256::from_words([
                 low as u32,
@@ -257,13 +257,13 @@ impl From<Felt> for U256 {
     }
 }
 
-#[cfg(target_pointer_width = "64")]
+#[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
 #[inline]
 const fn u256_to_u64_array(num: &crypto_bigint::U256) -> [u64; 4] {
     num.to_words()
 }
 
-#[cfg(target_pointer_width = "32")]
+#[cfg(all(target_pointer_width = "32", not(target_arch = "wasm32")))]
 #[inline]
 const fn u256_to_u64_array(num: &crypto_bigint::U256) -> [u64; 4] {
     unsafe { core::mem::transmute::<[u32; 8], [u64; 4]>(num.to_words()) }
