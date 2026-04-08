@@ -971,6 +971,20 @@ impl TryFrom<&L1HandlerTransaction> for MsgToL2 {
     }
 }
 
+impl From<Felt> for StorageKey {
+    fn from(felt: Felt) -> Self {
+        Self(alloc::format!("{felt:#x}"))
+    }
+}
+
+impl TryFrom<&StorageKey> for Felt {
+    type Error = starknet_types_core::felt::FromStrError;
+
+    fn try_from(key: &StorageKey) -> Result<Self, Self::Error> {
+        Self::from_hex(&key.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{requests::*, *};
@@ -1511,5 +1525,25 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_storage_key_from_felt() {
+        let felt = Felt::from_hex("0x1e240").unwrap();
+        let key = StorageKey::from(felt);
+        assert_eq!(key.0, "0x1e240");
+    }
+
+    #[test]
+    fn test_felt_try_from_storage_key() {
+        let key = StorageKey("0x1e240".to_string());
+        let felt = Felt::try_from(&key).unwrap();
+        assert_eq!(felt, Felt::from_hex("0x1e240").unwrap());
+    }
+
+    #[test]
+    fn test_felt_try_from_storage_key_invalid() {
+        let key = StorageKey("not_hex".to_string());
+        assert!(Felt::try_from(&key).is_err());
     }
 }
