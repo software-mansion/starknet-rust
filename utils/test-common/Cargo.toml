@@ -9,7 +9,7 @@ repository.workspace = true
 [dependencies]
 starknet-rust-accounts = { workspace = true, features = ["std"] }
 starknet-rust-core = { workspace = true, features = ["std"] }
-starknet-rust-providers = { workspace = true, features = ["rustls-tls"] }
+starknet-rust-providers.workspace = true
 tokio = { workspace = true, features = ["sync", "time"] }
 url.workspace = true
 
