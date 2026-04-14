@@ -24,8 +24,7 @@ async fn jsonrpc_spec_version() {
     // TODO(#139)
     assert!(
         version == "0.10.1" || version == "0.10.2",
-        "Unexpected spec version: {}",
-        version
+        "Unexpected spec version: {version}"
     );
 }
 
