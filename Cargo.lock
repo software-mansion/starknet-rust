@@ -2718,7 +2718,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "starknet-rust"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "serde_json",
  "starknet-rust-accounts",
@@ -2734,7 +2734,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-accounts"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -2753,7 +2753,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-contract"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "serde_json",
  "starknet-rust-accounts",
@@ -2766,7 +2766,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-core"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "base64 0.22.1",
  "bincode",
@@ -2793,7 +2793,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-core-derive"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2802,7 +2802,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-crypto"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "blake2",
  "criterion",
@@ -2827,7 +2827,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-curve"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "starknet-types-core",
 ]
@@ -2844,7 +2844,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-macros"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "starknet-rust-core",
  "syn",
@@ -2852,7 +2852,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-providers"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -2875,7 +2875,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-signers"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -2899,7 +2899,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-rust-tokio-tungstenite"
-version = "0.19.0-rc.2"
+version = "0.19.0"
 dependencies = [
  "futures-util",
  "log",
