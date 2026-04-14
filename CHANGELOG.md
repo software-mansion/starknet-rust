@@ -11,8 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support Starknet JSON-RPC `v0.10.1-rc.2` ([#103]).
-- Support Starknet JSON-RPC `v0.10.1` ([#120]).
+- Support Starknet JSON-RPC `v0.10.2`
 - New `StorageResponseFlag` enum and `StorageResult` type for `starknet_getStorageAt` with optional `INCLUDE_LAST_UPDATE_BLOCK` metadata.
 - New `GetStorageAtResult` enum that handles both plain `Felt` and `StorageResult` response shapes.
 - `contract_addresses` filter parameter on `starknet_getStateUpdate` requests.
