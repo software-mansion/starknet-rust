@@ -36,6 +36,7 @@ members = [
     "starknet-rust-tokio-tungstenite",
     "examples/starknet-rust-wasm",
     "examples/starknet-rust-cxx/starknet-rust-cxx",
+    "tests/meta-package-consumer",
     "utils/test-common",
 ]
 
@@ -111,6 +112,7 @@ all-features = true
 
 [dependencies]
 starknet-rust-core.workspace = true
+starknet-rust-core-derive = { workspace = true, features = ["import_from_starknet"] }
 starknet-rust-providers.workspace = true
 starknet-rust-contract.workspace = true
 starknet-rust-signers.workspace = true
