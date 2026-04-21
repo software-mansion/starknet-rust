@@ -1656,6 +1656,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "meta-package-consumer"
+version = "0.19.0"
+dependencies = [
+ "starknet-rust",
+]
+
+[[package]]
 name = "minicov"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2724,6 +2731,7 @@ dependencies = [
  "starknet-rust-accounts",
  "starknet-rust-contract",
  "starknet-rust-core",
+ "starknet-rust-core-derive",
  "starknet-rust-macros",
  "starknet-rust-providers",
  "starknet-rust-signers",
