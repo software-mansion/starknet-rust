@@ -210,7 +210,8 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
     .into()
 }
 
-const DECODE_LIFETIME_IDENT: &str = "'de";
+const DECODE_LIFETIME_IDENT: &str = "de";
+const DECODE_LIFETIME_SYMBOL: &str = "'de";
 
 /// Derives the `Decode` trait.
 #[proc_macro_derive(Decode, attributes(starknet))]
@@ -352,7 +353,7 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
     };
 
     let decode_path: Path = parse_quote!(#core::codec::Decode);
-    let de_lifetime = Lifetime::new(DECODE_LIFETIME_IDENT, Span::call_site());
+    let de_lifetime = Lifetime::new(DECODE_LIFETIME_SYMBOL, Span::call_site());
 
     visitor.extend_where_clause(
         input.generics.make_where_clause(),
