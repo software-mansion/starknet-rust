@@ -799,6 +799,30 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_encode_qualified_associated_type() {
+        #[derive(Encode)]
+        #[starknet(core = "crate")]
+        struct CairoType<T: TraitWithAssocType> {
+            value: <T as TraitWithAssocType>::AssocType,
+        }
+
+        trait TraitWithAssocType {
+            type AssocType;
+        }
+
+        impl TraitWithAssocType for () {
+            type AssocType = u128;
+        }
+
+        let mut serialized = Vec::new();
+        CairoType::<()> { value: 10u128 }
+            .encode(&mut serialized)
+            .unwrap();
+        assert_eq!(serialized, vec![Felt::from_str("10").unwrap()]);
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_derive_encode_enum_generic() {
         #[derive(Encode)]
         #[starknet(core = "crate")]
@@ -1275,6 +1299,28 @@ mod tests {
             CairoType::decode(&[Felt::from_str("10").unwrap(), Felt::from_str("1").unwrap(),])
                 .unwrap()
         );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_decode_qualified_associated_type() {
+        #[derive(Decode)]
+        #[starknet(core = "crate")]
+        struct CairoType<T: TraitWithAssocTypeCodecImpl>(
+            <T as TraitWithAssocTypeCodecImpl>::AssocType,
+        );
+
+        trait TraitWithAssocTypeCodecImpl {
+            type AssocType;
+        }
+
+        impl TraitWithAssocTypeCodecImpl for () {
+            type AssocType = u128;
+        }
+
+        let CairoType(decoded) = CairoType::<()>::decode(&[Felt::from_str("10").unwrap()]).unwrap();
+
+        assert_eq!(decoded, 10u128);
     }
 
     #[test]

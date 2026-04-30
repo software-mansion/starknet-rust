@@ -1,170 +1,192 @@
 use std::collections::HashSet;
 
-use syn::{Generics, Path, Token, Type, WhereClause, punctuated::Pair};
-
 // Adapted from https://github.com/serde-rs/serde/blob/1d7899d671c6f6155b63a39fa6001c9c48260821/serde_derive/src/bound.rs#L91
 
 pub(crate) struct GenericsVisitor {
-    existing_generics: Generics,
-
     // Set of all generic type parameters on the current struct.
     // Initialized up front.
     all_type_params: HashSet<syn::Ident>,
 
-    // Set of generic type parameters used in fields.
-    // Filled in as the visitor sees them.
-    relevant_type_params: HashSet<syn::Ident>,
-
-    // Fields whose type is an associated type of one of the generic type
-    // parameters.
-    associated_type_usage: HashSet<syn::TypePath>,
+    // Field types that use one of the generic type parameters and therefore
+    // require a bound on the full field type.
+    bounded_types: HashSet<syn::Type>,
 }
 
 impl GenericsVisitor {
-    pub(crate) fn new(existing_generics: &Generics) -> Self {
+    pub(crate) fn new(existing_generics: &syn::Generics) -> Self {
         Self {
-            existing_generics: existing_generics.clone(),
             all_type_params: existing_generics
                 .type_params()
                 .map(|param| param.ident.clone())
                 .collect(),
-            relevant_type_params: HashSet::default(),
-            associated_type_usage: HashSet::default(),
+            bounded_types: HashSet::default(),
         }
     }
 
-    pub(crate) fn extend_where_clause(self, where_clause: &mut WhereClause, bound: &Path) {
-        where_clause.predicates.extend(
-            self.existing_generics
-                .type_params()
-                .filter(|&param| self.relevant_type_params.contains(&param.ident))
-                .map(|param| syn::TypePath {
-                    qself: None,
-                    path: param.ident.clone().into(),
-                })
-                .chain(self.associated_type_usage)
-                .map(|bounded_ty| {
-                    syn::WherePredicate::Type(syn::PredicateType {
-                        lifetimes: None,
-                        bounded_ty: syn::Type::Path(bounded_ty),
-                        colon_token: <Token![:]>::default(),
-                        bounds: vec![syn::TypeParamBound::Trait(syn::TraitBound {
+    pub(crate) fn visit_field(&mut self, field: &syn::Field) {
+        let field_ty = &field.ty;
+        if self.type_needs_bound(field_ty) {
+            self.bounded_types.insert(field_ty.clone());
+        }
+    }
+
+    pub(crate) fn extend_where_clause(
+        self,
+        where_clause: &mut syn::WhereClause,
+        bound: &syn::Path,
+    ) {
+        where_clause
+            .predicates
+            .extend(self.bounded_types.into_iter().map(|bounded_ty| {
+                syn::WherePredicate::Type(syn::PredicateType {
+                    lifetimes: None,
+                    bounded_ty,
+                    colon_token: Default::default(),
+                    bounds: syn::punctuated::Punctuated::from_iter([syn::TypeParamBound::Trait(
+                        syn::TraitBound {
                             paren_token: None,
                             modifier: syn::TraitBoundModifier::None,
                             lifetimes: None,
                             path: bound.clone(),
-                        })]
-                        .into_iter()
-                        .collect(),
-                    })
-                }),
-        );
+                        },
+                    )]),
+                })
+            }));
     }
 
-    pub(crate) fn visit_field(&mut self, field: &syn::Field) {
-        if let syn::Type::Path(ty) = ungroup(&field.ty)
-            && let Some(Pair::Punctuated(t, _)) = ty.path.segments.pairs().next()
-            && self.all_type_params.contains(&t.ident)
-        {
-            self.associated_type_usage.insert(ty.clone());
-        }
+    fn type_needs_bound(&self, ty: &syn::Type) -> bool {
+        use syn::Type::*;
 
-        self.visit_type(&field.ty);
-    }
-
-    fn visit_path(&mut self, path: &syn::Path) {
-        if path.leading_colon.is_none() && path.segments.len() == 1 {
-            let id = &path.segments[0].ident;
-            if self.all_type_params.contains(id) {
-                self.relevant_type_params.insert(id.clone());
-            }
-        }
-        for segment in &path.segments {
-            self.visit_path_segment(segment);
-        }
-    }
-
-    // Everything below is simply traversing the syntax tree.
-
-    fn visit_type(&mut self, ty: &syn::Type) {
         match ty {
-            syn::Type::Array(ty) => self.visit_type(&ty.elem),
-            syn::Type::BareFn(ty) => {
-                for arg in &ty.inputs {
-                    self.visit_type(&arg.ty);
-                }
-                self.visit_return_type(&ty.output);
+            Array(ty) => self.type_needs_bound(&ty.elem),
+            BareFn(ty) => {
+                ty.inputs.iter().any(|arg| self.type_needs_bound(&arg.ty))
+                    || self.return_type_needs_bound(&ty.output)
             }
-            syn::Type::Group(ty) => self.visit_type(&ty.elem),
-            syn::Type::ImplTrait(ty) => {
-                for bound in &ty.bounds {
-                    self.visit_type_param_bound(bound);
-                }
+            Group(ty) => self.type_needs_bound(&ty.elem),
+            ImplTrait(ty) => ty
+                .bounds
+                .iter()
+                .any(|bound| self.type_param_bound_needs_bound(bound)),
+            Macro(ty) => self.macro_needs_bound(&ty.mac),
+            Paren(ty) => self.type_needs_bound(&ty.elem),
+            Path(ty) => {
+                ty.qself
+                    .as_ref()
+                    .is_some_and(|qself| self.type_needs_bound(&qself.ty))
+                    || self.path_needs_bound(&ty.path)
             }
-            syn::Type::Macro(ty) => self.visit_macro(&ty.mac),
-            syn::Type::Paren(ty) => self.visit_type(&ty.elem),
-            syn::Type::Path(ty) => {
-                if let Some(qself) = &ty.qself {
-                    self.visit_type(&qself.ty);
-                }
-                self.visit_path(&ty.path);
-            }
-            syn::Type::Ptr(ty) => self.visit_type(&ty.elem),
-            syn::Type::Reference(ty) => self.visit_type(&ty.elem),
-            syn::Type::Slice(ty) => self.visit_type(&ty.elem),
-            syn::Type::TraitObject(ty) => {
-                for bound in &ty.bounds {
-                    self.visit_type_param_bound(bound);
-                }
-            }
-            syn::Type::Tuple(ty) => {
-                for elem in &ty.elems {
-                    self.visit_type(elem);
-                }
-            }
-            syn::Type::Infer(_) | syn::Type::Never(_) | syn::Type::Verbatim(_) | _ => {}
+            Ptr(ty) => self.type_needs_bound(&ty.elem),
+            Reference(ty) => self.type_needs_bound(&ty.elem),
+            Slice(ty) => self.type_needs_bound(&ty.elem),
+            TraitObject(ty) => ty
+                .bounds
+                .iter()
+                .any(|bound| self.type_param_bound_needs_bound(bound)),
+            Tuple(ty) => ty.elems.iter().any(|elem| self.type_needs_bound(elem)),
+            Infer(_) | Never(_) | Verbatim(_) | _ => false,
         }
     }
 
-    fn visit_path_segment(&mut self, segment: &syn::PathSegment) {
-        self.visit_path_arguments(&segment.arguments);
+    fn path_needs_bound(&self, path: &syn::Path) -> bool {
+        if path.leading_colon.is_none()
+            && path
+                .segments
+                .first()
+                .is_some_and(|segment| self.all_type_params.contains(&segment.ident))
+        {
+            return true;
+        }
+
+        path.segments
+            .iter()
+            .any(|segment| self.path_segment_needs_bound(segment))
     }
 
-    fn visit_path_arguments(&mut self, arguments: &syn::PathArguments) {
+    fn path_segment_needs_bound(&self, segment: &syn::PathSegment) -> bool {
+        self.path_arguments_need_bound(&segment.arguments)
+    }
+
+    fn path_arguments_need_bound(&self, arguments: &syn::PathArguments) -> bool {
+        use syn::PathArguments::*;
         match arguments {
-            syn::PathArguments::None => {}
-            syn::PathArguments::AngleBracketed(arguments) => {
-                for arg in &arguments.args {
-                    match arg {
-                        syn::GenericArgument::Type(arg) => self.visit_type(arg),
-                        syn::GenericArgument::AssocType(arg) => self.visit_type(&arg.ty),
-                        syn::GenericArgument::Lifetime(_)
-                        | syn::GenericArgument::Const(_)
-                        | syn::GenericArgument::AssocConst(_)
-                        | syn::GenericArgument::Constraint(_)
-                        | _ => {}
+            None => false,
+            AngleBracketed(arguments) => {
+                use syn::GenericArgument::*;
+                arguments.args.iter().any(|arg| match arg {
+                    Type(arg) => self.type_needs_bound(arg),
+                    AssocType(arg) => {
+                        arg.generics.as_ref().is_some_and(|generics| {
+                            self.angle_bracketed_arguments_need_bound(generics)
+                        }) || self.type_needs_bound(&arg.ty)
                     }
-                }
+                    Constraint(arg) => {
+                        arg.generics.as_ref().is_some_and(|generics| {
+                            self.angle_bracketed_arguments_need_bound(generics)
+                        }) || arg
+                            .bounds
+                            .iter()
+                            .any(|bound| self.type_param_bound_needs_bound(bound))
+                    }
+                    AssocConst(arg) => arg.generics.as_ref().is_some_and(|generics| {
+                        self.angle_bracketed_arguments_need_bound(generics)
+                    }),
+                    Lifetime(_) | Const(_) | _ => false,
+                })
             }
-            syn::PathArguments::Parenthesized(arguments) => {
-                for argument in &arguments.inputs {
-                    self.visit_type(argument);
-                }
-                self.visit_return_type(&arguments.output);
+            Parenthesized(arguments) => {
+                arguments
+                    .inputs
+                    .iter()
+                    .any(|argument| self.type_needs_bound(argument))
+                    || self.return_type_needs_bound(&arguments.output)
             }
         }
     }
 
-    fn visit_return_type(&mut self, return_type: &syn::ReturnType) {
+    fn angle_bracketed_arguments_need_bound(
+        &self,
+        arguments: &syn::AngleBracketedGenericArguments,
+    ) -> bool {
+        use syn::GenericArgument::*;
+        arguments.args.iter().any(|arg| match arg {
+            Type(arg) => self.type_needs_bound(arg),
+            AssocType(arg) => {
+                arg.generics
+                    .as_ref()
+                    .is_some_and(|generics| self.angle_bracketed_arguments_need_bound(generics))
+                    || self.type_needs_bound(&arg.ty)
+            }
+            Constraint(arg) => {
+                arg.generics
+                    .as_ref()
+                    .is_some_and(|generics| self.angle_bracketed_arguments_need_bound(generics))
+                    || arg
+                        .bounds
+                        .iter()
+                        .any(|bound| self.type_param_bound_needs_bound(bound))
+            }
+            AssocConst(arg) => arg
+                .generics
+                .as_ref()
+                .is_some_and(|generics| self.angle_bracketed_arguments_need_bound(generics)),
+            Lifetime(_) | Const(_) | _ => false,
+        })
+    }
+
+    fn return_type_needs_bound(&self, return_type: &syn::ReturnType) -> bool {
+        use syn::ReturnType::*;
         match return_type {
-            syn::ReturnType::Default => {}
-            syn::ReturnType::Type(_, output) => self.visit_type(output),
+            Default => false,
+            Type(_, output) => self.type_needs_bound(output),
         }
     }
 
-    fn visit_type_param_bound(&mut self, bound: &syn::TypeParamBound) {
+    fn type_param_bound_needs_bound(&self, bound: &syn::TypeParamBound) -> bool {
         if let syn::TypeParamBound::Trait(bound) = bound {
-            self.visit_path(&bound.path);
+            self.path_needs_bound(&bound.path)
+        } else {
+            false
         }
     }
 
@@ -175,12 +197,7 @@ impl GenericsVisitor {
     //         marker: PhantomData<T>,
     //     }
     #[expect(clippy::unused_self)]
-    const fn visit_macro(&self, _mac: &syn::Macro) {}
-}
-
-fn ungroup(mut ty: &Type) -> &Type {
-    while let Type::Group(group) = ty {
-        ty = &group.elem;
+    const fn macro_needs_bound(&self, _mac: &syn::Macro) -> bool {
+        false
     }
-    ty
 }
