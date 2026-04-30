@@ -4,7 +4,7 @@ use syn::{Generics, Path, Token, Type, WhereClause, punctuated::Pair};
 
 // Adapted from https://github.com/serde-rs/serde/blob/1d7899d671c6f6155b63a39fa6001c9c48260821/serde_derive/src/bound.rs#L91
 
-pub(crate) struct GenericsVisitor<'ast> {
+pub(crate) struct GenericsVisitor {
     existing_generics: Generics,
 
     // Set of all generic type parameters on the current struct.
@@ -17,10 +17,10 @@ pub(crate) struct GenericsVisitor<'ast> {
 
     // Fields whose type is an associated type of one of the generic type
     // parameters.
-    associated_type_usage: Vec<&'ast syn::TypePath>,
+    associated_type_usage: HashSet<syn::TypePath>,
 }
 
-impl<'ast> GenericsVisitor<'ast> {
+impl GenericsVisitor {
     pub(crate) fn new(existing_generics: &Generics) -> Self {
         Self {
             existing_generics: existing_generics.clone(),
@@ -29,7 +29,7 @@ impl<'ast> GenericsVisitor<'ast> {
                 .map(|param| param.ident.clone())
                 .collect(),
             relevant_type_params: HashSet::default(),
-            associated_type_usage: Vec::default(),
+            associated_type_usage: HashSet::default(),
         }
     }
 
@@ -42,7 +42,7 @@ impl<'ast> GenericsVisitor<'ast> {
                     qself: None,
                     path: param.ident.clone().into(),
                 })
-                .chain(self.associated_type_usage.into_iter().cloned())
+                .chain(self.associated_type_usage)
                 .map(|bounded_ty| {
                     syn::WherePredicate::Type(syn::PredicateType {
                         lifetimes: None,
@@ -61,18 +61,18 @@ impl<'ast> GenericsVisitor<'ast> {
         );
     }
 
-    pub(crate) fn visit_field(&mut self, field: &'ast syn::Field) {
+    pub(crate) fn visit_field(&mut self, field: &syn::Field) {
         if let syn::Type::Path(ty) = ungroup(&field.ty)
             && let Some(Pair::Punctuated(t, _)) = ty.path.segments.pairs().next()
             && self.all_type_params.contains(&t.ident)
         {
-            self.associated_type_usage.push(ty);
+            self.associated_type_usage.insert(ty.clone());
         }
 
         self.visit_type(&field.ty);
     }
 
-    fn visit_path(&mut self, path: &'ast syn::Path) {
+    fn visit_path(&mut self, path: &syn::Path) {
         if path.leading_colon.is_none() && path.segments.len() == 1 {
             let id = &path.segments[0].ident;
             if self.all_type_params.contains(id) {
@@ -86,7 +86,7 @@ impl<'ast> GenericsVisitor<'ast> {
 
     // Everything below is simply traversing the syntax tree.
 
-    fn visit_type(&mut self, ty: &'ast syn::Type) {
+    fn visit_type(&mut self, ty: &syn::Type) {
         match ty {
             syn::Type::Array(ty) => self.visit_type(&ty.elem),
             syn::Type::BareFn(ty) => {
@@ -126,11 +126,11 @@ impl<'ast> GenericsVisitor<'ast> {
         }
     }
 
-    fn visit_path_segment(&mut self, segment: &'ast syn::PathSegment) {
+    fn visit_path_segment(&mut self, segment: &syn::PathSegment) {
         self.visit_path_arguments(&segment.arguments);
     }
 
-    fn visit_path_arguments(&mut self, arguments: &'ast syn::PathArguments) {
+    fn visit_path_arguments(&mut self, arguments: &syn::PathArguments) {
         match arguments {
             syn::PathArguments::None => {}
             syn::PathArguments::AngleBracketed(arguments) => {
@@ -155,14 +155,14 @@ impl<'ast> GenericsVisitor<'ast> {
         }
     }
 
-    fn visit_return_type(&mut self, return_type: &'ast syn::ReturnType) {
+    fn visit_return_type(&mut self, return_type: &syn::ReturnType) {
         match return_type {
             syn::ReturnType::Default => {}
             syn::ReturnType::Type(_, output) => self.visit_type(output),
         }
     }
 
-    fn visit_type_param_bound(&mut self, bound: &'ast syn::TypeParamBound) {
+    fn visit_type_param_bound(&mut self, bound: &syn::TypeParamBound) {
         if let syn::TypeParamBound::Trait(bound) = bound {
             self.visit_path(&bound.path);
         }
@@ -175,7 +175,7 @@ impl<'ast> GenericsVisitor<'ast> {
     //         marker: PhantomData<T>,
     //     }
     #[expect(clippy::unused_self)]
-    const fn visit_macro(&self, _mac: &'ast syn::Macro) {}
+    const fn visit_macro(&self, _mac: &syn::Macro) {}
 }
 
 fn ungroup(mut ty: &Type) -> &Type {
