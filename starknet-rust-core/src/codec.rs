@@ -802,23 +802,28 @@ mod tests {
     fn test_derive_encode_qualified_associated_type() {
         #[derive(Encode)]
         #[starknet(core = "crate")]
-        struct CairoType<T: TraitWithAssocType> {
-            value: <T as TraitWithAssocType>::AssocType,
-        }
-
-        trait TraitWithAssocType {
-            type AssocType;
-        }
-
-        impl TraitWithAssocType for () {
-            type AssocType = u128;
-        }
+        struct CairoType<A: IntoIterator>(<A as IntoIterator>::Item);
 
         let mut serialized = Vec::new();
-        CairoType::<()> { value: 10u128 }
+        CairoType::<Vec<u128>>(10).encode(&mut serialized).unwrap();
+        assert_eq!(serialized, vec![Felt::from_str("10").unwrap()]);
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_encode_nested_associated_type() {
+        #[derive(Encode)]
+        #[starknet(core = "crate")]
+        struct CairoType<A: IntoIterator>(Option<A::Item>);
+
+        let mut serialized = Vec::new();
+        CairoType::<Vec<u128>>(Some(10))
             .encode(&mut serialized)
             .unwrap();
-        assert_eq!(serialized, vec![Felt::from_str("10").unwrap()]);
+        assert_eq!(
+            serialized,
+            vec![Felt::from_str("0").unwrap(), Felt::from_str("10").unwrap()]
+        );
     }
 
     #[test]
@@ -1306,21 +1311,25 @@ mod tests {
     fn test_derive_decode_qualified_associated_type() {
         #[derive(Decode)]
         #[starknet(core = "crate")]
-        struct CairoType<T: TraitWithAssocTypeCodecImpl>(
-            <T as TraitWithAssocTypeCodecImpl>::AssocType,
-        );
+        struct CairoType<A: IntoIterator>(<A as IntoIterator>::Item);
 
-        trait TraitWithAssocTypeCodecImpl {
-            type AssocType;
-        }
+        let CairoType::<Vec<u128>>(decoded) =
+            CairoType::decode(&[Felt::from_str("10").unwrap()]).unwrap();
 
-        impl TraitWithAssocTypeCodecImpl for () {
-            type AssocType = u128;
-        }
+        assert_eq!(decoded, 10);
+    }
 
-        let CairoType(decoded) = CairoType::<()>::decode(&[Felt::from_str("10").unwrap()]).unwrap();
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_derive_decode_nested_associated_type() {
+        #[derive(Decode)]
+        #[starknet(core = "crate")]
+        struct CairoType<A: IntoIterator>(Option<A::Item>);
 
-        assert_eq!(decoded, 10u128);
+        let CairoType::<Vec<u128>>(decoded) =
+            CairoType::decode(&[Felt::ZERO, Felt::from_str("10").unwrap()]).unwrap();
+
+        assert_eq!(decoded, Some(10));
     }
 
     #[test]
