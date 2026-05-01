@@ -1,6 +1,6 @@
 [package]
 name = "starknet-rust-providers"
-version = "0.17.0"
+version.workspace = true
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -38,9 +38,7 @@ test-common.workspace = true
 [features]
 default = ["std"]
 std = ["starknet-rust-core/std"]
-no_unknown_fields = [
-    "starknet-rust-core/no_unknown_fields"
-]
+no_unknown_fields = ["starknet-rust-core/no_unknown_fields"]
 
 [lints]
 workspace = true

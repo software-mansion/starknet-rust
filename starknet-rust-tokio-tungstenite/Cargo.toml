@@ -1,6 +1,6 @@
 [package]
 name = "starknet-rust-tokio-tungstenite"
-version = "0.4.0"
+version.workspace = true
 authors.workspace = true
 license.workspace = true
 edition.workspace = true

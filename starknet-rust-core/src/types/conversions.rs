@@ -160,6 +160,7 @@ impl From<InvokeTransactionV3> for InvokeTransactionV3Content {
             account_deployment_data: value.account_deployment_data,
             nonce_data_availability_mode: value.nonce_data_availability_mode,
             fee_data_availability_mode: value.fee_data_availability_mode,
+            proof_facts: value.proof_facts,
         }
     }
 }

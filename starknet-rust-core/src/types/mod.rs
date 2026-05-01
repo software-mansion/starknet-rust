@@ -34,8 +34,10 @@ pub use codegen::{
     EmittedEventWithFinality, EntryPointType, EntryPointsByType, Event, EventFilter,
     EventFilterWithPage, EventsChunk, ExecutionResources, FeeEstimate, FeePayment,
     FlattenedSierraClass, FunctionCall, FunctionInvocation, FunctionStateMutability, GlobalRoots,
-    InnerCallExecutionResources, InnerContractExecutionError, InvokeTransactionReceipt,
-    InvokeTransactionTrace, InvokeTransactionV0, InvokeTransactionV0Content, InvokeTransactionV1,
+    InitialReads, InitialReadsClassHashEntry, InitialReadsDeclaredContractEntry,
+    InitialReadsNonceEntry, InitialReadsStorageEntry, InnerCallExecutionResources,
+    InnerContractExecutionError, InvokeTransactionReceipt, InvokeTransactionTrace,
+    InvokeTransactionV0, InvokeTransactionV0Content, InvokeTransactionV1,
     InvokeTransactionV1Content, InvokeTransactionV3, InvokeTransactionV3Content,
     L1DataAvailabilityMode, L1HandlerTransaction, L1HandlerTransactionContent,
     L1HandlerTransactionReceipt, L1HandlerTransactionTrace, L2TransactionFinalityStatus,
@@ -45,13 +47,14 @@ pub use codegen::{
     MigratedCompiledClassItem, MsgFromL1, MsgToL1, NewTransactionStatus, NoTraceAvailableErrorData,
     NonceUpdate, OrderedEvent, OrderedMessage, PreConfirmedBlockWithReceipts,
     PreConfirmedBlockWithTxHashes, PreConfirmedBlockWithTxs, PreConfirmedStateUpdate, PriceUnit,
-    ReorgData, ReplacedClassItem, ResourceBounds, ResourceBoundsMapping, ResourcePrice,
-    ResultPageRequest, RevertedInvocation, SequencerTransactionStatus, SierraEntryPoint,
-    SimulatedTransaction, SimulationFlag, SimulationFlagForEstimateFee, StarknetError, StateDiff,
-    StateUpdate, StorageEntry, StorageKey, StorageProof, SubscriptionId, SyncStatus,
-    TransactionExecutionErrorData, TransactionExecutionStatus, TransactionFinalityStatus,
-    TransactionReceiptWithBlockInfo, TransactionTraceWithHash, TransactionWithL2Status,
-    TransactionWithReceipt,
+    PriceUnitFri, PriceUnitWei, ReorgData, ReplacedClassItem, ResourceBounds,
+    ResourceBoundsMapping, ResourcePrice, ResultPageRequest, RevertedInvocation,
+    SequencerTransactionStatus, SierraEntryPoint, SimulatedTransaction, SimulationFlag,
+    SimulationFlagForEstimateFee, StarknetError, StateDiff, StateUpdate, StorageEntry, StorageKey,
+    StorageProof, StorageResponseFlag, StorageResult, SubscriptionId, SubscriptionTag, SyncStatus,
+    TraceFlag, TransactionExecutionErrorData, TransactionExecutionStatus,
+    TransactionFinalityStatus, TransactionReceiptWithBlockInfo, TransactionResponseFlag,
+    TransactionTraceWithHash, TransactionWithL2Status, TransactionWithReceipt,
 };
 
 /// Module containing the [`U256`] type.
@@ -179,6 +182,78 @@ pub struct EventsPage {
     /// use `contains_key` as a check for the last page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation_token: Option<String>,
+}
+
+/// A contract address or a list of addresses.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AddressFilter {
+    /// A single address.
+    Single(#[serde_as(as = "UfeHex")] Felt),
+    /// A list of addresses.
+    Multiple(#[serde_as(as = "Vec<UfeHex>")] Vec<Felt>),
+}
+
+/// Result type for `starknet_simulateTransactions` that supports both 0.10.0 and 0.10.1 payloads.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum SimulateTransactionsResult {
+    /// Simulated transactions and their traces.
+    Transactions(Vec<SimulatedTransaction>),
+    /// Simulated transactions and their traces, along with initial reads witness when requested.
+    TransactionsWithInitialReads {
+        /// Simulated transactions and their traces.
+        simulated_transactions: Vec<SimulatedTransaction>,
+        /// Initial reads witness for the simulation.
+        initial_reads: InitialReads,
+    },
+}
+
+/// Result type for `starknet_getStorageAt` that supports both plain `Felt` and `StorageResult`
+/// response shapes, depending on whether `response_flags` (e.g. `INCLUDE_LAST_UPDATE_BLOCK`) were
+/// set in the request.
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GetStorageAtResult {
+    /// Plain storage value (no response flags).
+    Value(#[serde_as(as = "UfeHex")] Felt),
+    /// Storage value with metadata (when `INCLUDE_LAST_UPDATE_BLOCK` is set).
+    ValueWithMetadata(StorageResult),
+}
+
+impl GetStorageAtResult {
+    /// Returns the storage value regardless of the response shape.
+    pub const fn value(&self) -> Felt {
+        match self {
+            Self::Value(felt) => *felt,
+            Self::ValueWithMetadata(result) => result.value,
+        }
+    }
+
+    /// Returns the last update block number, if available.
+    pub const fn last_update_block(&self) -> Option<u64> {
+        match self {
+            Self::Value(_) => None,
+            Self::ValueWithMetadata(result) => Some(result.last_update_block),
+        }
+    }
+}
+
+/// Result type for `starknet_traceBlockTransactions` that supports both 0.10.0 and 0.10.1 payloads.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TraceBlockTransactionsResult {
+    /// Traces for all transactions in the block.
+    Traces(Vec<TransactionTraceWithHash>),
+    /// Traces and initial reads witness when requested.
+    TracesWithInitialReads {
+        /// Traces for all transactions in the block.
+        traces: Vec<TransactionTraceWithHash>,
+        /// Initial reads witness for the traced block.
+        initial_reads: InitialReads,
+    },
 }
 
 /// Response for broadcasting an `INVOKE` transaction.
@@ -912,8 +987,8 @@ mod tests {
         assert_eq!(format!("{felt:#X}"), "0x1E240");
         assert_eq!(format!("{felt:010x}"), "000001e240");
         assert_eq!(format!("{felt:010X}"), "000001E240");
-        assert_eq!(format!("{felt:#010x}"), "0x000001e240");
-        assert_eq!(format!("{felt:#010X}"), "0x000001E240");
+        assert_eq!(format!("{felt:#010x}"), "0x0001e240");
+        assert_eq!(format!("{felt:#010X}"), "0x0001E240");
     }
 
     #[test]
@@ -1061,5 +1136,380 @@ mod tests {
             },
             serde_json::from_str(as_array).unwrap(),
         );
+    }
+
+    fn minimal_invoke_trace_json() -> serde_json::Value {
+        serde_json::json!({
+            "type": "INVOKE",
+            "validate_invocation": null,
+            "execute_invocation": {
+                "contract_address": "0x1",
+                "entry_point_selector": "0x1",
+                "calldata": [],
+                "caller_address": "0x0",
+                "class_hash": "0x1",
+                "entry_point_type": "EXTERNAL",
+                "call_type": "CALL",
+                "result": [],
+                "calls": [],
+                "events": [],
+                "messages": [],
+                "execution_resources": {
+                    "l1_gas": 0,
+                    "l2_gas": 0
+                },
+                "is_reverted": false
+            },
+            "fee_transfer_invocation": null,
+            "state_diff": null,
+            "execution_resources": {
+                "l1_gas": 0,
+                "l1_data_gas": 0,
+                "l2_gas": 0
+            }
+        })
+    }
+
+    fn sample_initial_reads_json() -> serde_json::Value {
+        serde_json::json!({
+            "storage": [{
+                "contract_address": "0x1",
+                "key": "0x2",
+                "value": "0x3"
+            }],
+            "nonces": [{
+                "contract_address": "0x4",
+                "nonce": "0x5"
+            }],
+            "class_hashes": [{
+                "contract_address": "0x6",
+                "class_hash": "0x7"
+            }],
+            "declared_contracts": [{
+                "class_hash": "0x8",
+                "is_declared": true
+            }]
+        })
+    }
+
+    fn sample_fee_estimation_json() -> serde_json::Value {
+        serde_json::json!({
+            "l1_gas_consumed": "0x0",
+            "l1_gas_price": "0x0",
+            "l2_gas_consumed": "0x0",
+            "l2_gas_price": "0x0",
+            "l1_data_gas_consumed": "0x0",
+            "l1_data_gas_price": "0x0",
+            "overall_fee": "0x0"
+        })
+    }
+
+    #[test]
+    fn test_parse_address_filter_single() {
+        let input = serde_json::json!({
+            "address": "0x1"
+        });
+
+        let filter: EventFilter = serde_json::from_value(input).unwrap();
+        assert_eq!(
+            filter.address,
+            Some(AddressFilter::Single(Felt::from_hex_unchecked("0x1")))
+        );
+    }
+
+    #[test]
+    fn test_parse_address_filter_multiple() {
+        let input = serde_json::json!({
+            "address": ["0x10", "0x20"]
+        });
+
+        let filter: EventFilter = serde_json::from_value(input).unwrap();
+        assert_eq!(
+            filter.address,
+            Some(AddressFilter::Multiple(vec![
+                Felt::from_hex_unchecked("0x10"),
+                Felt::from_hex_unchecked("0x20"),
+            ]))
+        );
+    }
+
+    #[test]
+    fn test_serialize_address_filter_single() {
+        let filter = EventFilter {
+            from_block: None,
+            to_block: None,
+            address: Some(AddressFilter::Single(Felt::from_hex_unchecked("0x1"))),
+            keys: None,
+        };
+
+        let value = serde_json::to_value(filter).unwrap();
+        assert_eq!(value["address"], serde_json::json!("0x1"));
+    }
+
+    #[test]
+    fn test_serialize_address_filter_multiple() {
+        let filter = EventFilter {
+            from_block: None,
+            to_block: None,
+            address: Some(AddressFilter::Multiple(vec![
+                Felt::from_hex_unchecked("0x10"),
+                Felt::from_hex_unchecked("0x20"),
+            ])),
+            keys: None,
+        };
+
+        let value = serde_json::to_value(filter).unwrap();
+        assert_eq!(value["address"], serde_json::json!(["0x10", "0x20"]));
+    }
+
+    #[test]
+    fn test_serialize_simulation_flag_return_initial_reads() {
+        let value = serde_json::to_value(SimulationFlag::ReturnInitialReads).unwrap();
+        assert_eq!(value, serde_json::json!("RETURN_INITIAL_READS"));
+    }
+
+    #[test]
+    fn test_serialize_trace_flag_return_initial_reads() {
+        let value = serde_json::to_value(TraceFlag::ReturnInitialReads).unwrap();
+        assert_eq!(value, serde_json::json!("RETURN_INITIAL_READS"));
+    }
+
+    #[test]
+    fn test_serialize_transaction_response_flag_include_proof_facts() {
+        let value = serde_json::to_value(TransactionResponseFlag::IncludeProofFacts).unwrap();
+        assert_eq!(value, serde_json::json!("INCLUDE_PROOF_FACTS"));
+    }
+
+    #[test]
+    fn test_serialize_trace_response_flag_include_proof_facts() {
+        let value = serde_json::to_value(SubscriptionTag::IncludeProofFacts).unwrap();
+        assert_eq!(value, serde_json::json!("INCLUDE_PROOF_FACTS"));
+    }
+
+    #[test]
+    fn test_parse_simulate_transactions_result() {
+        let input = serde_json::json!([{
+            "transaction_trace": minimal_invoke_trace_json(),
+            "fee_estimation": sample_fee_estimation_json()
+        }]);
+
+        let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
+        match result {
+            SimulateTransactionsResult::Transactions(simulated_transactions) => {
+                assert_eq!(simulated_transactions.len(), 1);
+            }
+            SimulateTransactionsResult::TransactionsWithInitialReads { .. } => {
+                panic!("expected legacy array result");
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_simulate_transactions_result_with_initial_reads() {
+        let input = serde_json::json!({
+            "simulated_transactions": [{
+                "transaction_trace": minimal_invoke_trace_json(),
+                "fee_estimation": sample_fee_estimation_json()
+            }],
+            "initial_reads": sample_initial_reads_json()
+        });
+
+        let result: SimulateTransactionsResult = serde_json::from_value(input).unwrap();
+        match result {
+            SimulateTransactionsResult::Transactions(_) => {
+                panic!("expected 0.10.1 object result");
+            }
+            SimulateTransactionsResult::TransactionsWithInitialReads {
+                simulated_transactions,
+                initial_reads,
+            } => {
+                assert_eq!(simulated_transactions.len(), 1);
+                assert!(
+                    initial_reads
+                        .storage
+                        .as_ref()
+                        .is_some_and(|v| !v.is_empty())
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_trace_block_transactions_result() {
+        let input = serde_json::json!([{
+            "transaction_hash": "0x1",
+            "trace_root": minimal_invoke_trace_json()
+        }]);
+
+        let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
+        match result {
+            TraceBlockTransactionsResult::Traces(traces) => {
+                assert_eq!(traces.len(), 1);
+            }
+            TraceBlockTransactionsResult::TracesWithInitialReads { .. } => {
+                panic!("expected legacy array result");
+            }
+        }
+    }
+
+    #[test]
+    fn test_serialize_storage_response_flag_include_last_update_block() {
+        let value = serde_json::to_value(StorageResponseFlag::IncludeLastUpdateBlock).unwrap();
+        assert_eq!(value, serde_json::json!("INCLUDE_LAST_UPDATE_BLOCK"));
+    }
+
+    #[test]
+    fn test_parse_storage_result() {
+        let input = serde_json::json!({
+            "value": "0xabc",
+            "last_update_block": 42
+        });
+
+        let result: StorageResult = serde_json::from_value(input).unwrap();
+        assert_eq!(result.value, Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(result.last_update_block, 42);
+    }
+
+    #[test]
+    fn test_parse_get_storage_at_result() {
+        let input = serde_json::json!("0xabc");
+
+        let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
+        match result {
+            GetStorageAtResult::Value(felt) => {
+                assert_eq!(felt, Felt::from_hex_unchecked("0xabc"));
+            }
+            GetStorageAtResult::ValueWithMetadata(_) => {
+                panic!("expected plain value result");
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_get_storage_at_result_with_metadata() {
+        let input = serde_json::json!({
+            "value": "0xabc",
+            "last_update_block": 42
+        });
+
+        let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
+        match result {
+            GetStorageAtResult::Value(_) => {
+                panic!("expected value with metadata result");
+            }
+            GetStorageAtResult::ValueWithMetadata(sr) => {
+                assert_eq!(sr.value, Felt::from_hex_unchecked("0xabc"));
+                assert_eq!(sr.last_update_block, 42);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_get_storage_at_result_zero_value() {
+        let input = serde_json::json!("0x0");
+
+        let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
+        match result {
+            GetStorageAtResult::Value(felt) => {
+                assert_eq!(felt, Felt::ZERO);
+            }
+            GetStorageAtResult::ValueWithMetadata(_) => {
+                panic!("expected plain value result");
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_get_storage_at_result_with_metadata_zero_block() {
+        let input = serde_json::json!({
+            "value": "0x0",
+            "last_update_block": 0
+        });
+
+        let result: GetStorageAtResult = serde_json::from_value(input).unwrap();
+        match result {
+            GetStorageAtResult::Value(_) => {
+                panic!("expected value with metadata result");
+            }
+            GetStorageAtResult::ValueWithMetadata(sr) => {
+                assert_eq!(sr.value, Felt::ZERO);
+                assert_eq!(sr.last_update_block, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_get_storage_at_result_value_accessor() {
+        let plain = GetStorageAtResult::Value(Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(plain.value(), Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(plain.last_update_block(), None);
+
+        let with_meta = GetStorageAtResult::ValueWithMetadata(StorageResult {
+            value: Felt::from_hex_unchecked("0xabc"),
+            last_update_block: 42,
+        });
+        assert_eq!(with_meta.value(), Felt::from_hex_unchecked("0xabc"));
+        assert_eq!(with_meta.last_update_block(), Some(42));
+    }
+
+    #[test]
+    fn test_get_storage_at_result_serde_roundtrip() {
+        let plain = GetStorageAtResult::Value(Felt::from_hex_unchecked("0xabc"));
+        let json = serde_json::to_value(&plain).unwrap();
+        assert_eq!(json, serde_json::json!("0xabc"));
+        let back: GetStorageAtResult = serde_json::from_value(json).unwrap();
+        assert_eq!(back, plain);
+
+        let with_meta = GetStorageAtResult::ValueWithMetadata(StorageResult {
+            value: Felt::from_hex_unchecked("0xabc"),
+            last_update_block: 42,
+        });
+        let json = serde_json::to_value(&with_meta).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({"value": "0xabc", "last_update_block": 42})
+        );
+        let back: GetStorageAtResult = serde_json::from_value(json).unwrap();
+        assert_eq!(back, with_meta);
+    }
+
+    #[test]
+    fn test_starknet_error_invalid_proof() {
+        let error = StarknetError::InvalidProof;
+        assert_eq!(error.code(), 69);
+        assert_eq!(
+            error.message(),
+            "The proof field in the invoke v3 transaction is invalid"
+        );
+    }
+
+    #[test]
+    fn test_parse_trace_block_transactions_result_with_initial_reads() {
+        let input = serde_json::json!({
+            "traces": [{
+                "transaction_hash": "0x1",
+                "trace_root": minimal_invoke_trace_json()
+            }],
+            "initial_reads": sample_initial_reads_json()
+        });
+
+        let result: TraceBlockTransactionsResult = serde_json::from_value(input).unwrap();
+        match result {
+            TraceBlockTransactionsResult::Traces(_) => {
+                panic!("expected 0.10.1 object result");
+            }
+            TraceBlockTransactionsResult::TracesWithInitialReads {
+                traces,
+                initial_reads,
+            } => {
+                assert_eq!(traces.len(), 1);
+                assert!(
+                    initial_reads
+                        .class_hashes
+                        .as_ref()
+                        .is_some_and(|v| !v.is_empty())
+                );
+            }
+        }
     }
 }

@@ -20,7 +20,7 @@ To use the crate from [crates.io](https://crates.io/crates/starknet), add the fo
 
 ```toml
 [dependencies]
-starknet-rust = "0.18.0"
+starknet-rust = "0.19.0"
 ```
 
 ## Features
@@ -106,6 +106,10 @@ Examples can be found in the [examples folder](./examples):
 15. [Parsing a JSON-RPC request on the server side](./examples/parse_jsonrpc_request.rs)
 
 16. [Inspecting a erased provider-specific error type](./examples/downcast_provider_error.rs)
+
+## Testing
+
+By default, JSON-RPC tests are using hardcoded rpc node URL, but it is possible to provide a custom URL via `TEST_NODE_URL` env variable.
 
 ## License
 
