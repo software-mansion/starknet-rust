@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Generics support for derive macros `Encode` and `Decode`
+- Generics support for derive macros `Encode` and `Decode` ([#45])
 
 ## [0.19.0] - 2026-04-14
 
@@ -72,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed `event_count` and `transaction_count` from `sequencer::models::Block` in `starknet-rust-providers`, as these fields are not part of sequencer gateway block responses ([#101])
 
+[#45]: https://github.com/software-mansion/starknet-rust/pull/45
 [#98]: https://github.com/software-mansion/starknet-rust/pull/98
 [#101]: https://github.com/software-mansion/starknet-rust/pull/101
 [#103]: https://github.com/software-mansion/starknet-rust/pull/103
