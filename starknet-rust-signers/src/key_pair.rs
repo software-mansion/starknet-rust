@@ -1,6 +1,5 @@
 use crypto_bigint::U256;
-use rand::RngCore;
-use rand::rngs::OsRng;
+use rand::{TryRngCore, rngs::OsRng};
 use starknet_rust_core::{
     crypto::{EcdsaSignError, EcdsaVerifyError, Signature, ecdsa_sign, ecdsa_verify},
     types::Felt,
@@ -43,7 +42,7 @@ impl SigningKey {
 
         loop {
             let mut buf = Zeroizing::new([0u8; 32]);
-            OsRng.fill_bytes(&mut *buf);
+            OsRng.try_fill_bytes(&mut *buf).expect("os randomness should be available");
 
             // Keep only 252 bits (clear the top 4 bits).
             buf[0] &= 0x0f;
@@ -82,7 +81,7 @@ impl SigningKey {
         // Work around the issue of `eth-keystore` not supporting full path.
         // TODO: patch or fork `eth-keystore`
 
-        use rand::{SeedableRng, rngs::StdRng};
+        use rand08::{SeedableRng, rngs::StdRng};
         let mut path = path.as_ref().to_path_buf();
         let file_name = path
             .file_name()
