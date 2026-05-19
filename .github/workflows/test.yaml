@@ -193,6 +193,19 @@ jobs:
         with:
           cache-on-failure: true
 
+      - name: Build Starknet Ledger App (Nano X)
+        run: |
+          git clone --depth 1 --branch nanox_2.7.0_2.4.0_sdk_v26.0.2 \
+            https://github.com/LedgerHQ/app-starknet /tmp/app-starknet
+          cd /tmp/app-starknet/starknet
+          cargo +${RUST_NIGHTLY} ledger build nanox
+          mkdir -p ${GITHUB_WORKSPACE}/starknet-rust-signers/test-data/ledger-app
+          mkdir -p ${GITHUB_WORKSPACE}/starknet-rust-accounts/test-data/ledger-app
+          cp target/nanox/release/starknet \
+            ${GITHUB_WORKSPACE}/starknet-rust-signers/test-data/ledger-app/nanox.elf
+          cp target/nanox/release/starknet \
+            ${GITHUB_WORKSPACE}/starknet-rust-accounts/test-data/ledger-app/nanox.elf
+
       - name: Run starknet-rust-signers tests
         run: |
           cargo test --package starknet-rust-signers \

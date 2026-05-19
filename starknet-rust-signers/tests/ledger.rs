@@ -5,12 +5,12 @@ use std::{borrow::Cow, sync::Arc};
 use async_trait::async_trait;
 use coins_ledger::{APDUAnswer, APDUCommand, LedgerError, transports::LedgerAsync};
 use semver::Version;
-use speculos_client::{AutomationAction, AutomationRule, Button, DeviceModel, SpeculosClient};
+use speculos_client::{AutomationAction, AutomationRule, Button, SpeculosClient};
 use starknet_rust_core::types::Felt;
 use starknet_rust_signers::ledger::LedgerStarknetApp;
 
 const TEST_PATH: &str = "m/2645'/1195502025'/1470455285'/0'/0'/0";
-const APP_PATH: &str = "./test-data/ledger-app/nanox_2.4.2_2.3.1_sdk_v22.10.0";
+const APP_PATH: &str = "./test-data/ledger-app/nanox.elf";
 
 #[derive(Debug)]
 struct SpeculosTransport(Arc<SpeculosClient>);
@@ -19,7 +19,7 @@ struct SpeculosTransport(Arc<SpeculosClient>);
 impl LedgerAsync for SpeculosTransport {
     async fn init() -> Result<Self, LedgerError> {
         Ok(Self(Arc::new(
-            SpeculosClient::new(DeviceModel::Nanox, 5001, APP_PATH).unwrap(),
+            SpeculosClient::new(5001, APP_PATH).unwrap(),
         )))
     }
 
@@ -32,7 +32,7 @@ impl LedgerAsync for SpeculosTransport {
 }
 
 fn setup_app(port: u16) -> (Arc<SpeculosClient>, LedgerStarknetApp<SpeculosTransport>) {
-    let client = Arc::new(SpeculosClient::new(DeviceModel::Nanox, port, APP_PATH).unwrap());
+    let client = Arc::new(SpeculosClient::new(port, APP_PATH).unwrap());
     let app = LedgerStarknetApp::from_transport(SpeculosTransport(client.clone()));
     (client, app)
 }
@@ -47,7 +47,7 @@ mod ledger {
         let (_, app) = setup_app(5001);
         let version = app.get_version().await.unwrap();
 
-        assert_eq!(version, Version::new(2, 3, 1));
+        assert_eq!(version, Version::new(2, 4, 0));
     }
 
     #[tokio::test]

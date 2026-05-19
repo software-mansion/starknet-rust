@@ -1,0 +1,15 @@
+[package]
+name = "speculos-client"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+hex = { workspace = true, features = ["alloc"] }
