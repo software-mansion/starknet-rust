@@ -143,7 +143,7 @@ impl SpeculosClient {
         Ok(Self {
             process,
             port,
-            client: ClientBuilder::new().timeout(timeout).build().unwrap(),
+            client: ClientBuilder::new().build().unwrap(),
         })
     }
 
@@ -252,3 +252,6 @@ impl std::fmt::Display for SpeculosError {
 }
 
 impl std::error::Error for SpeculosError {}
+
+/// Pre-built automation rules for the Starknet Ledger app.
+pub mod starknet_app;

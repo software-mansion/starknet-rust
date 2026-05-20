@@ -1,10 +1,11 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::{borrow::Cow, sync::Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use coins_ledger::{APDUAnswer, APDUCommand, LedgerError, transports::LedgerAsync};
-use speculos_client::{AutomationAction, AutomationCondition, AutomationRule, Button, SpeculosClient};
+use speculos_client::SpeculosClient;
+use speculos_client::starknet_app::{APPROVE_BLIND_SIGN_HASH, ENABLE_BLIND_SIGN, set_automation};
 use starknet_rust_core::types::Felt;
 use starknet_rust_signers::{LedgerSigner, ledger::LedgerStarknetApp};
 
@@ -17,9 +18,7 @@ struct SpeculosTransport(Arc<SpeculosClient>);
 #[async_trait]
 impl LedgerAsync for SpeculosTransport {
     async fn init() -> Result<Self, LedgerError> {
-        Ok(Self(Arc::new(
-            SpeculosClient::new(5001, APP_PATH).unwrap(),
-        )))
+        Ok(Self(Arc::new(SpeculosClient::new(5001, APP_PATH).unwrap())))
     }
 
     async fn exchange(&self, packet: &APDUCommand) -> Result<APDUAnswer, LedgerError> {
@@ -47,13 +46,7 @@ mod ledger {
     #[ignore = "requires Speculos installation"]
     async fn test_invoke_v3() {
         let (client, app) = setup_app(6001);
-        client
-            .automation(&[
-                automation::ENABLE_BLIND_SIGN,
-                automation::APPROVE_BLIND_SIGN_HASH,
-            ])
-            .await
-            .unwrap();
+        set_automation(&client, &[ENABLE_BLIND_SIGN, APPROVE_BLIND_SIGN_HASH]).await;
 
         let signer = LedgerSigner::new_with_app(TEST_PATH.parse().unwrap(), app).unwrap();
         let provider = create_jsonrpc_client();
@@ -81,199 +74,4 @@ mod ledger {
             .await
             .unwrap();
     }
-}
-
-mod automation {
-    use super::*;
-
-    pub(crate) const ENABLE_BLIND_SIGN: AutomationRule<'static> = AutomationRule {
-        text: None,
-        regexp: Some(Cow::Borrowed("^(S)?tarknet$")),
-        x: None,
-        y: None,
-        conditions: &[AutomationCondition {
-            varname: Cow::Borrowed("blind_enabled"),
-            value: false,
-        }],
-        actions: &[
-            // Right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Both
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: false,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Both
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: false,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Left
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: false,
-            },
-            // Both
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: false,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Mark as done
-            AutomationAction::Setbool {
-                varname: Cow::Borrowed("blind_enabled"),
-                value: true,
-            },
-        ],
-    };
-
-    /// Must be used with [`ENABLE_BLIND_SIGN`].
-    pub(crate) const APPROVE_BLIND_SIGN_HASH: AutomationRule<'static> = AutomationRule {
-        text: None,
-        regexp: Some(Cow::Borrowed("^Cancel$")),
-        x: None,
-        y: None,
-        conditions: &[
-            AutomationCondition {
-                varname: Cow::Borrowed("blind_enabled"),
-                value: true,
-            },
-            AutomationCondition {
-                varname: Cow::Borrowed("blind_sign_approved"),
-                value: false,
-            },
-        ],
-        actions: &[
-            // Right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Both
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: false,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Both
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: false,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Mark as done
-            AutomationAction::Setbool {
-                varname: Cow::Borrowed("blind_sign_approved"),
-                value: true,
-            },
-        ],
-    };
 }

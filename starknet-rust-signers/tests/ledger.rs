@@ -1,11 +1,12 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::{borrow::Cow, sync::Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use coins_ledger::{APDUAnswer, APDUCommand, LedgerError, transports::LedgerAsync};
 use semver::Version;
-use speculos_client::{AutomationAction, AutomationRule, Button, SpeculosClient};
+use speculos_client::SpeculosClient;
+use speculos_client::starknet_app::APPROVE_PUBLIC_KEY;
 use starknet_rust_core::types::Felt;
 use starknet_rust_signers::ledger::LedgerStarknetApp;
 
@@ -18,9 +19,7 @@ struct SpeculosTransport(Arc<SpeculosClient>);
 #[async_trait]
 impl LedgerAsync for SpeculosTransport {
     async fn init() -> Result<Self, LedgerError> {
-        Ok(Self(Arc::new(
-            SpeculosClient::new(5001, APP_PATH).unwrap(),
-        )))
+        Ok(Self(Arc::new(SpeculosClient::new(5001, APP_PATH).unwrap())))
     }
 
     async fn exchange(&self, packet: &APDUCommand) -> Result<APDUAnswer, LedgerError> {
@@ -73,10 +72,7 @@ mod ledger {
         let (client, app) = setup_app(5003);
 
         // Automatically approve
-        client
-            .automation(&[automation::APPROVE_PUBLIC_KEY])
-            .await
-            .unwrap();
+        client.automation(&[APPROVE_PUBLIC_KEY]).await.unwrap();
 
         let public_key = app
             .get_public_key(TEST_PATH.parse().unwrap(), true)
@@ -90,62 +86,4 @@ mod ledger {
             )
         );
     }
-}
-
-mod automation {
-    use super::*;
-
-    pub(crate) const APPROVE_PUBLIC_KEY: AutomationRule<'static> = AutomationRule {
-        text: Some(Cow::Borrowed("Confirm Public Key")),
-        regexp: None,
-        x: None,
-        y: None,
-        conditions: &[],
-        actions: &[
-            // Press right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Press right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Press right
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-            // Press both
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: true,
-            },
-            AutomationAction::Button {
-                button: Button::Left,
-                pressed: false,
-            },
-            AutomationAction::Button {
-                button: Button::Right,
-                pressed: false,
-            },
-        ],
-    };
 }
