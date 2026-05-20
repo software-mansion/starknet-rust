@@ -9,20 +9,8 @@ use std::{
 };
 
 use reqwest::{Client, ClientBuilder};
-use serde::{Deserialize, Serialize, ser::SerializeSeq};
-
-mod hex_bytes {
-    use serde::{Deserialize, Deserializer, Serializer, de::Error};
-
-    pub fn serialize<S: Serializer>(data: &[u8], s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&hex::encode(data))
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
-        let s = String::deserialize(d)?;
-        hex::decode(&s).map_err(D::Error::custom)
-    }
-}
+use serde::{Serialize, ser::SerializeSeq};
+use serde_json::json;
 
 #[derive(Debug)]
 pub struct SpeculosClient {
@@ -67,18 +55,6 @@ pub enum Button {
 pub enum SpeculosError {
     IoError(std::io::Error),
     ReqwestError(reqwest::Error),
-}
-
-#[derive(Serialize)]
-struct PostApduRequest<'a> {
-    #[serde(with = "hex_bytes")]
-    data: &'a [u8],
-}
-
-#[derive(Deserialize)]
-struct PostApduResponse {
-    #[serde(with = "hex_bytes")]
-    data: Vec<u8>,
 }
 
 #[derive(Serialize)]
@@ -151,11 +127,12 @@ impl SpeculosClient {
         let response = self
             .client
             .post(format!("http://localhost:{}/apdu", self.port))
-            .json(&PostApduRequest { data })
+            .json(&json!({ "data": hex::encode(data) }))
             .send()
             .await?;
-        let body = response.json::<PostApduResponse>().await.unwrap();
-        Ok(body.data)
+        let body: serde_json::Value = response.json().await?;
+        let hex_str = body["data"].as_str().unwrap();
+        Ok(hex::decode(hex_str).unwrap())
     }
 
     pub async fn automation(&self, rules: &[AutomationRule<'_>]) -> Result<(), SpeculosError> {
