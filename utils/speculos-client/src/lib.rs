@@ -1,4 +1,4 @@
-#![allow(unreachable_pub)]
+pub mod starknet_app;
 
 use std::{
     borrow::Cow,
@@ -252,6 +252,3 @@ impl std::fmt::Display for SpeculosError {
 }
 
 impl std::error::Error for SpeculosError {}
-
-/// Pre-built automation rules for the Starknet Ledger app.
-pub mod starknet_app;
