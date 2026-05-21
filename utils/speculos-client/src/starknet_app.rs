@@ -58,10 +58,8 @@ pub const APPROVE_PUBLIC_KEY: AutomationRule<'static> = AutomationRule {
     ],
 };
 
-// Screen flow: navigate to "App settings" (via press_button RIGHT from home) ->
-// Both (enter settings, shows "Blind signing" toggle OFF) -> Both (toggle ON).
-// The trigger is "App settings" so the caller must press RIGHT after registering this
-// rule to navigate away from the home screen and land on "App settings".
+// Trigger fires on "App settings" screen: Both (enter) -> Both (toggle ON) -> sets blind_enabled=true.
+// Use via set_automation(), which presses RIGHT after registering to navigate from home to "App settings".
 pub const ENABLE_BLIND_SIGN: AutomationRule<'static> = AutomationRule {
     text: Some(Cow::Borrowed("App settings")),
     regexp: None,
