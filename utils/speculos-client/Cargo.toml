@@ -1,6 +1,5 @@
 [package]
 name = "speculos-client"
-version = "0.2.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
