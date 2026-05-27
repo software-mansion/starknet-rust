@@ -2,10 +2,11 @@ pub mod starknet_app;
 
 use std::{
     borrow::Cow,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read, Write},
+    net::{SocketAddr, TcpStream},
     path::Path,
     process::{Child, Command, Stdio},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use reqwest::{Client, ClientBuilder};
@@ -56,6 +57,8 @@ pub enum SpeculosError {
     IoError(std::io::Error),
     ReqwestError(reqwest::Error),
     Timeout,
+    ProcessExited(Option<i32>),
+    InvalidResponse(&'static str),
 }
 
 #[derive(Serialize)]
@@ -89,7 +92,7 @@ impl SpeculosClient {
             .stderr(Stdio::piped())
             .spawn()?;
 
-        let deadline = std::time::Instant::now() + timeout;
+        let deadline = Instant::now() + timeout;
 
         if let Some(stderr) = process.stderr.take() {
             let (tx, rx) = std::sync::mpsc::channel::<()>();
@@ -104,29 +107,42 @@ impl SpeculosClient {
                     }
                 }
             });
-            let now = std::time::Instant::now();
-            let remaining = deadline.saturating_duration_since(now);
-            if rx.recv_timeout(remaining).is_err() {
-                let _ = process.kill();
-                let _ = process.wait();
+            if rx
+                .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+                .is_err()
+            {
+                if let Ok(Some(status)) = process.try_wait() {
+                    kill_and_wait(&mut process);
+                    return Err(SpeculosError::ProcessExited(status.code()));
+                }
+                kill_and_wait(&mut process);
                 return Err(SpeculosError::Timeout);
             }
         }
 
-        let addr = format!("127.0.0.1:{port}");
+        let addr: SocketAddr = format!("127.0.0.1:{port}")
+            .parse()
+            .expect("valid localhost address");
         loop {
-            if std::time::Instant::now() >= deadline {
-                let _ = process.kill();
-                let _ = process.wait();
+            if Instant::now() >= deadline {
+                kill_and_wait(&mut process);
                 return Err(SpeculosError::Timeout);
             }
-            if let Ok(mut stream) = std::net::TcpStream::connect(&addr) {
-                use std::io::{Read, Write};
+            if let Ok(Some(status)) = process.try_wait() {
+                kill_and_wait(&mut process);
+                return Err(SpeculosError::ProcessExited(status.code()));
+            }
+
+            let io_timeout = deadline
+                .saturating_duration_since(Instant::now())
+                .min(Duration::from_millis(500));
+            if let Ok(mut stream) = TcpStream::connect_timeout(&addr, io_timeout) {
+                let _ = stream.set_read_timeout(Some(io_timeout));
+                let _ = stream.set_write_timeout(Some(io_timeout));
                 let req = format!("GET /events HTTP/1.0\r\nHost: localhost:{port}\r\n\r\n");
                 if stream.write_all(req.as_bytes()).is_ok() {
                     let mut resp = String::new();
-                    let _ = stream.read_to_string(&mut resp);
-                    if resp.contains("\"text\"") {
+                    if stream.read_to_string(&mut resp).is_ok() && resp.contains("\"text\"") {
                         break;
                     }
                 }
@@ -137,7 +153,7 @@ impl SpeculosClient {
         Ok(Self {
             process,
             port,
-            client: ClientBuilder::new().build().unwrap(),
+            client: ClientBuilder::new().build()?,
         })
     }
 
@@ -149,8 +165,11 @@ impl SpeculosClient {
             .send()
             .await?;
         let body: serde_json::Value = response.json().await?;
-        let hex_str = body["data"].as_str().unwrap();
-        Ok(hex::decode(hex_str).unwrap())
+        let hex_str = body["data"].as_str().ok_or(SpeculosError::InvalidResponse(
+            "missing data field in APDU response",
+        ))?;
+        hex::decode(hex_str)
+            .map_err(|_| SpeculosError::InvalidResponse("invalid hex in APDU response"))
     }
 
     pub async fn automation(&self, rules: &[AutomationRule<'_>]) -> Result<(), SpeculosError> {
@@ -188,8 +207,7 @@ impl SpeculosClient {
 
 impl Drop for SpeculosClient {
     fn drop(&mut self) {
-        let _ = self.process.kill();
-        let _ = self.process.wait();
+        kill_and_wait(&mut self.process);
     }
 }
 
@@ -244,8 +262,18 @@ impl std::fmt::Display for SpeculosError {
             Self::IoError(e) => write!(f, "{e}"),
             Self::ReqwestError(e) => write!(f, "{e}"),
             Self::Timeout => write!(f, "speculos startup timed out"),
+            Self::ProcessExited(code) => match code {
+                Some(code) => write!(f, "speculos exited with status {code}"),
+                None => write!(f, "speculos exited"),
+            },
+            Self::InvalidResponse(msg) => write!(f, "invalid speculos response: {msg}"),
         }
     }
+}
+
+fn kill_and_wait(process: &mut Child) {
+    let _ = process.kill();
+    let _ = process.wait();
 }
 
 impl std::error::Error for SpeculosError {}
@@ -257,8 +285,11 @@ mod tests {
 
     #[test]
     #[ignore = "requires speculos"]
-    fn startup_times_out_with_short_deadline() {
+    fn startup_fails_fast_with_short_deadline() {
         let err = SpeculosClient::new_with_timeout(59999, "/dev/null", Duration::from_millis(100));
-        assert!(matches!(err, Err(SpeculosError::Timeout)));
+        assert!(matches!(
+            err,
+            Err(SpeculosError::Timeout | SpeculosError::ProcessExited(_))
+        ));
     }
 }
