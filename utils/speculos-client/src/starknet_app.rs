@@ -12,7 +12,7 @@ pub async fn set_automation(client: &SpeculosClient, rules: &[AutomationRule<'st
 }
 
 // Screen flow: "Public Key (1/2)" -> Right -> "Public Key (2/2)" -> Right -> "Approve" -> Both
-// Trigger fires on "Public Key (1/2)" and navigates to Approve, then confirms.
+// Trigger fires on "Public Key (1/2)" and navigates to "Approve", then confirms.
 pub const APPROVE_PUBLIC_KEY: AutomationRule<'static> = AutomationRule {
     text: Some(Cow::Borrowed("Public Key (1/2)")),
     regexp: None,
