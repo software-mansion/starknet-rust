@@ -249,3 +249,16 @@ impl std::fmt::Display for SpeculosError {
 }
 
 impl std::error::Error for SpeculosError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    #[ignore = "requires speculos"]
+    fn startup_times_out_with_short_deadline() {
+        let err = SpeculosClient::new_with_timeout(59999, "/dev/null", Duration::from_millis(100));
+        assert!(matches!(err, Err(SpeculosError::Timeout)));
+    }
+}
