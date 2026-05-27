@@ -55,6 +55,7 @@ pub enum Button {
 pub enum SpeculosError {
     IoError(std::io::Error),
     ReqwestError(reqwest::Error),
+    Timeout,
 }
 
 #[derive(Serialize)]
@@ -88,20 +89,37 @@ impl SpeculosClient {
             .stderr(Stdio::piped())
             .spawn()?;
 
+        let deadline = std::time::Instant::now() + timeout;
+
         if let Some(stderr) = process.stderr.take() {
-            let reader = BufReader::new(stderr);
-            for line in reader.lines().map_while(Result::ok) {
-                if line.contains("launcher: using default app name & version")
-                    || line.contains("[*] Env app version:")
-                {
-                    break;
+            let (tx, rx) = std::sync::mpsc::channel::<()>();
+            std::thread::spawn(move || {
+                let reader = BufReader::new(stderr);
+                for line in reader.lines().map_while(Result::ok) {
+                    if line.contains("launcher: using default app name & version")
+                        || line.contains("[*] Env app version:")
+                    {
+                        let _ = tx.send(());
+                        return;
+                    }
                 }
+            });
+            let now = std::time::Instant::now();
+            let remaining = deadline.saturating_duration_since(now);
+            if rx.recv_timeout(remaining).is_err() {
+                let _ = process.kill();
+                let _ = process.wait();
+                return Err(SpeculosError::Timeout);
             }
         }
 
         let addr = format!("127.0.0.1:{port}");
-        let deadline = std::time::Instant::now() + timeout;
-        'poll: while std::time::Instant::now() < deadline {
+        loop {
+            if std::time::Instant::now() >= deadline {
+                let _ = process.kill();
+                let _ = process.wait();
+                return Err(SpeculosError::Timeout);
+            }
             if let Ok(mut stream) = std::net::TcpStream::connect(&addr) {
                 use std::io::{Read, Write};
                 let req = format!("GET /events HTTP/1.0\r\nHost: localhost:{port}\r\n\r\n");
@@ -109,7 +127,7 @@ impl SpeculosClient {
                     let mut resp = String::new();
                     let _ = stream.read_to_string(&mut resp);
                     if resp.contains("\"text\"") {
-                        break 'poll;
+                        break;
                     }
                 }
             }
@@ -171,6 +189,7 @@ impl SpeculosClient {
 impl Drop for SpeculosClient {
     fn drop(&mut self) {
         let _ = self.process.kill();
+        let _ = self.process.wait();
     }
 }
 
@@ -224,6 +243,7 @@ impl std::fmt::Display for SpeculosError {
         match self {
             Self::IoError(e) => write!(f, "{e}"),
             Self::ReqwestError(e) => write!(f, "{e}"),
+            Self::Timeout => write!(f, "speculos startup timed out"),
         }
     }
 }
