@@ -259,7 +259,7 @@ async fn can_execute_eth_transfer_invoke_v3_with_manual_gas_inner<P: Provider + 
             .l2_gas(1_000_000)
             .l2_gas_price(10_000_000_000)
             .l1_data_gas(1000)
-            .l1_data_gas_price(100_000_000_000_000)
+            .l1_data_gas_price(1_000_000_000_000_000)
             // This tx costs around 10^6 L2 gas. So a tip of 10^10 is around 10^16 FRI (0.01 STRK).
             .tip(10_000_000_000)
             .send()
@@ -365,7 +365,7 @@ async fn can_declare_cairo1_contract_v3_inner<P: Provider + Send + Sync>(
         .l2_gas(100_000_000)
         .l2_gas_price(10_000_000_000)
         .l1_data_gas(1000)
-        .l1_data_gas_price(100_000_000_000_000)
+        .l1_data_gas_price(1_000_000_000_000_000)
         .send()
         .await
         .unwrap();
