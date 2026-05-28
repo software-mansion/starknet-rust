@@ -1,4 +1,4 @@
-use std::{borrow::Cow, time::Duration};
+use std::borrow::Cow;
 
 use crate::{AutomationAction, AutomationCondition, AutomationRule, Button, SpeculosClient};
 
@@ -7,10 +7,6 @@ use crate::{AutomationAction, AutomationCondition, AutomationRule, Button, Specu
 pub async fn set_automation(client: &SpeculosClient, rules: &[AutomationRule<'static>]) {
     client.automation(rules).await.unwrap();
     if rules.iter().any(|r| r == &ENABLE_BLIND_SIGN) {
-        client
-            .wait_for_events(Duration::from_secs(5))
-            .await
-            .unwrap();
         client.click_button(Button::Right).await.unwrap();
     }
 }

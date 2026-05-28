@@ -6,10 +6,13 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     path::Path,
     process::{Child, Command, Stdio},
-    sync::mpsc,
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
+
+const POLL_INTERVAL: Duration = Duration::from_millis(25);
+const CONNECT_TIMEOUT: Duration = Duration::from_millis(50);
+const READ_TIMEOUT: Duration = Duration::from_millis(500);
 
 use reqwest::{Client, ClientBuilder};
 use serde::{Serialize, ser::SerializeSeq};
@@ -70,17 +73,6 @@ struct PostAutomationRequest<'a> {
     rules: &'a [AutomationRule<'a>],
 }
 
-struct StderrWatcher {
-    ready_rx: std::sync::mpsc::Receiver<()>,
-    handle: JoinHandle<()>,
-}
-
-impl StderrWatcher {
-    fn try_recv_ready(&self) -> bool {
-        self.ready_rx.try_recv().is_ok()
-    }
-}
-
 impl SpeculosClient {
     pub fn new<P: AsRef<Path>>(port: u16, app: P) -> Result<Self, SpeculosError> {
         Self::new_with_timeout(port, app, Duration::from_secs(10))
@@ -114,36 +106,22 @@ impl SpeculosClient {
         let addr: SocketAddr = format!("127.0.0.1:{port}")
             .parse()
             .expect("valid localhost address");
-        let mut stderr_watcher = spawn_stderr_watcher(process.stderr.take());
-        let mut app_ready = stderr_watcher.is_none();
+        let stderr_drainer = spawn_stderr_drainer(process.stderr.take());
 
         loop {
             if Instant::now() >= deadline {
-                join_stderr_watcher(stderr_watcher.take(), &mut process);
+                join_stderr_drainer(stderr_drainer, &mut process);
                 return Err(SpeculosError::Timeout);
             }
             if let Ok(Some(status)) = process.try_wait() {
-                join_stderr_watcher(stderr_watcher.take(), &mut process);
+                join_stderr_drainer(stderr_drainer, &mut process);
                 return Err(SpeculosError::ProcessExited(status.code()));
             }
 
-            if let Some(watcher) = &stderr_watcher
-                && !app_ready
-                && watcher.try_recv_ready()
-            {
-                app_ready = true;
-            }
-
-            if !app_ready {
-                std::thread::sleep(Duration::from_millis(100));
-                continue;
-            }
-
-            let io_timeout = deadline
+            let read_timeout = deadline
                 .saturating_duration_since(Instant::now())
-                .min(Duration::from_millis(500));
-            if events_api_ready(&addr, port, io_timeout) {
-                stderr_watcher.take();
+                .min(READ_TIMEOUT);
+            if events_api_ready(&addr, port, CONNECT_TIMEOUT, read_timeout) {
                 return Ok(Self {
                     process,
                     port,
@@ -151,7 +129,7 @@ impl SpeculosClient {
                 });
             }
 
-            std::thread::sleep(Duration::from_millis(100));
+            thread::sleep(POLL_INTERVAL);
         }
     }
 
@@ -176,7 +154,7 @@ impl SpeculosClient {
                 }
             }
 
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(POLL_INTERVAL).await;
         }
     }
 
@@ -305,38 +283,32 @@ fn ensure_port_available(port: u16) -> Result<(), SpeculosError> {
     }
 }
 
-fn spawn_stderr_watcher(stderr: Option<impl Read + Send + 'static>) -> Option<StderrWatcher> {
+fn spawn_stderr_drainer(stderr: Option<impl Read + Send + 'static>) -> Option<JoinHandle<()>> {
     let stderr = stderr?;
-    let (ready_tx, ready_rx) = mpsc::channel();
-    let handle = thread::spawn(move || {
+    Some(thread::spawn(move || {
         let reader = BufReader::new(stderr);
-        for line in reader.lines().map_while(Result::ok) {
-            if is_app_ready_log_line(&line) {
-                let _ = ready_tx.send(());
-            }
-        }
-    });
-    Some(StderrWatcher { ready_rx, handle })
+        for _line in reader.lines().map_while(Result::ok) {}
+    }))
 }
 
-fn join_stderr_watcher(watcher: Option<StderrWatcher>, process: &mut Child) {
+fn join_stderr_drainer(drainer: Option<JoinHandle<()>>, process: &mut Child) {
     kill_and_wait(process);
-    if let Some(watcher) = watcher {
-        let _ = watcher.handle.join();
+    if let Some(drainer) = drainer {
+        let _ = drainer.join();
     }
 }
 
-fn is_app_ready_log_line(line: &str) -> bool {
-    line.contains("launcher: using default app name & version")
-        || line.contains("[*] Env app version:")
-}
-
-fn events_api_ready(addr: &SocketAddr, port: u16, timeout: Duration) -> bool {
-    let Ok(mut stream) = TcpStream::connect_timeout(addr, timeout) else {
+fn events_api_ready(
+    addr: &SocketAddr,
+    port: u16,
+    connect_timeout: Duration,
+    read_timeout: Duration,
+) -> bool {
+    let Ok(mut stream) = TcpStream::connect_timeout(addr, connect_timeout) else {
         return false;
     };
-    let _ = stream.set_read_timeout(Some(timeout));
-    let _ = stream.set_write_timeout(Some(timeout));
+    let _ = stream.set_read_timeout(Some(read_timeout));
+    let _ = stream.set_write_timeout(Some(read_timeout));
 
     let request =
         format!("GET /events HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
