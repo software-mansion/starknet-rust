@@ -196,9 +196,8 @@ jobs:
       - name: Build Starknet Ledger App (Nano X)
         run: |
           git clone https://github.com/LedgerHQ/app-starknet /tmp/app-starknet
-          cd /tmp/app-starknet
-          git checkout a14a61e3061f8793188fa57cbdafc2cc0d96c8bd
-          cd starknet
+          git -C /tmp/app-starknet checkout a14a61e3061f8793188fa57cbdafc2cc0d96c8bd
+          cd /tmp/app-starknet/starknet
           cargo +${RUST_NIGHTLY} ledger build nanox
           mkdir -p ${GITHUB_WORKSPACE}/starknet-rust-signers/test-data/ledger-app
           mkdir -p ${GITHUB_WORKSPACE}/starknet-rust-accounts/test-data/ledger-app
