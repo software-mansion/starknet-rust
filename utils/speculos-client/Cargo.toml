@@ -13,3 +13,4 @@ reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 hex = { workspace = true, features = ["alloc"] }
 serde_json = { workspace = true, features = ["std"] }
+tokio = { workspace = true, features = ["time"] }

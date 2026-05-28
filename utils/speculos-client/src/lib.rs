@@ -3,15 +3,17 @@ pub mod starknet_app;
 use std::{
     borrow::Cow,
     io::{BufRead, BufReader, Read, Write},
-    net::{SocketAddr, TcpStream},
+    net::{SocketAddr, TcpListener, TcpStream},
     path::Path,
     process::{Child, Command, Stdio},
+    sync::mpsc,
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 
 use reqwest::{Client, ClientBuilder};
 use serde::{Serialize, ser::SerializeSeq};
-use serde_json::json;
+use serde_json::{Value, json};
 
 #[derive(Debug)]
 pub struct SpeculosClient {
@@ -59,12 +61,24 @@ pub enum SpeculosError {
     Timeout,
     ProcessExited(Option<i32>),
     InvalidResponse(&'static str),
+    PortInUse(u16),
 }
 
 #[derive(Serialize)]
 struct PostAutomationRequest<'a> {
     version: u32,
     rules: &'a [AutomationRule<'a>],
+}
+
+struct StderrWatcher {
+    ready_rx: std::sync::mpsc::Receiver<()>,
+    handle: JoinHandle<()>,
+}
+
+impl StderrWatcher {
+    fn try_recv_ready(&self) -> bool {
+        self.ready_rx.try_recv().is_ok()
+    }
 }
 
 impl SpeculosClient {
@@ -77,6 +91,10 @@ impl SpeculosClient {
         app: P,
         timeout: Duration,
     ) -> Result<Self, SpeculosError> {
+        ensure_port_available(port)?;
+
+        let client = ClientBuilder::new().build()?;
+
         let mut process = Command::new("speculos")
             .args([
                 "--api-port",
@@ -93,78 +111,83 @@ impl SpeculosClient {
             .spawn()?;
 
         let deadline = Instant::now() + timeout;
-
-        if let Some(stderr) = process.stderr.take() {
-            let (tx, rx) = std::sync::mpsc::channel::<()>();
-            std::thread::spawn(move || {
-                let reader = BufReader::new(stderr);
-                for line in reader.lines().map_while(Result::ok) {
-                    if line.contains("launcher: using default app name & version")
-                        || line.contains("[*] Env app version:")
-                    {
-                        let _ = tx.send(());
-                        return;
-                    }
-                }
-            });
-            if rx
-                .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-                .is_err()
-            {
-                if let Ok(Some(status)) = process.try_wait() {
-                    kill_and_wait(&mut process);
-                    return Err(SpeculosError::ProcessExited(status.code()));
-                }
-                kill_and_wait(&mut process);
-                return Err(SpeculosError::Timeout);
-            }
-        }
-
         let addr: SocketAddr = format!("127.0.0.1:{port}")
             .parse()
             .expect("valid localhost address");
+        let mut stderr_watcher = spawn_stderr_watcher(process.stderr.take());
+        let mut app_ready = stderr_watcher.is_none();
+
         loop {
             if Instant::now() >= deadline {
-                kill_and_wait(&mut process);
+                join_stderr_watcher(stderr_watcher.take(), &mut process);
                 return Err(SpeculosError::Timeout);
             }
             if let Ok(Some(status)) = process.try_wait() {
-                kill_and_wait(&mut process);
+                join_stderr_watcher(stderr_watcher.take(), &mut process);
                 return Err(SpeculosError::ProcessExited(status.code()));
+            }
+
+            if let Some(watcher) = &stderr_watcher
+                && !app_ready
+                && watcher.try_recv_ready()
+            {
+                app_ready = true;
+            }
+
+            if !app_ready {
+                std::thread::sleep(Duration::from_millis(100));
+                continue;
             }
 
             let io_timeout = deadline
                 .saturating_duration_since(Instant::now())
                 .min(Duration::from_millis(500));
-            if let Ok(mut stream) = TcpStream::connect_timeout(&addr, io_timeout) {
-                let _ = stream.set_read_timeout(Some(io_timeout));
-                let _ = stream.set_write_timeout(Some(io_timeout));
-                let req = format!("GET /events HTTP/1.0\r\nHost: localhost:{port}\r\n\r\n");
-                if stream.write_all(req.as_bytes()).is_ok() {
-                    let mut resp = String::new();
-                    if stream.read_to_string(&mut resp).is_ok() && resp.contains("\"text\"") {
-                        break;
-                    }
-                }
+            if events_api_ready(&addr, port, io_timeout) {
+                stderr_watcher.take();
+                return Ok(Self {
+                    process,
+                    port,
+                    client,
+                });
             }
+
             std::thread::sleep(Duration::from_millis(100));
         }
+    }
 
-        Ok(Self {
-            process,
-            port,
-            client: ClientBuilder::new().build()?,
-        })
+    pub async fn wait_for_events(&self, timeout: Duration) -> Result<(), SpeculosError> {
+        let deadline = Instant::now() + timeout;
+
+        loop {
+            if Instant::now() >= deadline {
+                return Err(SpeculosError::Timeout);
+            }
+
+            let response = self
+                .client
+                .get(format!("http://127.0.0.1:{}/events", self.port))
+                .send()
+                .await?;
+
+            if response.status().is_success() {
+                let body: Value = response.json().await?;
+                if events_value_ready(&body) {
+                    return Ok(());
+                }
+            }
+
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
     }
 
     pub async fn apdu(&self, data: &[u8]) -> Result<Vec<u8>, SpeculosError> {
         let response = self
             .client
-            .post(format!("http://localhost:{}/apdu", self.port))
+            .post(format!("http://127.0.0.1:{}/apdu", self.port))
             .json(&json!({ "data": hex::encode(data) }))
             .send()
             .await?;
-        let body: serde_json::Value = response.json().await?;
+        let body: Value = response.error_for_status()?.json().await?;
         let hex_str = body["data"].as_str().ok_or(SpeculosError::InvalidResponse(
             "missing data field in APDU response",
         ))?;
@@ -175,7 +198,7 @@ impl SpeculosClient {
     pub async fn automation(&self, rules: &[AutomationRule<'_>]) -> Result<(), SpeculosError> {
         let response = self
             .client
-            .post(format!("http://localhost:{}/automation", self.port))
+            .post(format!("http://127.0.0.1:{}/automation", self.port))
             .json(&PostAutomationRequest { version: 1, rules })
             .send()
             .await?;
@@ -194,7 +217,7 @@ impl SpeculosClient {
         };
         let response = self
             .client
-            .post(format!("http://localhost:{}/button/{name}", self.port))
+            .post(format!("http://127.0.0.1:{}/button/{name}", self.port))
             .json(&ButtonRequest {
                 action: "press-and-release",
             })
@@ -267,7 +290,98 @@ impl std::fmt::Display for SpeculosError {
                 None => write!(f, "speculos exited"),
             },
             Self::InvalidResponse(msg) => write!(f, "invalid speculos response: {msg}"),
+            Self::PortInUse(port) => write!(f, "speculos API port {port} is already in use"),
         }
+    }
+}
+
+fn ensure_port_available(port: u16) -> Result<(), SpeculosError> {
+    match TcpListener::bind(("127.0.0.1", port)) {
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::AddrInUse => {
+            Err(SpeculosError::PortInUse(port))
+        }
+        Err(error) => Err(SpeculosError::IoError(error)),
+    }
+}
+
+fn spawn_stderr_watcher(stderr: Option<impl Read + Send + 'static>) -> Option<StderrWatcher> {
+    let stderr = stderr?;
+    let (ready_tx, ready_rx) = mpsc::channel();
+    let handle = thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines().map_while(Result::ok) {
+            if is_app_ready_log_line(&line) {
+                let _ = ready_tx.send(());
+            }
+        }
+    });
+    Some(StderrWatcher { ready_rx, handle })
+}
+
+fn join_stderr_watcher(watcher: Option<StderrWatcher>, process: &mut Child) {
+    kill_and_wait(process);
+    if let Some(watcher) = watcher {
+        let _ = watcher.handle.join();
+    }
+}
+
+fn is_app_ready_log_line(line: &str) -> bool {
+    line.contains("launcher: using default app name & version")
+        || line.contains("[*] Env app version:")
+}
+
+fn events_api_ready(addr: &SocketAddr, port: u16, timeout: Duration) -> bool {
+    let Ok(mut stream) = TcpStream::connect_timeout(addr, timeout) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(timeout));
+    let _ = stream.set_write_timeout(Some(timeout));
+
+    let request =
+        format!("GET /events HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+
+    let mut response = String::new();
+    if stream.read_to_string(&mut response).is_err() {
+        return false;
+    }
+
+    let Some(body) = http_response_body(&response) else {
+        return false;
+    };
+
+    http_response_ok(&response)
+        && serde_json::from_str::<Value>(body.trim())
+            .ok()
+            .is_some_and(|value| events_value_ready(&value))
+}
+
+fn http_response_ok(response: &str) -> bool {
+    response
+        .lines()
+        .next()
+        .is_some_and(|status_line| status_line.contains("200"))
+}
+
+fn http_response_body(response: &str) -> Option<&str> {
+    response
+        .split("\r\n\r\n")
+        .nth(1)
+        .or_else(|| response.split("\n\n").nth(1))
+}
+
+fn events_value_ready(value: &Value) -> bool {
+    if let Some(events) = value.get("events").and_then(Value::as_array) {
+        return events.iter().any(|event| event.get("text").is_some());
+    }
+
+    match value {
+        Value::Array(events) => events.iter().any(|event| event.get("text").is_some()),
+        Value::Object(event) => event.contains_key("text"),
+        _ => false,
     }
 }
 
@@ -282,6 +396,24 @@ impl std::error::Error for SpeculosError {}
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    #[test]
+    fn events_value_ready_accepts_object_and_array_payloads() {
+        assert!(events_value_ready(&json!({ "text": "Approve" })));
+        assert!(events_value_ready(&json!([{ "text": "Approve" }])));
+        assert!(events_value_ready(
+            &json!({ "events": [{ "text": "Approve" }] })
+        ));
+        assert!(!events_value_ready(&json!({ "events": [] })));
+        assert!(!events_value_ready(&json!({ "event": "screen" })));
+        assert!(!events_value_ready(&json!("ready")));
+    }
+
+    #[test]
+    fn http_response_body_splits_headers() {
+        let response = "HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n\r\n{\"text\":\"x\"}";
+        assert_eq!(http_response_body(response), Some("{\"text\":\"x\"}"));
+    }
 
     #[test]
     #[ignore = "requires speculos"]
