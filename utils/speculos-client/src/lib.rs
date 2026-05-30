@@ -1,3 +1,10 @@
+//! HTTP client for controlling [Speculos](https://github.com/LedgerHQ/speculos) in headless
+//! Ledger app tests.
+//!
+//! Spawns a `speculos` process, waits until its events API is ready, then exposes methods to
+//! send APDUs, register automation rules, and simulate button presses. Predefined Starknet app
+//! flows live in [`starknet_app`].
+
 pub mod starknet_app;
 
 use std::{
@@ -18,6 +25,7 @@ use reqwest::{Client, ClientBuilder};
 use serde::{Serialize, ser::SerializeSeq};
 use serde_json::{Value, json};
 
+/// Running Speculos instance bound to a local API port.
 #[derive(Debug)]
 pub struct SpeculosClient {
     process: Child,
@@ -25,6 +33,7 @@ pub struct SpeculosClient {
     client: Client,
 }
 
+/// Screen-matching rule with optional conditions and button/boolean actions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AutomationRule<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -57,6 +66,7 @@ pub enum Button {
     Right,
 }
 
+/// Errors from spawning Speculos or talking to its HTTP API.
 #[derive(Debug)]
 pub enum SpeculosError {
     IoError(std::io::Error),
@@ -74,10 +84,12 @@ struct PostAutomationRequest<'a> {
 }
 
 impl SpeculosClient {
+    /// Starts Speculos on `port` with the given Ledger app ELF and a 10s startup timeout.
     pub fn new<P: AsRef<Path>>(port: u16, app: P) -> Result<Self, SpeculosError> {
         Self::new_with_timeout(port, app, Duration::from_secs(10))
     }
 
+    /// Starts Speculos on `port` with the given Ledger app ELF and a custom startup timeout.
     pub fn new_with_timeout<P: AsRef<Path>>(
         port: u16,
         app: P,
@@ -133,6 +145,7 @@ impl SpeculosClient {
         }
     }
 
+    /// Polls `/events` until a screen with text appears or `timeout` elapses.
     pub async fn wait_for_events(&self, timeout: Duration) -> Result<(), SpeculosError> {
         let deadline = Instant::now() + timeout;
 
@@ -158,6 +171,7 @@ impl SpeculosClient {
         }
     }
 
+    /// Sends a raw APDU and returns the hex-decoded response body.
     pub async fn apdu(&self, data: &[u8]) -> Result<Vec<u8>, SpeculosError> {
         let response = self
             .client
@@ -173,6 +187,7 @@ impl SpeculosClient {
             .map_err(|_| SpeculosError::InvalidResponse("invalid hex in APDU response"))
     }
 
+    /// Registers automation rules with Speculos.
     pub async fn automation(&self, rules: &[AutomationRule<'_>]) -> Result<(), SpeculosError> {
         let response = self
             .client
@@ -184,6 +199,7 @@ impl SpeculosClient {
         Ok(())
     }
 
+    /// Simulates a press-and-release of a device button.
     pub async fn click_button(&self, button: Button) -> Result<(), SpeculosError> {
         #[derive(Serialize)]
         struct ButtonRequest {

@@ -46,7 +46,9 @@ mod ledger {
     #[ignore = "requires Speculos installation"]
     async fn test_invoke_v3() {
         let (client, app) = setup_app(6001);
-        set_automation(&client, &[ENABLE_BLIND_SIGN, APPROVE_BLIND_SIGN_HASH]).await;
+        set_automation(&client, &[ENABLE_BLIND_SIGN, APPROVE_BLIND_SIGN_HASH])
+            .await
+            .unwrap();
 
         let signer = LedgerSigner::new_with_app(TEST_PATH.parse().unwrap(), app).unwrap();
         let provider = create_jsonrpc_client();

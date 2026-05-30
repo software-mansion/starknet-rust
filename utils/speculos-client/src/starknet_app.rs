@@ -1,14 +1,20 @@
 use std::borrow::Cow;
 
-use crate::{AutomationAction, AutomationCondition, AutomationRule, Button, SpeculosClient};
+use crate::{
+    AutomationAction, AutomationCondition, AutomationRule, Button, SpeculosClient, SpeculosError,
+};
 
 /// Sets automation rules and, when [`ENABLE_BLIND_SIGN`] is among them, presses RIGHT so the
 /// blind-sign flow advances immediately from the home screen to "App settings".
-pub async fn set_automation(client: &SpeculosClient, rules: &[AutomationRule<'static>]) {
-    client.automation(rules).await.unwrap();
+pub async fn set_automation(
+    client: &SpeculosClient,
+    rules: &[AutomationRule<'static>],
+) -> Result<(), SpeculosError> {
+    client.automation(rules).await?;
     if rules.iter().any(|r| r == &ENABLE_BLIND_SIGN) {
-        client.click_button(Button::Right).await.unwrap();
+        client.click_button(Button::Right).await?;
     }
+    Ok(())
 }
 
 // Screen flow: "Public Key (1/2)" -> Right -> "Public Key (2/2)" -> Right -> "Approve" -> Both
