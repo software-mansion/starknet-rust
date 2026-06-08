@@ -1,5 +1,6 @@
 [package]
 name = "speculos-client"
+publish = false
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
