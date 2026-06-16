@@ -30,8 +30,11 @@ const API_VERSION: Felt = Felt::ZERO;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct LegacyContractClass {
+    // Some pre-0.10 artifacts serialize `abi` as `null` rather than `[]`, and the distinction is
+    // load-bearing for the hinted class hash. The field is therefore `Option`, and always
+    // serialized (never skipped) to preserve the original shape.
     /// Contract ABI.
-    pub abi: Vec<RawLegacyAbiEntry>,
+    pub abi: Option<Vec<RawLegacyAbiEntry>>,
     /// Contract entrypoints.
     pub entry_points_by_type: RawLegacyEntryPoints,
     /// The Cairo program of the contract containing the actual bytecode.
@@ -600,7 +603,7 @@ impl LegacyContractClass {
         #[serde_as]
         #[derive(Serialize)]
         struct ContractArtifactForHash<'a> {
-            abi: &'a Vec<RawLegacyAbiEntry>,
+            abi: &'a Option<Vec<RawLegacyAbiEntry>>,
             #[serde_as(as = "ProgramForHintedHash")]
             program: &'a LegacyProgram,
         }
@@ -624,13 +627,10 @@ impl LegacyContractClass {
         Ok(CompressedLegacyContractClass {
             program: self.program.compress()?,
             entry_points_by_type: self.entry_points_by_type.clone().into(),
-            abi: Some(
-                self.abi
-                    .clone()
-                    .into_iter()
-                    .map(std::convert::Into::into)
-                    .collect(),
-            ),
+            abi: self
+                .abi
+                .as_ref()
+                .map(|abi| abi.iter().cloned().map(std::convert::Into::into).collect()),
         })
     }
 }
@@ -790,8 +790,8 @@ impl SerializeAs<LegacyProgram> for ProgramForHintedHash {
                             decorators: value.decorators.clone(),
                             cairo_type: value
                                 .cairo_type
-                                .clone()
-                                .map(|content| content.replace(": ", " : ")),
+                                .as_deref()
+                                .map(patch_legacy_cairo_type_owned),
                             full_name: value.full_name.clone(),
                             members: value.members.clone().map(|map| {
                                 map.iter()
@@ -799,14 +799,19 @@ impl SerializeAs<LegacyProgram> for ProgramForHintedHash {
                                         (
                                             key.to_owned(),
                                             LegacyIdentifierMember {
-                                                cairo_type: value.cairo_type.replace(": ", " : "),
+                                                cairo_type: patch_legacy_cairo_type_owned(
+                                                    &value.cairo_type,
+                                                ),
                                                 offset: value.offset,
                                             },
                                         )
                                     })
                                     .collect()
                             }),
-                            references: value.references.clone(),
+                            references: value
+                                .references
+                                .as_ref()
+                                .map(|refs| refs.iter().map(patch_legacy_reference).collect()),
                             size: value.size,
                             pc: value.pc,
                             destination: value.destination.clone(),
@@ -816,6 +821,15 @@ impl SerializeAs<LegacyProgram> for ProgramForHintedHash {
                     )
                 })
                 .collect::<BTreeMap<_, _>>();
+
+            let patched_reference_manager = LegacyReferenceManager {
+                references: source
+                    .reference_manager
+                    .references
+                    .iter()
+                    .map(patch_legacy_reference)
+                    .collect(),
+            };
 
             HashVo::serialize(
                 &HashVo {
@@ -828,11 +842,55 @@ impl SerializeAs<LegacyProgram> for ProgramForHintedHash {
                     identifiers: &patched_identifiers,
                     main_scope: &source.main_scope,
                     prime: &source.prime,
-                    reference_manager: &source.reference_manager,
+                    reference_manager: &patched_reference_manager,
                 },
                 serializer,
             )
         }
+    }
+}
+
+/// Preserve the pre-0.10 legacy `" : "` spacing quirk without double-patching strings that are
+/// already in that form. Returns the input unchanged when no patch is needed.
+fn patch_legacy_cairo_type_owned(cairo_type: &str) -> String {
+    patch_legacy_cairo_type(cairo_type).unwrap_or_else(|| cairo_type.to_owned())
+}
+
+/// Idempotent variant that returns `Some(patched)` only when the patch made a real change. Useful
+/// for tests and for code that wants to know whether the input was already in legacy spacing form.
+fn patch_legacy_cairo_type(cairo_type: &str) -> Option<String> {
+    let bytes = cairo_type.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(cairo_type.len() + 4);
+    let mut changed = false;
+    let mut index = 0;
+    while index < bytes.len() {
+        // Look for `": "` (colon followed by space) that is NOT already preceded by a space.
+        // Bytewise indexing is fine: `:` and ` ` are ASCII, so they cannot collide with UTF-8
+        // continuation bytes.
+        if bytes[index] == b':'
+            && index + 1 < bytes.len()
+            && bytes[index + 1] == b' '
+            && (index == 0 || bytes[index - 1] != b' ')
+        {
+            out.extend_from_slice(b" : ");
+            index += 2;
+            changed = true;
+        } else {
+            out.push(bytes[index]);
+            index += 1;
+        }
+    }
+    if !changed {
+        return None;
+    }
+    Some(String::from_utf8(out).expect("ASCII-only edits preserve UTF-8 validity"))
+}
+
+fn patch_legacy_reference(value: &LegacyReference) -> LegacyReference {
+    LegacyReference {
+        ap_tracking_data: value.ap_tracking_data.clone(),
+        pc: value.pc,
+        value: patch_legacy_cairo_type_owned(&value.value),
     }
 }
 
@@ -981,7 +1039,10 @@ mod tests {
 
     #[derive(serde::Deserialize)]
     struct ContractHashes {
-        hinted_class_hash: String,
+        // Regression fixtures only ship `class_hash`; the hinted hash is intermediate and is
+        // implicitly exercised by the class hash assertion.
+        #[serde(default)]
+        hinted_class_hash: Option<String>,
         class_hash: String,
     }
 
@@ -1056,6 +1117,33 @@ mod tests {
                     "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/braavos_proxy.hashes.json"
                 ),
             ),
+            // Regression: `abi: null` must be preserved verbatim in the hinted hash payload.
+            (
+                include_str!(
+                    "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/0x371b5f7c5517d84205365a87f02dcef230efa7b4dd91a9e4ba7e04c5b69d69b.txt"
+                ),
+                include_str!(
+                    "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/0x371b5f7c5517d84205365a87f02dcef230efa7b4dd91a9e4ba7e04c5b69d69b.hashes.json"
+                ),
+            ),
+            // Regression: legacy `" : "` spacing must be applied to `references[*].value`.
+            (
+                include_str!(
+                    "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/0x6dc10e7703c1b63e0b5a4e8e7842293d3255fd4e53d4e730adf435c3dffabb.txt"
+                ),
+                include_str!(
+                    "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/0x6dc10e7703c1b63e0b5a4e8e7842293d3255fd4e53d4e730adf435c3dffabb.hashes.json"
+                ),
+            ),
+            // Regression: strings already in `" : "` form must not be double-patched.
+            (
+                include_str!(
+                    "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/0xa0cb53aaa37a4d377736e7e98c1a96b5168d75e3705f30fb09e6d2cbd7d5e3.txt"
+                ),
+                include_str!(
+                    "../../../test-data/contracts/cairo0/artifacts/pre-0.10.0/0xa0cb53aaa37a4d377736e7e98c1a96b5168d75e3705f30fb09e6d2cbd7d5e3.hashes.json"
+                ),
+            ),
         ] {
             let artifact = serde_json::from_str::<LegacyContractClass>(raw_artifact).unwrap();
             let computed_hash = artifact.class_hash().unwrap();
@@ -1102,10 +1190,37 @@ mod tests {
             let computed_hash = artifact.hinted_class_hash().unwrap();
 
             let hashes: ContractHashes = serde_json::from_str(raw_hashes).unwrap();
-            let expected_hash = Felt::from_hex(&hashes.hinted_class_hash).unwrap();
+            let expected_hash = Felt::from_hex(hashes.hinted_class_hash.as_ref().unwrap()).unwrap();
 
             assert_eq!(computed_hash, expected_hash);
         }
+    }
+
+    #[test]
+    fn test_patch_legacy_cairo_type() {
+        // No `": "` substring — no patch.
+        assert_eq!(patch_legacy_cairo_type("felt"), None);
+        // Plain case — insert leading space.
+        assert_eq!(
+            patch_legacy_cairo_type("felt: T").as_deref(),
+            Some("felt : T")
+        );
+        // Already patched — no-op (idempotent).
+        assert_eq!(patch_legacy_cairo_type("felt : T"), None);
+        // Mixed: only the unpatched occurrence is patched.
+        assert_eq!(
+            patch_legacy_cairo_type("a : T, b: U").as_deref(),
+            Some("a : T, b : U")
+        );
+        // Multiple unpatched occurrences in one string.
+        assert_eq!(
+            patch_legacy_cairo_type("(a: T, b: U)").as_deref(),
+            Some("(a : T, b : U)")
+        );
+        // Colon without trailing space is left alone.
+        assert_eq!(patch_legacy_cairo_type("a:T"), None);
+        // Leading colon at index 0 still gets patched (no preceding space to dedupe against).
+        assert_eq!(patch_legacy_cairo_type(": T").as_deref(), Some(" : T"));
     }
 
     #[test]
