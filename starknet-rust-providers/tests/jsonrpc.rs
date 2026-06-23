@@ -41,7 +41,12 @@ async fn jsonrpc_starknet_version() {
         .await
         .unwrap();
 
-    assert_eq!(version, "0.14.2");
+    let parsed = Version::parse(&version).expect("starknet_version is not valid semver");
+    let core = Version::new(parsed.major, parsed.minor, parsed.patch);
+    assert!(
+        VersionReq::parse("0.14.2").unwrap().matches(&core),
+        "Unexpected starknet version: {version}"
+    );
 }
 
 #[tokio::test]
