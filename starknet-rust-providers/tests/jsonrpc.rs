@@ -27,7 +27,7 @@ async fn jsonrpc_spec_version() {
     let parsed = Version::parse(&version).expect("spec_version is not valid semver");
     let core = Version::new(parsed.major, parsed.minor, parsed.patch);
     assert!(
-        VersionReq::parse("0.10.0").unwrap().matches(&core),
+        VersionReq::parse("0.10.3").unwrap().matches(&core),
         "Unexpected spec version: {version}"
     );
 }
