@@ -342,9 +342,7 @@ fn events_api_ready(
     };
 
     http_response_ok(&response)
-        && serde_json::from_str::<Value>(body.trim())
-            .ok()
-            .is_some_and(|value| events_value_ready(&value))
+        && serde_json::from_str::<Value>(body.trim()).is_ok_and(|value| events_value_ready(&value))
 }
 
 fn http_response_ok(response: &str) -> bool {

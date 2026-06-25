@@ -1,3 +1,4 @@
+use semver::{Version, VersionReq};
 use starknet_rust_core::{
     types::{
         BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3,
@@ -21,9 +22,12 @@ async fn jsonrpc_spec_version() {
 
     let version = rpc_client.spec_version().await.unwrap();
 
-    // TODO(#139)
+    // Strip prerelease/build metadata so RC versions (e.g. "0.10.3-rc.0") match
+    // the same way as their stable counterpart.
+    let parsed = Version::parse(&version).expect("spec_version is not valid semver");
+    let core = Version::new(parsed.major, parsed.minor, parsed.patch);
     assert!(
-        version == "0.10.1" || version == "0.10.2",
+        VersionReq::parse("0.10.2").unwrap().matches(&core),
         "Unexpected spec version: {version}"
     );
 }
@@ -37,7 +41,12 @@ async fn jsonrpc_starknet_version() {
         .await
         .unwrap();
 
-    assert_eq!(version, "0.14.2");
+    let parsed = Version::parse(&version).expect("starknet_version is not valid semver");
+    let core = Version::new(parsed.major, parsed.minor, parsed.patch);
+    assert!(
+        VersionReq::parse("0.14.2").unwrap().matches(&core),
+        "Unexpected starknet version: {version}"
+    );
 }
 
 #[tokio::test]

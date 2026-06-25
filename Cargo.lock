@@ -2836,6 +2836,7 @@ dependencies = [
  "getrandom 0.2.16",
  "log",
  "reqwest",
+ "semver",
  "serde",
  "serde_json",
  "serde_with",
