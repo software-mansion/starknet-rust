@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -139,7 +139,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -181,7 +181,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install stable Rust toolchain
         run: |
