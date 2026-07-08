@@ -8,7 +8,7 @@ pub use ethereum_types::Address as L1Address;
 pub(crate) mod conversions;
 
 mod block;
-pub use block::{Block, BlockId, BlockStatus};
+pub use block::{Block, BlockStatus};
 
 mod transaction;
 pub use transaction::{

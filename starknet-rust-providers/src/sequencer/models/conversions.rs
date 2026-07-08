@@ -3,7 +3,7 @@ use std::sync::Arc;
 use starknet_rust_core::types::{self as core, Felt, contract::legacy as contract_legacy};
 
 use super::{
-    Block, BlockId, BlockStatus, CompressedLegacyContractClass, ConfirmedTransactionReceipt,
+    Block, BlockStatus, CompressedLegacyContractClass, ConfirmedTransactionReceipt,
     DeclareTransaction, DeclareTransactionRequest, DeclareV3TransactionRequest,
     DeployAccountTransaction, DeployAccountTransactionRequest, DeployAccountV3TransactionRequest,
     DeployTransaction, DeployedClass, EntryPointType, Event, InvokeFunctionTransaction,
@@ -23,20 +23,6 @@ pub struct ConfirmedReceiptWithContext {
     pub receipt: ConfirmedTransactionReceipt,
     pub transaction: TransactionType,
     pub finality: BlockStatus,
-}
-
-impl TryFrom<core::BlockId> for BlockId {
-    type Error = ConversionError;
-
-    fn try_from(value: core::BlockId) -> Result<Self, Self::Error> {
-        match value {
-            core::BlockId::Hash(hash) => Ok(Self::Hash(hash)),
-            core::BlockId::Number(num) => Ok(Self::Number(num)),
-            core::BlockId::Tag(core::BlockTag::Latest) => Ok(Self::Latest),
-            core::BlockId::Tag(core::BlockTag::PreConfirmed) => Ok(Self::Pending),
-            core::BlockId::Tag(core::BlockTag::L1Accepted) => Err(ConversionError),
-        }
-    }
 }
 
 impl TryFrom<Block> for core::MaybePreConfirmedBlockWithTxHashes {

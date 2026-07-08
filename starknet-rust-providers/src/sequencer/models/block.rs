@@ -7,14 +7,6 @@ use starknet_rust_core::{
 
 use super::{ConfirmedTransactionReceipt, TransactionType};
 
-#[derive(Debug, Clone, Copy)]
-pub enum BlockId {
-    Hash(Felt),
-    Number(u64),
-    Pending,
-    Latest,
-}
-
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
