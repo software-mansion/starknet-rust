@@ -25,11 +25,11 @@ struct Args {
 impl Args {
     fn merge(&mut self, other: Self) {
         if let Some(core) = other.core {
-            if self.core.is_some() {
-                panic!("starknet attribute `core` defined more than once");
-            } else {
-                self.core = Some(core);
-            }
+            assert!(
+                self.core.is_none(),
+                "starknet attribute `core` defined more than once"
+            );
+            self.core = Some(core);
         }
     }
 }
