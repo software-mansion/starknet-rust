@@ -59,12 +59,11 @@ impl TryFrom<ByteArray> for String {
 impl Encode for ByteArray {
     fn encode<W: FeltWriter>(&self, writer: &mut W) -> Result<(), CodecError> {
         writer.write((self.len() / BYTES_PER_SLOT).into());
-        let mut chunks_iter = self.0.chunks_exact(BYTES_PER_SLOT);
-        for full_slot in chunks_iter.by_ref() {
+        let (full_slots, last_chunk) = self.0.as_chunks::<BYTES_PER_SLOT>();
+        for full_slot in full_slots {
             writer.write(Felt::from_bytes_be_slice(full_slot));
         }
 
-        let last_chunk = chunks_iter.remainder();
         writer.write(Felt::from_bytes_be_slice(last_chunk));
         writer.write(last_chunk.len().into());
 
