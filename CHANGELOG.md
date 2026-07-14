@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** Removed the redundant sequencer-specific `BlockId` in `starknet-rust-providers`. The sequencer gateway provider now uses the canonical `starknet_rust_core::types::BlockId` throughout ([#154]).
 - **Breaking:** `LegacyContractClass.abi` type changed from `Vec<RawLegacyAbiEntry>` to `Option<Vec<RawLegacyAbiEntry>>` to preserve the `abi: null` vs `abi: []` distinction when computing Cairo 0 hinted class hashes ([#148]).
 
 ### Fixed
@@ -89,3 +90,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#120]: https://github.com/software-mansion/starknet-rust/pull/120
 [#125]: https://github.com/software-mansion/starknet-rust/pull/125
 [#148]: https://github.com/software-mansion/starknet-rust/pull/148
+[#154]: https://github.com/software-mansion/starknet-rust/pull/154

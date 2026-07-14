@@ -8,7 +8,7 @@ use serde_with::serde_as;
 use starknet_rust_core::{
     chain_id,
     serde::unsigned_field_element::UfeHex,
-    types::{Felt, StarknetError, contract::CompiledClass},
+    types::{BlockId, BlockTag, Felt, StarknetError, contract::CompiledClass},
 };
 use url::Url;
 
@@ -16,7 +16,7 @@ use url::Url;
 #[allow(unused)]
 pub mod models;
 use models::{
-    AddTransactionResult, Block, BlockId, ContractAddresses, DeployedClass, StateUpdate,
+    AddTransactionResult, Block, ContractAddresses, DeployedClass, StateUpdate,
     StateUpdateWithBlock, TransactionInfo, TransactionRequest, TransactionStatusInfo,
     conversions::ConversionError,
 };
@@ -279,7 +279,7 @@ impl SequencerGatewayProvider {
     )]
     pub async fn get_block(&self, block_identifier: BlockId) -> Result<Block, ProviderError> {
         let mut request_url = self.extend_feeder_gateway_url("get_block");
-        append_block_id(&mut request_url, block_identifier);
+        append_block_id(&mut request_url, block_identifier)?;
 
         self.send_get_request::<GatewayResponse<_>>(request_url)
             .await?
@@ -294,7 +294,7 @@ impl SequencerGatewayProvider {
         block_identifier: BlockId,
     ) -> Result<StateUpdate, ProviderError> {
         let mut request_url = self.extend_feeder_gateway_url("get_state_update");
-        append_block_id(&mut request_url, block_identifier);
+        append_block_id(&mut request_url, block_identifier)?;
 
         self.send_get_request::<GatewayResponse<_>>(request_url)
             .await?
@@ -309,7 +309,7 @@ impl SequencerGatewayProvider {
         block_identifier: BlockId,
     ) -> Result<StateUpdateWithBlock, ProviderError> {
         let mut request_url = self.extend_feeder_gateway_url("get_state_update");
-        append_block_id(&mut request_url, block_identifier);
+        append_block_id(&mut request_url, block_identifier)?;
         request_url
             .query_pairs_mut()
             .append_pair("includeBlock", "true");
@@ -331,7 +331,7 @@ impl SequencerGatewayProvider {
         request_url
             .query_pairs_mut()
             .append_pair("classHash", &format!("{class_hash:#x}"));
-        append_block_id(&mut request_url, block_identifier);
+        append_block_id(&mut request_url, block_identifier)?;
 
         self.send_get_request::<GatewayResponse<_>>(request_url)
             .await?
@@ -350,7 +350,7 @@ impl SequencerGatewayProvider {
         request_url
             .query_pairs_mut()
             .append_pair("classHash", &format!("{class_hash:#x}"));
-        append_block_id(&mut request_url, block_identifier);
+        append_block_id(&mut request_url, block_identifier)?;
 
         self.send_get_request::<GatewayResponse<_>>(request_url)
             .await?
@@ -529,7 +529,7 @@ fn extend_url(url: &mut Url, segment: &str) {
         .extend(&[segment]);
 }
 
-fn append_block_id(url: &mut Url, block_identifier: BlockId) {
+fn append_block_id(url: &mut Url, block_identifier: BlockId) -> Result<(), ConversionError> {
     match block_identifier {
         BlockId::Hash(block_hash) => {
             url.query_pairs_mut()
@@ -539,11 +539,14 @@ fn append_block_id(url: &mut Url, block_identifier: BlockId) {
             url.query_pairs_mut()
                 .append_pair("blockNumber", &block_number.to_string());
         }
-        BlockId::Pending => {
+        BlockId::Tag(BlockTag::PreConfirmed) => {
             url.query_pairs_mut().append_pair("blockNumber", "pending");
         }
-        BlockId::Latest => (), // latest block is implicit
+        BlockId::Tag(BlockTag::Latest) => (), // latest block is implicit
+        // The feeder gateway has no `l1_accepted` concept.
+        BlockId::Tag(BlockTag::L1Accepted) => return Err(ConversionError),
     }
+    Ok(())
 }
 
 #[cfg(test)]

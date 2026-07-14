@@ -4,7 +4,7 @@ use std::any::Any;
 
 use async_trait::async_trait;
 use starknet_rust_core::types::{
-    BlockHashAndNumber, BlockId, BroadcastedDeclareTransaction,
+    BlockHashAndNumber, BlockId, BlockTag, BroadcastedDeclareTransaction,
     BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
     ConfirmedBlockId, ContractClass, ContractStorageKeys, DeclareTransactionResult,
     DeployAccountTransactionResult, EventFilter, EventsPage, FeeEstimate, Felt, FunctionCall,
@@ -52,7 +52,7 @@ impl Provider for SequencerGatewayProvider {
         B: AsRef<BlockId> + Send + Sync,
     {
         Ok(self
-            .get_block(block_id.as_ref().to_owned().try_into()?)
+            .get_block(block_id.as_ref().to_owned())
             .await?
             .try_into()?)
     }
@@ -66,7 +66,7 @@ impl Provider for SequencerGatewayProvider {
         B: AsRef<BlockId> + Send + Sync,
     {
         Ok(self
-            .get_block(block_id.as_ref().to_owned().try_into()?)
+            .get_block(block_id.as_ref().to_owned())
             .await?
             .try_into()?)
     }
@@ -80,7 +80,7 @@ impl Provider for SequencerGatewayProvider {
         B: AsRef<BlockId> + Send + Sync,
     {
         Ok(self
-            .get_block(block_id.as_ref().to_owned().try_into()?)
+            .get_block(block_id.as_ref().to_owned())
             .await?
             .try_into()?)
     }
@@ -93,7 +93,7 @@ impl Provider for SequencerGatewayProvider {
         B: AsRef<BlockId> + Send + Sync,
     {
         Ok(self
-            .get_state_update(block_id.as_ref().to_owned().try_into()?)
+            .get_state_update(block_id.as_ref().to_owned())
             .await?
             .try_into()?)
     }
@@ -176,9 +176,7 @@ impl Provider for SequencerGatewayProvider {
     where
         B: AsRef<BlockId> + Send + Sync,
     {
-        let mut block = self
-            .get_block(block_id.as_ref().to_owned().try_into()?)
-            .await?;
+        let mut block = self.get_block(block_id.as_ref().to_owned()).await?;
 
         let index = index as usize;
         if index < block.transactions.len() {
@@ -213,10 +211,7 @@ impl Provider for SequencerGatewayProvider {
         H: AsRef<Felt> + Send + Sync,
     {
         Ok(self
-            .get_class_by_hash(
-                *class_hash.as_ref(),
-                block_id.as_ref().to_owned().try_into()?,
-            )
+            .get_class_by_hash(*class_hash.as_ref(), block_id.as_ref().to_owned())
             .await?
             .try_into()?)
     }
@@ -255,9 +250,7 @@ impl Provider for SequencerGatewayProvider {
     where
         B: AsRef<BlockId> + Send + Sync,
     {
-        let block = self
-            .get_block(block_id.as_ref().to_owned().try_into()?)
-            .await?;
+        let block = self.get_block(block_id.as_ref().to_owned()).await?;
         Ok(block.transactions.len() as u64)
     }
 
@@ -305,12 +298,12 @@ impl Provider for SequencerGatewayProvider {
     }
 
     async fn block_number(&self) -> Result<u64, ProviderError> {
-        let block = self.get_block(super::models::BlockId::Latest).await?;
+        let block = self.get_block(BlockId::Tag(BlockTag::Latest)).await?;
         Ok(block.block_number.ok_or(ConversionError)?)
     }
 
     async fn block_hash_and_number(&self) -> Result<BlockHashAndNumber, ProviderError> {
-        let block = self.get_block(super::models::BlockId::Latest).await?;
+        let block = self.get_block(BlockId::Tag(BlockTag::Latest)).await?;
         Ok(BlockHashAndNumber {
             block_hash: block.block_hash.ok_or(ConversionError)?,
             block_number: block.block_number.ok_or(ConversionError)?,
