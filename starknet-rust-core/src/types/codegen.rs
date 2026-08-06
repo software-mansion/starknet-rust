@@ -5,7 +5,7 @@
 //     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#8333fdcee9ae73bc5546c3d2049bbff938d62b3a
+//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#97fc1c18981f4e5d017524edb3b3010c2e2bca12
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -47,11 +47,12 @@ use serde_with::serde_as;
 use crate::serde::byte_array::base64;
 
 use super::{
+    alloc,
+    serde_impls::{MerkleNodeMap, NumAsHex, OwnedContractExecutionError},
     AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId, ContractExecutionError,
     EthAddress, ExecuteInvocation, ExecutionResult, Felt, Hash256, LegacyContractAbiEntry,
     MerkleNode, ReceiptBlock, Transaction, TransactionContent, TransactionReceipt,
-    TransactionStatus, TransactionTrace, UfeHex, alloc,
-    serde_impls::{MerkleNodeMap, NumAsHex, OwnedContractExecutionError},
+    TransactionStatus, TransactionTrace, UfeHex,
 };
 
 #[cfg(target_has_atomic = "ptr")]
@@ -1816,7 +1817,18 @@ pub struct NewTransactionStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct NoTraceAvailableErrorData {
-    pub status: SequencerTransactionStatus,
+    pub status: NoTraceAvailableStatus,
+}
+
+/// No trace available status.
+///
+/// Transaction status explaining why the trace is not available.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NoTraceAvailableStatus {
+    #[serde(rename = "RECEIVED")]
+    Received,
+    #[serde(rename = "REJECTED")]
+    Rejected,
 }
 
 /// Nonce update.
