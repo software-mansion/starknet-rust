@@ -246,21 +246,45 @@ pub struct JsonRpcError {
     pub data: Option<serde_json::Value>,
 }
 
+/// A JSON-RPC id: a string or a number per JSON-RPC 2.0. A response id is `null`
+/// when the server could not determine the request id, represented here as `None`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum JsonRpcId {
+    /// Numeric id.
+    Number(u64),
+    /// String id.
+    String(String),
+}
+
+impl JsonRpcId {
+    /// Returns the numeric id if this is a [`JsonRpcId::Number`], otherwise `None`.
+    ///
+    /// This client only assigns numeric request ids, so response correlation relies on
+    /// this to recover the id and ignores non-numeric (string / null) ids.
+    pub const fn as_u64(&self) -> Option<u64> {
+        match self {
+            Self::Number(id) => Some(*id),
+            Self::String(_) => None,
+        }
+    }
+}
+
 /// JSON-RPC response returned from a server.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum JsonRpcResponse<T> {
     /// Successful response.
     Success {
-        /// Same ID as the corresponding request.
-        id: u64,
+        /// Same id as the corresponding request; `None` when the server sent null.
+        id: Option<JsonRpcId>,
         /// Response data.
         result: T,
     },
     /// Unsuccessful response.
     Error {
-        /// Same ID as the corresponding request.
-        id: u64,
+        /// Same id as the corresponding request; `None` when the server sent null.
+        id: Option<JsonRpcId>,
         /// Error details.
         error: JsonRpcError,
     },
@@ -1714,6 +1738,42 @@ mod tests {
 
     fn as_object(value: &Value) -> &serde_json::Map<String, Value> {
         value.as_object().expect("object params")
+    }
+
+    #[test]
+    fn deserializes_error_response_with_null_id() {
+        // A spec-compliant JSON-RPC error can carry `"id": null` (e.g. when the server
+        // rejects the request before it can read the id). It must still deserialize, and
+        // the error must be surfaced rather than dropped.
+        let body = r#"{"jsonrpc":"2.0","id":null,"error":{"code":-32000,"message":"gone"}}"#;
+        let parsed: JsonRpcResponse<Value> = serde_json::from_str(body).unwrap();
+        match parsed {
+            JsonRpcResponse::Error { id, error } => {
+                assert_eq!(id, None);
+                assert_eq!(error.code, -32000);
+                assert_eq!(error.message, "gone");
+            }
+            JsonRpcResponse::Success { .. } => panic!("expected Error variant"),
+        }
+    }
+
+    #[test]
+    fn deserializes_string_and_numeric_ids() {
+        let numeric: JsonRpcResponse<Value> =
+            serde_json::from_str(r#"{"jsonrpc":"2.0","id":7,"result":"0x1"}"#).unwrap();
+        match numeric {
+            JsonRpcResponse::Success { id, .. } => assert_eq!(id, Some(JsonRpcId::Number(7))),
+            JsonRpcResponse::Error { .. } => panic!("expected Success variant"),
+        }
+
+        let string: JsonRpcResponse<Value> =
+            serde_json::from_str(r#"{"jsonrpc":"2.0","id":"abc","result":"0x1"}"#).unwrap();
+        match string {
+            JsonRpcResponse::Success { id, .. } => {
+                assert_eq!(id, Some(JsonRpcId::String("abc".to_owned())));
+            }
+            JsonRpcResponse::Error { .. } => panic!("expected Success variant"),
+        }
     }
 
     #[test]

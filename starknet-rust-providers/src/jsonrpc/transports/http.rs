@@ -5,7 +5,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
     ProviderRequestData,
-    jsonrpc::{JsonRpcMethod, JsonRpcResponse, transports::JsonRpcTransport},
+    jsonrpc::{JsonRpcId, JsonRpcMethod, JsonRpcResponse, transports::JsonRpcTransport},
 };
 
 /// A [`JsonRpcTransport`] implementation that uses HTTP connections.
@@ -166,7 +166,13 @@ impl JsonRpcTransport for HttpTransport {
         for response_item in parsed_response {
             let id = match &response_item {
                 JsonRpcResponse::Success { id, .. } | JsonRpcResponse::Error { id, .. } => {
-                    *id as usize
+                    match id {
+                        Some(JsonRpcId::Number(id)) => *id as usize,
+                        // The client only assigns numeric ids to batched requests, so a
+                        // non-numeric id (string or null) can't be correlated to one;
+                        // treat it as out of range so the check below rejects it.
+                        _ => request_count,
+                    }
                 }
             };
 
