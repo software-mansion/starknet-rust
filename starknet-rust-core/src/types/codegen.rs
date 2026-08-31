@@ -5,7 +5,7 @@
 //     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#97fc1c18981f4e5d017524edb3b3010c2e2bca12
+//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#4a887f270cca7ec2a433ffbfcee8cc10a6d0709d
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -2244,42 +2244,40 @@ impl std::error::Error for StarknetError {}
 impl core::fmt::Display for StarknetError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::FailedToReceiveTransaction => write!(f, "FailedToReceiveTransaction"),
-            Self::ContractNotFound => write!(f, "ContractNotFound"),
-            Self::EntrypointNotFound => write!(f, "EntrypointNotFound"),
-            Self::BlockNotFound => write!(f, "BlockNotFound"),
-            Self::InvalidTransactionIndex => write!(f, "InvalidTransactionIndex"),
-            Self::ClassHashNotFound => write!(f, "ClassHashNotFound"),
-            Self::TransactionHashNotFound => write!(f, "TransactionHashNotFound"),
-            Self::PageSizeTooBig => write!(f, "PageSizeTooBig"),
-            Self::NoBlocks => write!(f, "NoBlocks"),
-            Self::InvalidContinuationToken => write!(f, "InvalidContinuationToken"),
-            Self::TooManyKeysInFilter => write!(f, "TooManyKeysInFilter"),
-            Self::ContractError(e) => write!(f, "ContractError: {e:?}"),
-            Self::TransactionExecutionError(e) => write!(f, "TransactionExecutionError: {e:?}"),
-            Self::StorageProofNotSupported => write!(f, "StorageProofNotSupported"),
-            Self::ClassAlreadyDeclared => write!(f, "ClassAlreadyDeclared"),
-            Self::InvalidTransactionNonce(e) => write!(f, "InvalidTransactionNonce: {e:?}"),
-            Self::InsufficientResourcesForValidate => write!(f, "InsufficientResourcesForValidate"),
-            Self::InsufficientAccountBalance => write!(f, "InsufficientAccountBalance"),
-            Self::ValidationFailure(e) => write!(f, "ValidationFailure: {e:?}"),
-            Self::CompilationFailed(e) => write!(f, "CompilationFailed: {e:?}"),
-            Self::ContractClassSizeIsTooLarge => write!(f, "ContractClassSizeIsTooLarge"),
-            Self::NonAccount => write!(f, "NonAccount"),
-            Self::DuplicateTx => write!(f, "DuplicateTx"),
-            Self::CompiledClassHashMismatch => write!(f, "CompiledClassHashMismatch"),
-            Self::UnsupportedTxVersion => write!(f, "UnsupportedTxVersion"),
-            Self::UnsupportedContractClassVersion => write!(f, "UnsupportedContractClassVersion"),
-            Self::UnexpectedError(e) => write!(f, "UnexpectedError: {e:?}"),
-            Self::ReplacementTransactionUnderpriced => {
-                write!(f, "ReplacementTransactionUnderpriced")
-            }
-            Self::FeeBelowMinimum => write!(f, "FeeBelowMinimum"),
-            Self::InvalidProof => write!(f, "InvalidProof"),
-            Self::NoTraceAvailable(e) => write!(f, "NoTraceAvailable: {e:?}"),
-            Self::InvalidSubscriptionId => write!(f, "InvalidSubscriptionId"),
-            Self::TooManyAddressesInFilter => write!(f, "TooManyAddressesInFilter"),
-            Self::TooManyBlocksBack => write!(f, "TooManyBlocksBack"),
+            Self::FailedToReceiveTransaction => f.write_str(self.message()),
+            Self::ContractNotFound => f.write_str(self.message()),
+            Self::EntrypointNotFound => f.write_str(self.message()),
+            Self::BlockNotFound => f.write_str(self.message()),
+            Self::InvalidTransactionIndex => f.write_str(self.message()),
+            Self::ClassHashNotFound => f.write_str(self.message()),
+            Self::TransactionHashNotFound => f.write_str(self.message()),
+            Self::PageSizeTooBig => f.write_str(self.message()),
+            Self::NoBlocks => f.write_str(self.message()),
+            Self::InvalidContinuationToken => f.write_str(self.message()),
+            Self::TooManyKeysInFilter => f.write_str(self.message()),
+            Self::ContractError(e) => write!(f, "{}: {e:?}", self.message()),
+            Self::TransactionExecutionError(e) => write!(f, "{}: {e:?}", self.message()),
+            Self::StorageProofNotSupported => f.write_str(self.message()),
+            Self::ClassAlreadyDeclared => f.write_str(self.message()),
+            Self::InvalidTransactionNonce(e) => write!(f, "{}: {e}", self.message()),
+            Self::InsufficientResourcesForValidate => f.write_str(self.message()),
+            Self::InsufficientAccountBalance => f.write_str(self.message()),
+            Self::ValidationFailure(e) => write!(f, "{}: {e}", self.message()),
+            Self::CompilationFailed(e) => write!(f, "{}: {e}", self.message()),
+            Self::ContractClassSizeIsTooLarge => f.write_str(self.message()),
+            Self::NonAccount => f.write_str(self.message()),
+            Self::DuplicateTx => f.write_str(self.message()),
+            Self::CompiledClassHashMismatch => f.write_str(self.message()),
+            Self::UnsupportedTxVersion => f.write_str(self.message()),
+            Self::UnsupportedContractClassVersion => f.write_str(self.message()),
+            Self::UnexpectedError(e) => write!(f, "{}: {e}", self.message()),
+            Self::ReplacementTransactionUnderpriced => f.write_str(self.message()),
+            Self::FeeBelowMinimum => f.write_str(self.message()),
+            Self::InvalidProof => f.write_str(self.message()),
+            Self::NoTraceAvailable(e) => write!(f, "{}: {e:?}", self.message()),
+            Self::InvalidSubscriptionId => f.write_str(self.message()),
+            Self::TooManyAddressesInFilter => f.write_str(self.message()),
+            Self::TooManyBlocksBack => f.write_str(self.message()),
         }
     }
 }
