@@ -526,7 +526,7 @@ where
 fn extend_url(url: &mut Url, segment: &str) {
     url.path_segments_mut()
         .expect("Invalid base URL")
-        .extend(&[segment]);
+        .extend([segment]);
 }
 
 fn append_block_id(url: &mut Url, block_identifier: BlockId) -> Result<(), ConversionError> {
