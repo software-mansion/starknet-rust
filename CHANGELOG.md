@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Cairo 0 hinted class hash computation for pre-0.10 artifacts: `patch_legacy_cairo_type` is now idempotent (previously double-spaced strings already containing `" : "`), legacy spacing is applied to `references[*].value` entries, and `abi: null` is preserved through the hinted-hash payload ([#148]).
 - `NoTraceAvailableErrorData::status` is now of type `NoTraceAvailableStatus` instead of `SequencerTransactionStatus` ([#157]).
-- `StarknetError` display messages now use the JSON-RPC error message instead of the Rust variant name, and string error data is formatted without debug quotes.
+- `StarknetError` display messages now use the JSON-RPC error message instead of the Rust variant name, and string error data is formatted without debug quotes ([#160]).
 
 ## [0.19.1] - 2026-05-18
 
