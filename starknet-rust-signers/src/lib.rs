@@ -23,5 +23,6 @@ pub use ledger::{DerivationPath, LedgerError, LedgerSigner};
 
 /// An error type that indicates an error cannot possibly occur. Used as placeholder where
 /// [`Result`] is expected.
+#[allow(clippy::empty_enums)]
 #[derive(Debug, thiserror::Error)]
 pub enum Infallible {}
