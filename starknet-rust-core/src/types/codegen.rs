@@ -5,7 +5,7 @@
 //     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen
 
 // Code generated with version:
-//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#4a887f270cca7ec2a433ffbfcee8cc10a6d0709d
+//     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#9a85772273869ac2b4a9ee6348862223031f8e19
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -2241,6 +2241,7 @@ pub enum StarknetError {
 #[cfg(feature = "std")]
 impl std::error::Error for StarknetError {}
 
+#[allow(clippy::match_same_arms)]
 impl core::fmt::Display for StarknetError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
