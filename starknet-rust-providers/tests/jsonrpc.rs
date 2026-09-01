@@ -277,7 +277,7 @@ async fn jsonrpc_get_transaction_status_reverted() {
 
     match status {
         TransactionStatus::AcceptedOnL1(ExecutionResult::Reverted { reason }) => {
-            assert!(!reason.is_empty());
+            assert!(!reason.is_empty(), "expected non-empty revert reason");
         }
         _ => panic!("unexpected transaction status"),
     }
@@ -630,7 +630,7 @@ async fn jsonrpc_get_class_cairo_0() {
         ContractClass::Sierra(_) => panic!("unexpected class type"),
     };
 
-    assert!(!class.program.is_empty());
+    assert!(!class.program.is_empty(), "expected non-empty program");
 }
 
 #[tokio::test]
@@ -651,7 +651,10 @@ async fn jsonrpc_get_class_cairo_1() {
         ContractClass::Legacy(_) => panic!("unexpected class type"),
     };
 
-    assert!(!class.sierra_program.is_empty());
+    assert!(
+        !class.sierra_program.is_empty(),
+        "expected non-empty sierra program"
+    );
 }
 
 #[tokio::test]
@@ -691,7 +694,7 @@ async fn jsonrpc_get_class_at() {
         ContractClass::Sierra(_) => panic!("unexpected class type"),
     };
 
-    assert!(!class.program.is_empty());
+    assert!(!class.program.is_empty(), "expected non-empty program");
 }
 
 #[tokio::test]
@@ -938,7 +941,10 @@ async fn jsonrpc_get_storage_proof() {
 
     assert!(!proof.classes_proof.is_empty());
     assert!(!proof.contracts_proof.nodes.is_empty());
-    assert!(!proof.contracts_storage_proofs.is_empty());
+    assert!(
+        !proof.contracts_storage_proofs.is_empty(),
+        "expected at least one contract storage proof"
+    );
 }
 
 #[tokio::test]
