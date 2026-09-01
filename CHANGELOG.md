@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking:** Removed the redundant sequencer-specific `BlockId` in `starknet-rust-providers`. The sequencer gateway provider now uses the canonical `starknet_rust_core::types::BlockId` throughout ([#154]).
 - **Breaking:** `LegacyContractClass.abi` type changed from `Vec<RawLegacyAbiEntry>` to `Option<Vec<RawLegacyAbiEntry>>` to preserve the `abi: null` vs `abi: []` distinction when computing Cairo 0 hinted class hashes ([#148]).
+- `StarknetError` display messages now use the JSON-RPC error message instead of the Rust variant name, and string error data is formatted without debug quotes ([#160]).
 
 ### Fixed
 
