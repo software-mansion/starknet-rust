@@ -246,48 +246,40 @@ pub struct JsonRpcError {
     pub data: Option<serde_json::Value>,
 }
 
-/// A JSON-RPC id: a string or a number per JSON-RPC 2.0. A response id is `null`
-/// when the server could not determine the request id, represented here as `None`.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(untagged)]
-pub enum JsonRpcId {
-    /// Numeric id.
-    Number(u64),
-    /// String id.
-    String(String),
-}
-
-impl JsonRpcId {
-    /// Returns the numeric id if this is a [`JsonRpcId::Number`], otherwise `None`.
-    ///
-    /// This client only assigns numeric request ids, so response correlation relies on
-    /// this to recover the id and ignores non-numeric (string / null) ids.
-    pub const fn as_u64(&self) -> Option<u64> {
-        match self {
-            Self::Number(id) => Some(*id),
-            Self::String(_) => None,
-        }
-    }
-}
-
 /// JSON-RPC response returned from a server.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum JsonRpcResponse<T> {
     /// Successful response.
     Success {
-        /// Same id as the corresponding request; `None` when the server sent null.
-        id: Option<JsonRpcId>,
+        /// Same id as the corresponding request. `None` when the server sent a null or
+        /// non-numeric id (e.g. a null id on an error raised before the request was read).
+        #[serde(default, deserialize_with = "deserialize_response_id")]
+        id: Option<u64>,
         /// Response data.
         result: T,
     },
     /// Unsuccessful response.
     Error {
-        /// Same id as the corresponding request; `None` when the server sent null.
-        id: Option<JsonRpcId>,
+        /// Same id as the corresponding request. `None` when the server sent a null or
+        /// non-numeric id (e.g. a null id on an error raised before the request was read).
+        #[serde(default, deserialize_with = "deserialize_response_id")]
+        id: Option<u64>,
         /// Error details.
         error: JsonRpcError,
     },
+}
+
+/// Deserializes a JSON-RPC response `id` into `Option<u64>`.
+///
+/// Per JSON-RPC 2.0 an `id` may be a number, a string, or null. This client only ever
+/// assigns numeric request ids, so a numeric id is recovered and any other shape (string
+/// or null) maps to `None` instead of failing the whole response.
+fn deserialize_response_id<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(serde_json::Value::deserialize(deserializer)?.as_u64())
 }
 
 /// Failures trying to parse a [`JsonRpcError`] into [`StarknetError`].
@@ -1758,20 +1750,21 @@ mod tests {
     }
 
     #[test]
-    fn deserializes_string_and_numeric_ids() {
+    fn deserializes_numeric_and_non_numeric_ids() {
+        // A numeric id is recovered.
         let numeric: JsonRpcResponse<Value> =
             serde_json::from_str(r#"{"jsonrpc":"2.0","id":7,"result":"0x1"}"#).unwrap();
         match numeric {
-            JsonRpcResponse::Success { id, .. } => assert_eq!(id, Some(JsonRpcId::Number(7))),
+            JsonRpcResponse::Success { id, .. } => assert_eq!(id, Some(7)),
             JsonRpcResponse::Error { .. } => panic!("expected Success variant"),
         }
 
+        // A string id is never one this client assigned, so it maps to `None` rather
+        // than failing to deserialize.
         let string: JsonRpcResponse<Value> =
             serde_json::from_str(r#"{"jsonrpc":"2.0","id":"abc","result":"0x1"}"#).unwrap();
         match string {
-            JsonRpcResponse::Success { id, .. } => {
-                assert_eq!(id, Some(JsonRpcId::String("abc".to_owned())));
-            }
+            JsonRpcResponse::Success { id, .. } => assert_eq!(id, None),
             JsonRpcResponse::Error { .. } => panic!("expected Success variant"),
         }
     }

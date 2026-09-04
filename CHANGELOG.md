@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- JSON-RPC responses with a null or non-numeric `id`, which some servers return for errors raised before the request id is read, now deserialize instead of failing, so the server's error message is surfaced rather than a generic deserialization error ([#159]).
 - Cairo 0 hinted class hash computation for pre-0.10 artifacts: `patch_legacy_cairo_type` is now idempotent (previously double-spaced strings already containing `" : "`), legacy spacing is applied to `references[*].value` entries, and `abi: null` is preserved through the hinted-hash payload ([#148]).
 
 ## [0.19.1] - 2026-05-18
@@ -91,3 +92,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#125]: https://github.com/software-mansion/starknet-rust/pull/125
 [#148]: https://github.com/software-mansion/starknet-rust/pull/148
 [#154]: https://github.com/software-mansion/starknet-rust/pull/154
+[#159]: https://github.com/software-mansion/starknet-rust/pull/159

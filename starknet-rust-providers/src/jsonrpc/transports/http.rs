@@ -5,7 +5,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
     ProviderRequestData,
-    jsonrpc::{JsonRpcId, JsonRpcMethod, JsonRpcResponse, transports::JsonRpcTransport},
+    jsonrpc::{JsonRpcMethod, JsonRpcResponse, transports::JsonRpcTransport},
 };
 
 /// A [`JsonRpcTransport`] implementation that uses HTTP connections.
@@ -27,6 +27,9 @@ pub enum HttpTransportError {
     /// Unexpected response ID.
     #[error("unexpected response ID: {0}")]
     UnexpectedResponseId(u64),
+    /// Response carried a non-numeric (string or null) id that can't be matched to a request.
+    #[error("response has a non-numeric id")]
+    NonNumericResponseId,
 }
 
 #[derive(Debug, Serialize)]
@@ -165,15 +168,14 @@ impl JsonRpcTransport for HttpTransport {
         // Re-order the responses as servers do not maintain order.
         for response_item in parsed_response {
             let id = match &response_item {
-                JsonRpcResponse::Success { id, .. } | JsonRpcResponse::Error { id, .. } => {
-                    match id {
-                        Some(JsonRpcId::Number(id)) => *id as usize,
-                        // The client only assigns numeric ids to batched requests, so a
-                        // non-numeric id (string or null) can't be correlated to one;
-                        // treat it as out of range so the check below rejects it.
-                        _ => request_count,
-                    }
-                }
+                JsonRpcResponse::Success { id, .. } | JsonRpcResponse::Error { id, .. } => id,
+            };
+
+            // This client assigns a numeric id to every batched request, so a response
+            // with a non-numeric (string or null) id can't be correlated to one.
+            let id = match id {
+                Some(id) => *id as usize,
+                None => return Err(HttpTransportError::NonNumericResponseId),
             };
 
             if id >= request_count {
