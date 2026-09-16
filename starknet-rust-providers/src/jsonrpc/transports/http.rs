@@ -5,7 +5,10 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
     ProviderRequestData,
-    jsonrpc::{JsonRpcError, JsonRpcMethod, JsonRpcResponse, transports::JsonRpcTransport},
+    jsonrpc::{
+        JsonRpcError, JsonRpcMethod, JsonRpcResponse,
+        transports::{BatchParseError, JsonRpcTransport, parse_batch_response},
+    },
 };
 
 /// A [`JsonRpcTransport`] implementation that uses HTTP connections.
@@ -31,6 +34,7 @@ pub enum HttpTransportError {
     #[error("response has an invalid numeric id")]
     InvalidNumericResponseId,
     /// The server rejected the batch as a whole and returned a single JSON-RPC error.
+    #[error("batch request rejected: {0}")]
     BatchError(JsonRpcError),
 }
 
@@ -161,21 +165,7 @@ impl JsonRpcTransport for HttpTransport {
         let response_body = response.text().await.map_err(Self::Error::Reqwest)?;
         trace!("Response from JSON-RPC: {response_body}");
 
-        let parsed_response: Vec<JsonRpcResponse<serde_json::Value>> =
-            match serde_json::from_str(&response_body) {
-                Ok(parsed) => parsed,
-                Err(err) => {
-                    // A batch rejected as a whole is returned as a single JSON-RPC response
-                    // object (per JSON-RPC 2.0), not an array. Surface its error instead of
-                    // the opaque sequence type-mismatch.
-                    if let Ok(JsonRpcResponse::Error { error, .. }) =
-                        serde_json::from_str::<JsonRpcResponse<serde_json::Value>>(&response_body)
-                    {
-                        return Err(Self::Error::BatchError(error));
-                    }
-                    return Err(Self::Error::Json(err));
-                }
-            };
+        let parsed_response = parse_batch_response(&response_body)?;
 
         let mut responses: Vec<Option<JsonRpcResponse<serde_json::Value>>> = vec![];
         responses.resize(request_bodies.len(), None);
@@ -202,5 +192,14 @@ impl JsonRpcTransport for HttpTransport {
 
         let responses = responses.into_iter().flatten().collect::<Vec<_>>();
         Ok(responses)
+    }
+}
+
+impl From<BatchParseError> for HttpTransportError {
+    fn from(value: BatchParseError) -> Self {
+        match value {
+            BatchParseError::BatchRejected(error) => Self::BatchError(error),
+            BatchParseError::Json(err) => Self::Json(err),
+        }
     }
 }

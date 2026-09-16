@@ -4,7 +4,10 @@ use url::Url;
 
 use crate::{
     ProviderRequestData,
-    jsonrpc::{JsonRpcError, JsonRpcMethod, JsonRpcResponse, transports::JsonRpcTransport},
+    jsonrpc::{
+        JsonRpcError, JsonRpcMethod, JsonRpcResponse,
+        transports::{BatchParseError, JsonRpcTransport},
+    },
 };
 
 /// A [`JsonRpcTransport`] implementation for the Cloudflare Workers environment.
@@ -30,6 +33,7 @@ pub enum WorkersTransportError {
     #[error("response has an invalid numeric id")]
     InvalidNumericResponseId,
     /// The server rejected the batch as a whole and returned a single JSON-RPC error.
+    #[error("batch request rejected: {0}")]
     BatchError(JsonRpcError),
 }
 
@@ -158,21 +162,7 @@ impl JsonRpcTransport for WorkersTransport {
         let mut response = Fetch::Request(req).send().await?;
         let response_body = response.text().await?;
 
-        let parsed_response: Vec<JsonRpcResponse<serde_json::Value>> =
-            match serde_json::from_str(&response_body) {
-                Ok(parsed) => parsed,
-                Err(err) => {
-                    // A batch rejected as a whole is returned as a single JSON-RPC response
-                    // object (per JSON-RPC 2.0), not an array. Surface its error instead of
-                    // the opaque sequence type-mismatch.
-                    if let Ok(JsonRpcResponse::Error { error, .. }) =
-                        serde_json::from_str::<JsonRpcResponse<serde_json::Value>>(&response_body)
-                    {
-                        return Err(Self::Error::BatchError(error));
-                    }
-                    return Err(Self::Error::Json(err));
-                }
-            };
+        let parsed_response = super::parse_batch_response(&response_body)?;
 
         let mut responses: Vec<Option<JsonRpcResponse<serde_json::Value>>> = vec![];
         responses.resize(request_bodies.len(), None);
@@ -211,5 +201,14 @@ impl From<serde_json::Error> for WorkersTransportError {
 impl From<worker::Error> for WorkersTransportError {
     fn from(value: worker::Error) -> Self {
         Self::Workers(value)
+    }
+}
+
+impl From<BatchParseError> for WorkersTransportError {
+    fn from(value: BatchParseError) -> Self {
+        match value {
+            BatchParseError::BatchRejected(error) => Self::BatchError(error),
+            BatchParseError::Json(err) => Self::Json(err),
+        }
     }
 }

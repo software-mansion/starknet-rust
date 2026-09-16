@@ -5,7 +5,7 @@ use std::error::Error;
 
 use crate::{
     ProviderRequestData,
-    jsonrpc::{JsonRpcMethod, JsonRpcResponse},
+    jsonrpc::{JsonRpcError, JsonRpcMethod, JsonRpcResponse},
 };
 
 mod http;
@@ -42,4 +42,33 @@ pub trait JsonRpcTransport {
     ) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, Self::Error>
     where
         R: AsRef<[ProviderRequestData]> + Send + Sync;
+}
+
+/// Outcome of parsing a JSON-RPC batch response body that is not an array of responses.
+pub(crate) enum BatchParseError {
+    /// The server rejected the batch as a whole and returned a single JSON-RPC error object.
+    BatchRejected(JsonRpcError),
+    /// The response body could not be deserialized as a batch response.
+    Json(serde_json::Error),
+}
+
+/// Parses a batch response body into individual responses.
+///
+/// A server that rejects a batch as a whole replies with a single JSON-RPC error object (per
+/// JSON-RPC 2.0), not an array. When the array parse fails, this recovers that error so callers
+/// can surface it instead of an opaque type-mismatch.
+pub(crate) fn parse_batch_response(
+    body: &str,
+) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, BatchParseError> {
+    match serde_json::from_str(body) {
+        Ok(parsed) => Ok(parsed),
+        Err(err) => {
+            if let Ok(JsonRpcResponse::Error { error, .. }) =
+                serde_json::from_str::<JsonRpcResponse<serde_json::Value>>(body)
+            {
+                return Err(BatchParseError::BatchRejected(error));
+            }
+            Err(BatchParseError::Json(err))
+        }
+    }
 }

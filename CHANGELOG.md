@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `LegacyContractClass.abi` type changed from `Vec<RawLegacyAbiEntry>` to `Option<Vec<RawLegacyAbiEntry>>` to preserve the `abi: null` vs `abi: []` distinction when computing Cairo 0 hinted class hashes ([#148]).
 - `StarknetError` display messages now use the JSON-RPC error message instead of the Rust variant name, and string error data is formatted without debug quotes ([#160]).
 - **Breaking:** `JsonRpcResponse`'s response `id` changed from `u64` to `Option<u64>`. A `null` or string `id`, which some servers return for errors raised before the request id is read, now deserializes to `None` and surfaces the server's error message instead of failing with a generic deserialization error ([#159]).
+- **Breaking:** `JsonRpcClient::batch_requests` now surfaces the server's error when a batch is rejected as a whole (returned as a single JSON-RPC error object per the spec, e.g. exceeding the server's batch-size limit) instead of failing with a generic deserialization error; adds a `BatchError` variant to the transport error enums ([#163]).
 
 ### Fixed
 
 - Cairo 0 hinted class hash computation for pre-0.10 artifacts: `patch_legacy_cairo_type` is now idempotent (previously double-spaced strings already containing `" : "`), legacy spacing is applied to `references[*].value` entries, and `abi: null` is preserved through the hinted-hash payload ([#148]).
 - `NoTraceAvailableErrorData::status` is now of type `NoTraceAvailableStatus` instead of `SequencerTransactionStatus` ([#157]).
-- `JsonRpcClient::batch_requests` now surfaces the server's error when a batch is rejected as a whole (returned as a single JSON-RPC error object per the spec, e.g. exceeding the server's batch-size limit) instead of failing with a generic deserialization error ([#163]).
 
 ## [0.19.1] - 2026-05-18
 
