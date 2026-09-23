@@ -1,7 +1,7 @@
 [workspace.package]
 version = "0.19.1"
 edition = "2024"
-authors = ["Software Mansion <contact@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
+authors = ["Software Mansion <projects@swmansion.com>", "Jonathan LEI <me@xjonathan.dev>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/software-mansion/starknet-rust"
 readme = "README.md"
