@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -30,7 +30,7 @@ jobs:
           override: true
 
       - name: Use Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           cache-on-failure: true
 
@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -69,7 +69,7 @@ jobs:
           override: true
 
       - name: Use Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           cache-on-failure: true
 
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -97,7 +97,7 @@ jobs:
           override: true
 
       - name: Use Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           cache-on-failure: true
 
@@ -139,7 +139,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup toolchain
         uses: actions-rs/toolchain@v1
@@ -149,7 +149,7 @@ jobs:
           override: true
 
       - name: Use Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           cache-on-failure: true
 
@@ -181,7 +181,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install stable Rust toolchain
         run: |
@@ -189,7 +189,7 @@ jobs:
           rustup default stable
 
       - name: Use Rust cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           cache-on-failure: true
 
