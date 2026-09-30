@@ -43,6 +43,8 @@ pub enum SubscriptionReceiveError {
         /// The actual update type received.
         actual: StreamUpdateType,
     },
+    /// Recieved a message that couldn't be deserialized
+    MalformedMessage,
 }
 
 /// Error type for unsubscription failures.
@@ -128,6 +130,7 @@ impl std::fmt::Display for SubscriptionReceiveError {
 
                 Ok(())
             }
+            Self::MalformedMessage => write!(f, "malformed WebSocket message"),
         }
     }
 }

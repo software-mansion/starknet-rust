@@ -24,6 +24,7 @@ pub(crate) use write::WriteAction;
 use write::{StreamWriteDriver, SubscribeWriteData};
 
 use crate::{
+    SubscriptionReceiveError,
     error::{CloseError, ConnectError, SubscribeError},
     subscription::{
         EventSubscriptionOptions, EventsSubscription, NewHeadsSubscription,
@@ -67,6 +68,9 @@ pub enum StreamUpdateType {
     /// Chain reorganization.
     Reorg,
 }
+
+/// Internal type for items delivered to subscription streams.
+pub(crate) type StreamUpdateResult = Result<StreamUpdateData, SubscriptionReceiveError>;
 
 /// Internal type for communicating subscribe action results.
 #[derive(Debug)]
@@ -343,7 +347,7 @@ impl TungsteniteStream {
     async fn subscribe(&self, data: SubscribeWriteData) -> Result<Subscription, SubscribeError> {
         let (result_tx, mut result_rx) =
             tokio::sync::mpsc::unbounded_channel::<SubscriptionResult>();
-        let (stream_tx, stream_rx) = tokio::sync::mpsc::unbounded_channel::<StreamUpdateData>();
+        let (stream_tx, stream_rx) = tokio::sync::mpsc::unbounded_channel::<StreamUpdateResult>();
 
         if self
             .write_queue
