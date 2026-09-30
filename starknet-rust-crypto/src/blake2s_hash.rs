@@ -1,5 +1,4 @@
-use blake2::Blake2s256;
-use digest::Digest;
+use blake2::{Blake2s256, Digest};
 use starknet_types_core::{felt::Felt, hash::Blake2Felt252};
 
 /// A stateful hasher for Starknet Blake2s hash.

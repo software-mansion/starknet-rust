@@ -1,7 +1,6 @@
 use core::ops::Shr;
 use crypto_bigint::{ArrayEncoding, ByteArray, Integer, U256};
-use hmac::digest::Digest;
-use sha2::digest::{FixedOutputReset, HashMarker, crypto_common::BlockSizeUser};
+use hmac::EagerHash;
 use starknet_types_core::felt::Felt;
 use zeroize::{Zeroize, Zeroizing};
 
@@ -52,7 +51,7 @@ pub fn generate_k(message_hash: &Felt, private_key: &Felt, seed: Option<&Felt>) 
 #[inline]
 fn generate_k_shifted<D, I>(x: &I, n: &I, h: &ByteArray<I>, data: &[u8]) -> Zeroizing<I>
 where
-    D: Default + Digest + BlockSizeUser + FixedOutputReset + HashMarker,
+    D: EagerHash,
     I: ArrayEncoding + Integer + Zeroize + Shr<usize, Output = I>,
 {
     let mut x = x.to_be_byte_array();
