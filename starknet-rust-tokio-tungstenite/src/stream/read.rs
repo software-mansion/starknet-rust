@@ -81,16 +81,27 @@ enum HandleMessageResult {
     StreamAborted,
 }
 
-/// Minimal shape of a stream update, used to recover the subscription ID from messages that
-/// failed to parse fully.
-#[derive(Deserialize)]
-struct MalformedStreamUpdate {
-    params: MalformedStreamUpdateParams,
-}
-
 #[derive(Deserialize)]
 struct MalformedStreamUpdateParams {
     subscription_id: SubscriptionId,
+}
+
+/// Minimal shape of a stream update, used to recover the subscription ID from messages that
+/// failed to parse fully.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum MalformedMessage {
+    UpdateStream { params: MalformedStreamUpdateParams },
+    Response { data: SubscriptionId },
+}
+
+impl MalformedMessage {
+    fn subscription_id(self) -> SubscriptionId {
+        match self {
+            Self::UpdateStream { params } => params.subscription_id,
+            Self::Response { data } => data,
+        }
+    }
 }
 
 impl StreamReadDriver {
@@ -194,10 +205,10 @@ impl StreamReadDriver {
                             r#"WARNING: unable to deserialize message; err={e:?}; raw="{text}""#,
                         );
 
-                            let subscription_id =
-                                serde_json::from_str::<MalformedStreamUpdate>(text.as_str())
-                                    .ok()
-                                    .map(|update| update.params.subscription_id);
+                        let subscription_id =
+                            serde_json::from_str::<MalformedMessage>(text.as_str())
+                                .ok()
+                                .map(MalformedMessage::subscription_id);
 
                         return HandleMessageResult::MalformedMessage(subscription_id);
                     }

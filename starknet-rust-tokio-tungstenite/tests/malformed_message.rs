@@ -4,7 +4,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
 use starknet_rust_core::types::ConfirmedBlockId;
 use starknet_rust_tokio_tungstenite::{
-    NewHeadsUpdate, SubscriptionReceiveError, TungsteniteStream,
+    NewHeadsSubscription, NewHeadsUpdate, SubscriptionReceiveError, TungsteniteStream,
 };
 use tokio::net::TcpListener;
 use tungstenite::Message;
@@ -59,6 +59,15 @@ fn malformed_new_heads(subscription_id: &str) -> Value {
     })
 }
 
+/// A response whose `result` is neither a subscription ID nor a bool.
+fn malformed_response(subscription_id: &str) -> Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": "foo",
+        "data": subscription_id,
+    })
+}
+
 fn reorg(subscription_id: &str) -> Value {
     serde_json::json!({
         "jsonrpc": "2.0",
@@ -81,9 +90,42 @@ async fn connect(url: String) -> TungsteniteStream {
         .unwrap()
 }
 
+#[derive(Debug)]
+enum Expected {
+    MalformedMessage,
+    Reorg,
+}
+
+/// Asserts that the next messages received by `subscription` match `expected`, in order.
+async fn assert_messages(subscription: &mut NewHeadsSubscription, expected: &[Expected]) {
+    for (index, expected) in expected.iter().enumerate() {
+        let result = tokio::time::timeout(Duration::from_secs(5), subscription.recv())
+            .await
+            .unwrap_or_else(|_| panic!("timed out waiting for message #{index} ({expected:?})"));
+        let matches = match expected {
+            Expected::MalformedMessage => {
+                matches!(result, Err(SubscriptionReceiveError::MalformedMessage))
+            }
+            Expected::Reorg => matches!(result, Ok(NewHeadsUpdate::Reorg(_))),
+        };
+        assert!(
+            matches,
+            "message #{index}: expected {expected:?}, got {result:?}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn websocket_subscription_receives_malformed_message_error() {
-    let url = spawn_mock_node(&["1"], vec![malformed_new_heads("1"), reorg("1")]).await;
+    let url = spawn_mock_node(
+        &["1"],
+        vec![
+            malformed_new_heads("1"),
+            malformed_response("1"),
+            reorg("1"),
+        ],
+    )
+    .await;
     let stream = connect(url).await;
 
     let mut subscription = stream
@@ -91,29 +133,27 @@ async fn websocket_subscription_receives_malformed_message_error() {
         .await
         .unwrap();
 
-    let result = tokio::time::timeout(Duration::from_secs(5), subscription.recv())
-        .await
-        .unwrap();
-    assert!(
-        matches!(result, Err(SubscriptionReceiveError::MalformedMessage)),
-        "expected MalformedMessage, got {result:?}"
-    );
-
-    // The subscription stays usable after a malformed message.
-    let result = tokio::time::timeout(Duration::from_secs(5), subscription.recv())
-        .await
-        .unwrap();
-    assert!(
-        matches!(result, Ok(NewHeadsUpdate::Reorg(_))),
-        "expected reorg update, got {result:?}"
-    );
+    assert_messages(
+        &mut subscription,
+        &[
+            Expected::MalformedMessage,
+            Expected::MalformedMessage,
+            Expected::Reorg,
+        ],
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn websocket_malformed_message_does_not_affect_other_subscriptions() {
     let url = spawn_mock_node(
         &["1", "2"],
-        vec![malformed_new_heads("1"), reorg("2"), reorg("1")],
+        vec![
+            malformed_new_heads("1"),
+            malformed_response("1"),
+            reorg("2"),
+            reorg("1"),
+        ],
     )
     .await;
     let stream = connect(url).await;
@@ -127,28 +167,15 @@ async fn websocket_malformed_message_does_not_affect_other_subscriptions() {
         .await
         .unwrap();
 
-    // The subscription the malformed message was addressed to gets the error.
-    let result = tokio::time::timeout(Duration::from_secs(5), affected.recv())
-        .await
-        .unwrap();
-    assert!(
-        matches!(result, Err(SubscriptionReceiveError::MalformedMessage)),
-        "expected MalformedMessage, got {result:?}"
-    );
-    let result = tokio::time::timeout(Duration::from_secs(5), affected.recv())
-        .await
-        .unwrap();
-    assert!(
-        matches!(result, Ok(NewHeadsUpdate::Reorg(_))),
-        "expected reorg update, got {result:?}"
-    );
+    assert_messages(
+        &mut affected,
+        &[
+            Expected::MalformedMessage,
+            Expected::MalformedMessage,
+            Expected::Reorg,
+        ],
+    )
+    .await;
 
-    // The other subscription only sees its own update, without any error before it.
-    let result = tokio::time::timeout(Duration::from_secs(5), unaffected.recv())
-        .await
-        .unwrap();
-    assert!(
-        matches!(result, Ok(NewHeadsUpdate::Reorg(_))),
-        "expected reorg update, got {result:?}"
-    );
+    assert_messages(&mut unaffected, &[Expected::Reorg]).await;
 }
