@@ -1,8 +1,10 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::StreamExt;
 use serde::Deserialize;
+use serde_json::Error as SerdeJsonError;
 use starknet_rust_core::types::{
     ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus, StarknetError,
     SubscriptionId, SubscriptionTag,
@@ -79,7 +81,7 @@ pub enum SubscriptionResult {
     JsonRpcError(JsonRpcError),
     TimeoutError,
     TransportError(TungsteniteError),
-    MalformedMessage,
+    MalformedMessage(Arc<SerdeJsonError>),
 }
 
 /// Internal type for communicating unsubscribe action results.
@@ -89,7 +91,7 @@ pub enum UnsubscribeResult {
     JsonRpcError(JsonRpcError),
     TimeoutError,
     TransportError(TungsteniteError),
-    MalformedMessage,
+    MalformedMessage(Arc<SerdeJsonError>),
 }
 
 /// Internal type for communicating close action results.
@@ -383,7 +385,7 @@ impl TungsteniteStream {
             },
             SubscriptionResult::TimeoutError => Err(SubscribeError::Timeout),
             SubscriptionResult::TransportError(err) => Err(SubscribeError::Transport(err)),
-            SubscriptionResult::MalformedMessage => Err(SubscribeError::MalformedMessage),
+            SubscriptionResult::MalformedMessage(err) => Err(SubscribeError::MalformedMessage(err)),
         }
     }
 }

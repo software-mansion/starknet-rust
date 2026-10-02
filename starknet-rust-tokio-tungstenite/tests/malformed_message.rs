@@ -110,7 +110,7 @@ async fn assert_messages(subscription: &mut NewHeadsSubscription, expected: &[Ex
             .unwrap_or_else(|_| panic!("timed out waiting for message #{index} ({expected:?})"));
         let matches = match expected {
             Expected::MalformedMessage => {
-                matches!(result, Err(SubscriptionReceiveError::MalformedMessage))
+                matches!(result, Err(SubscriptionReceiveError::MalformedMessage(_)))
             }
             Expected::Reorg => matches!(result, Ok(NewHeadsUpdate::Reorg(_))),
         };
@@ -182,7 +182,7 @@ async fn websocket_subscribe_receives_malformed_response_error() {
     .expect("timed out waiting for subscribe response");
 
     assert!(
-        matches!(result, Err(SubscribeError::MalformedMessage)),
+        matches!(result, Err(SubscribeError::MalformedMessage(_))),
         "expected MalformedMessage, got {result:?}"
     );
 }
@@ -206,7 +206,7 @@ async fn websocket_unsubscribe_receives_malformed_response_error() {
         .expect("timed out waiting for unsubscribe response");
 
     assert!(
-        matches!(result, Err(UnsubscribeError::MalformedMessage)),
+        matches!(result, Err(UnsubscribeError::MalformedMessage(_))),
         "expected MalformedMessage, got {result:?}"
     );
 }

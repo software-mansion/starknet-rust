@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use futures_util::{StreamExt, stream::SplitStream};
 use serde::Deserialize;
+use serde_json::Error as SerdeJsonError;
 use starknet_rust_core::types::SubscriptionId;
 use starknet_rust_providers::jsonrpc::JsonRpcResponse;
 use tokio::{
@@ -74,7 +75,7 @@ enum HandleMessageResult {
     Success,
     /// Message that failed to deserialize. Carries the subscription/request ID the message was addressed to,
     /// if it could be recovered from the raw message.
-    MalformedMessage(Option<MalformedMessage>),
+    MalformedMessage(Arc<SerdeJsonError>, Option<MalformedMessage>),
     /// The stream is closed and won't yield any more messages.
     StreamEnded,
     /// Unable to retrieved message due to an unexpectedly closed stream.
@@ -113,21 +114,21 @@ impl StreamReadDriver {
                 }
                 message = self.stream.next() => {
                     match self.handle_message(message) {
-                        HandleMessageResult::Success | HandleMessageResult::MalformedMessage(None) => {},
-                        HandleMessageResult::MalformedMessage(Some(MalformedMessage::StreamUpdate { params })) => {
+                        HandleMessageResult::Success | HandleMessageResult::MalformedMessage(_, None) => {},
+                        HandleMessageResult::MalformedMessage(err, Some(MalformedMessage::StreamUpdate { params })) => {
                             if let Some(stream) = self.registry.get(&params.subscription_id) {
-                                _ = stream.send(Err(SubscriptionReceiveError::MalformedMessage));
+                                _ = stream.send(Err(SubscriptionReceiveError::MalformedMessage(err)));
                             }
                         },
-                        HandleMessageResult::MalformedMessage(Some(MalformedMessage::Response{ id })) => {
+                        HandleMessageResult::MalformedMessage(err, Some(MalformedMessage::Response{ id })) => {
                             if let Some(subscription) = self.pending_subscriptions.remove(&id) {
                                 _ = subscription
                                     .result
-                                    .send(SubscriptionResult::MalformedMessage);
+                                    .send(SubscriptionResult::MalformedMessage(err.clone()));
                             }
 
                             if let Some(stream) = self.pending_unsubscriptions.remove(&id).and_then(|u| u.result) {
-                                _ = stream.send(UnsubscribeResult::MalformedMessage);
+                                _ = stream.send(UnsubscribeResult::MalformedMessage(err));
                             }
                         },
                         HandleMessageResult::StreamEnded | HandleMessageResult::StreamAborted => {
@@ -198,21 +199,22 @@ impl StreamReadDriver {
 
         match message {
             Message::Text(text) => {
-                let parsed_message = match serde_json::from_str::<StreamUpdateOrResponse>(
-                    text.as_str(),
-                ) {
-                    Ok(parsed_message) => parsed_message,
-                    Err(e) => {
-                        log::warn!(
-                            r#"WARNING: unable to deserialize message; err={e:?}; raw="{text}""#,
-                        );
+                let parsed_message =
+                    match serde_json::from_str::<StreamUpdateOrResponse>(text.as_str()) {
+                        Ok(parsed_message) => parsed_message,
+                        Err(err) => {
+                            log::warn!("WARNING: unable to deserialize message");
+                            log::debug!(r#"DEBUG: raw message = "{text}""#);
 
-                        let subscription_id =
-                            serde_json::from_str::<MalformedMessage>(text.as_str()).ok();
+                            let subscription_id =
+                                serde_json::from_str::<MalformedMessage>(text.as_str()).ok();
 
-                        return HandleMessageResult::MalformedMessage(subscription_id);
-                    }
-                };
+                            return HandleMessageResult::MalformedMessage(
+                                Arc::new(err),
+                                subscription_id,
+                            );
+                        }
+                    };
 
                 match parsed_message {
                     StreamUpdateOrResponse::StreamUpdate(stream_update) => {
