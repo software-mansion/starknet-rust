@@ -19,14 +19,14 @@ async-trait.workspace = true
 auto_impl.workspace = true
 thiserror.workspace = true
 crypto-bigint.workspace = true
-rand = { workspace = true, features = ["std_rng"] }
+rand = { workspace = true, features = ["std_rng", "getrandom"] }
 coins-bip32 = { workspace = true, optional = true }
 coins-ledger = { workspace = true, optional = true }
 semver = { workspace = true, optional = true }
 zeroize.workspace = true
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-eth-keystore.workspace = true
+eth-keystore = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }
@@ -40,10 +40,14 @@ tokio = { workspace = true, features = ["full"] }
 wasm-bindgen-test.workspace = true
 
 [features]
-default = ["std"]
+default = ["std", "keystore"]
 std = ["starknet-rust-core/std", "starknet-rust-crypto/std", "rand/std"]
 
 ledger = ["coins-bip32", "coins-ledger", "semver"]
+
+# Encrypted JSON keystore support (`SigningKey::from_keystore` / `save_as_keystore`).
+# Not available on `wasm32-unknown-unknown`.
+keystore = ["dep:eth-keystore"]
 
 [lints]
 workspace = true

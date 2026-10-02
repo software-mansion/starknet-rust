@@ -22,7 +22,10 @@ pub struct VerifyingKey {
 }
 
 /// Errors using an encrypted JSON keystore.
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+#[cfg(all(
+    feature = "keystore",
+    not(all(target_arch = "wasm32", target_os = "unknown"))
+))]
 #[derive(Debug, thiserror::Error)]
 pub enum KeystoreError {
     /// The file path is invalid.
@@ -63,7 +66,10 @@ impl SigningKey {
     }
 
     /// Loads the private key from a Web3 Secret Storage Definition keystore.
-    #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+    #[cfg(all(
+        feature = "keystore",
+        not(all(target_arch = "wasm32", target_os = "unknown"))
+    ))]
     pub fn from_keystore<P>(path: P, password: &str) -> Result<Self, KeystoreError>
     where
         P: AsRef<std::path::Path>,
@@ -74,7 +80,10 @@ impl SigningKey {
     }
 
     /// Encrypts and saves the private key to a Web3 Secret Storage Definition JSON file.
-    #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+    #[cfg(all(
+        feature = "keystore",
+        not(all(target_arch = "wasm32", target_os = "unknown"))
+    ))]
     pub fn save_as_keystore<P>(&self, path: P, password: &str) -> Result<(), KeystoreError>
     where
         P: AsRef<std::path::Path>,
@@ -253,5 +262,27 @@ mod tests {
         let verifying_key = VerifyingKey::from_scalar(public_key);
 
         assert!(!verifying_key.verify(&hash, &Signature { r, s }).unwrap());
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "keystore",
+        not(all(target_arch = "wasm32", target_os = "unknown"))
+    ))]
+    fn test_keystore_round_trip() {
+        let private_key =
+            Felt::from_hex("0139fe4d6f02e666e86a6f58e65060f115cd3c185bd9e98bd829636931458f79")
+                .unwrap();
+        let signing_key = SigningKey::from_secret_scalar(private_key);
+        let path = std::env::temp_dir().join(format!(
+            "starknet-rust-signers-keystore-{}.json",
+            std::process::id()
+        ));
+
+        signing_key.save_as_keystore(&path, "password").unwrap();
+        let loaded = SigningKey::from_keystore(&path, "password");
+        std::fs::remove_file(&path).unwrap();
+
+        assert_eq!(loaded.unwrap().secret_scalar(), private_key);
     }
 }

@@ -5,7 +5,10 @@
 mod key_pair;
 pub use key_pair::{SigningKey, VerifyingKey};
 
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+#[cfg(all(
+    feature = "keystore",
+    not(all(target_arch = "wasm32", target_os = "unknown"))
+))]
 pub use key_pair::KeystoreError;
 
 mod signer;
