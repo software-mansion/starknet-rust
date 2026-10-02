@@ -504,6 +504,7 @@ impl Subscription {
             },
             UnsubscribeResult::TimeoutError => Err(UnsubscribeError::Timeout),
             UnsubscribeResult::TransportError(err) => Err(UnsubscribeError::Transport(err)),
+            UnsubscribeResult::MalformedMessage => Err(UnsubscribeError::MalformedMessage),
         }
     }
 }

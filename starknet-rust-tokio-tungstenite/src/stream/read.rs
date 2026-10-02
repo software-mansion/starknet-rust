@@ -72,9 +72,9 @@ enum HandleActionResult {
 enum HandleMessageResult {
     /// A message was received and processed successfully.
     Success,
-    /// Malformed JSON message received. Carries the subscription ID the message was addressed to,
+    /// Message that failed to deserialize. Carries the subscription/request ID the message was addressed to,
     /// if it could be recovered from the raw message.
-    MalformedMessage(Option<SubscriptionId>),
+    MalformedMessage(Option<MalformedMessage>),
     /// The stream is closed and won't yield any more messages.
     StreamEnded,
     /// Unable to retrieved message due to an unexpectedly closed stream.
@@ -86,22 +86,13 @@ struct MalformedStreamUpdateParams {
     subscription_id: SubscriptionId,
 }
 
-/// Minimal shape of a stream update, used to recover the subscription ID from messages that
+/// Minimal shape of a stream update/response, used to recover the ID from messages that
 /// failed to parse fully.
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum MalformedMessage {
-    UpdateStream { params: MalformedStreamUpdateParams },
-    Response { data: SubscriptionId },
-}
-
-impl MalformedMessage {
-    fn subscription_id(self) -> SubscriptionId {
-        match self {
-            Self::UpdateStream { params } => params.subscription_id,
-            Self::Response { data } => data,
-        }
-    }
+    StreamUpdate { params: MalformedStreamUpdateParams },
+    Response { id: u64 },
 }
 
 impl StreamReadDriver {
@@ -122,12 +113,23 @@ impl StreamReadDriver {
                 }
                 message = self.stream.next() => {
                     match self.handle_message(message) {
-                        HandleMessageResult::Success => {},
-                        HandleMessageResult::MalformedMessage(subscription_id) => {
-                            if let Some(stream) = subscription_id.and_then(|id| self.registry.get(&id)) {
-                                let _ = stream.send(Err(SubscriptionReceiveError::MalformedMessage));
+                        HandleMessageResult::Success | HandleMessageResult::MalformedMessage(None) => {},
+                        HandleMessageResult::MalformedMessage(Some(MalformedMessage::StreamUpdate { params })) => {
+                            if let Some(stream) = self.registry.get(&params.subscription_id) {
+                                _ = stream.send(Err(SubscriptionReceiveError::MalformedMessage));
                             }
-                        }
+                        },
+                        HandleMessageResult::MalformedMessage(Some(MalformedMessage::Response{ id })) => {
+                            if let Some(subscription) = self.pending_subscriptions.remove(&id) {
+                                _ = subscription
+                                    .result
+                                    .send(SubscriptionResult::MalformedMessage);
+                            }
+
+                            if let Some(stream) = self.pending_unsubscriptions.remove(&id).and_then(|u| u.result) {
+                                _ = stream.send(UnsubscribeResult::MalformedMessage);
+                            }
+                        },
                         HandleMessageResult::StreamEnded | HandleMessageResult::StreamAborted => {
                             break
                         }
@@ -206,9 +208,7 @@ impl StreamReadDriver {
                         );
 
                         let subscription_id =
-                            serde_json::from_str::<MalformedMessage>(text.as_str())
-                                .ok()
-                                .map(MalformedMessage::subscription_id);
+                            serde_json::from_str::<MalformedMessage>(text.as_str()).ok();
 
                         return HandleMessageResult::MalformedMessage(subscription_id);
                     }

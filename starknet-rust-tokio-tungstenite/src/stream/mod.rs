@@ -79,6 +79,7 @@ pub enum SubscriptionResult {
     JsonRpcError(JsonRpcError),
     TimeoutError,
     TransportError(TungsteniteError),
+    MalformedMessage,
 }
 
 /// Internal type for communicating unsubscribe action results.
@@ -88,6 +89,7 @@ pub enum UnsubscribeResult {
     JsonRpcError(JsonRpcError),
     TimeoutError,
     TransportError(TungsteniteError),
+    MalformedMessage,
 }
 
 /// Internal type for communicating close action results.
@@ -381,6 +383,7 @@ impl TungsteniteStream {
             },
             SubscriptionResult::TimeoutError => Err(SubscribeError::Timeout),
             SubscriptionResult::TransportError(err) => Err(SubscribeError::Transport(err)),
+            SubscriptionResult::MalformedMessage => Err(SubscribeError::MalformedMessage),
         }
     }
 }

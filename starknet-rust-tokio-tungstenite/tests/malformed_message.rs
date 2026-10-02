@@ -4,14 +4,19 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
 use starknet_rust_core::types::ConfirmedBlockId;
 use starknet_rust_tokio_tungstenite::{
-    NewHeadsSubscription, NewHeadsUpdate, SubscriptionReceiveError, TungsteniteStream,
+    NewHeadsSubscription, NewHeadsUpdate, SubscribeError, SubscriptionReceiveError,
+    TungsteniteStream, UnsubscribeError,
 };
 use tokio::net::TcpListener;
 use tungstenite::Message;
 
-/// Spawns a mock node that answers one `starknet_subscribeNewHeads` request per entry in
-/// `subscription_ids` (in order), then pushes `updates`.
-async fn spawn_mock_node(subscription_ids: &'static [&'static str], updates: Vec<Value>) -> String {
+const SUBSCRIBE_NEW_HEADS: &str = "starknet_subscribeNewHeads";
+const UNSUBSCRIBE: &str = "starknet_unsubscribe";
+
+/// Spawns a mock node that answers incoming requests in order, one per entry in `replies`. Each
+/// entry is the expected request method and the `result` to respond with. Once all requests are
+/// answered, pushes `updates`.
+async fn spawn_mock_node(replies: Vec<(&'static str, Value)>, updates: Vec<Value>) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 
@@ -19,11 +24,11 @@ async fn spawn_mock_node(subscription_ids: &'static [&'static str], updates: Vec
         let (tcp, _) = listener.accept().await.unwrap();
         let mut ws = tokio_tungstenite::accept_async(tcp).await.unwrap();
 
-        for subscription_id in subscription_ids {
+        for (method, result) in replies {
             let request_id = loop {
                 if let Message::Text(text) = ws.next().await.unwrap().unwrap() {
                     let request: Value = serde_json::from_str(text.as_str()).unwrap();
-                    assert_eq!(request["method"], "starknet_subscribeNewHeads");
+                    assert_eq!(request["method"], method);
                     break request["id"].clone();
                 }
             };
@@ -31,7 +36,7 @@ async fn spawn_mock_node(subscription_ids: &'static [&'static str], updates: Vec
             let response = serde_json::json!({
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "result": subscription_id,
+                "result": result,
             });
             ws.send(Message::text(response.to_string())).await.unwrap();
         }
@@ -47,6 +52,16 @@ async fn spawn_mock_node(subscription_ids: &'static [&'static str], updates: Vec
     format!("ws://{addr}")
 }
 
+/// A successful reply to `starknet_subscribeNewHeads`.
+fn subscribed(subscription_id: &str) -> (&'static str, Value) {
+    (SUBSCRIBE_NEW_HEADS, Value::from(subscription_id))
+}
+
+/// A `result` that is neither a subscription ID nor a bool.
+fn malformed_result() -> Value {
+    serde_json::json!(123)
+}
+
 /// A new heads update that belongs to the subscription but doesn't match the block header schema.
 fn malformed_new_heads(subscription_id: &str) -> Value {
     serde_json::json!({
@@ -56,15 +71,6 @@ fn malformed_new_heads(subscription_id: &str) -> Value {
             "subscription_id": subscription_id,
             "result": { "not_a_block_header": true },
         },
-    })
-}
-
-/// A response whose `result` is neither a subscription ID nor a bool.
-fn malformed_response(subscription_id: &str) -> Value {
-    serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": "foo",
-        "data": subscription_id,
     })
 }
 
@@ -118,12 +124,8 @@ async fn assert_messages(subscription: &mut NewHeadsSubscription, expected: &[Ex
 #[tokio::test]
 async fn websocket_subscription_receives_malformed_message_error() {
     let url = spawn_mock_node(
-        &["1"],
-        vec![
-            malformed_new_heads("1"),
-            malformed_response("1"),
-            reorg("1"),
-        ],
+        vec![subscribed("1")],
+        vec![malformed_new_heads("1"), reorg("1")],
     )
     .await;
     let stream = connect(url).await;
@@ -135,11 +137,7 @@ async fn websocket_subscription_receives_malformed_message_error() {
 
     assert_messages(
         &mut subscription,
-        &[
-            Expected::MalformedMessage,
-            Expected::MalformedMessage,
-            Expected::Reorg,
-        ],
+        &[Expected::MalformedMessage, Expected::Reorg],
     )
     .await;
 }
@@ -147,13 +145,8 @@ async fn websocket_subscription_receives_malformed_message_error() {
 #[tokio::test]
 async fn websocket_malformed_message_does_not_affect_other_subscriptions() {
     let url = spawn_mock_node(
-        &["1", "2"],
-        vec![
-            malformed_new_heads("1"),
-            malformed_response("1"),
-            reorg("2"),
-            reorg("1"),
-        ],
+        vec![subscribed("1"), subscribed("2")],
+        vec![malformed_new_heads("1"), reorg("2"), reorg("1")],
     )
     .await;
     let stream = connect(url).await;
@@ -169,13 +162,51 @@ async fn websocket_malformed_message_does_not_affect_other_subscriptions() {
 
     assert_messages(
         &mut affected,
-        &[
-            Expected::MalformedMessage,
-            Expected::MalformedMessage,
-            Expected::Reorg,
-        ],
+        &[Expected::MalformedMessage, Expected::Reorg],
     )
     .await;
 
     assert_messages(&mut unaffected, &[Expected::Reorg]).await;
+}
+
+#[tokio::test]
+async fn websocket_subscribe_receives_malformed_response_error() {
+    let url = spawn_mock_node(vec![(SUBSCRIBE_NEW_HEADS, malformed_result())], vec![]).await;
+    let stream = connect(url).await;
+
+    let result = tokio::time::timeout(
+        Duration::from_secs(5),
+        stream.subscribe_new_heads(ConfirmedBlockId::Latest),
+    )
+    .await
+    .expect("timed out waiting for subscribe response");
+
+    assert!(
+        matches!(result, Err(SubscribeError::MalformedMessage)),
+        "expected MalformedMessage, got {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn websocket_unsubscribe_receives_malformed_response_error() {
+    let url = spawn_mock_node(
+        vec![subscribed("1"), (UNSUBSCRIBE, malformed_result())],
+        vec![],
+    )
+    .await;
+    let stream = connect(url).await;
+
+    let subscription = stream
+        .subscribe_new_heads(ConfirmedBlockId::Latest)
+        .await
+        .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), subscription.unsubscribe())
+        .await
+        .expect("timed out waiting for unsubscribe response");
+
+    assert!(
+        matches!(result, Err(UnsubscribeError::MalformedMessage)),
+        "expected MalformedMessage, got {result:?}"
+    );
 }

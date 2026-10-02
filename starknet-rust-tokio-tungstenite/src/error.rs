@@ -29,6 +29,8 @@ pub enum SubscribeError {
     Timeout,
     /// Error in the underlying WebSocket transport.
     Transport(TungsteniteError),
+    /// Received a message that couldn't be deserialized
+    MalformedMessage,
 }
 
 /// Error type for failures when receiving subscription updates.
@@ -43,7 +45,7 @@ pub enum SubscriptionReceiveError {
         /// The actual update type received.
         actual: StreamUpdateType,
     },
-    /// Recieved a message that couldn't be deserialized
+    /// Received a message that couldn't be deserialized
     MalformedMessage,
 }
 
@@ -60,6 +62,8 @@ pub enum UnsubscribeError {
     Timeout,
     /// Error in the underlying WebSocket transport.
     Transport(TungsteniteError),
+    /// Received a message that couldn't be deserialized
+    MalformedMessage,
 }
 
 /// Error type for WebSocket connection closing failures.
@@ -102,6 +106,7 @@ impl std::fmt::Display for SubscribeError {
             }
             Self::Timeout => write!(f, "operation timeout"),
             Self::Transport(err) => write!(f, "tungstenite transport error: {err}"),
+            Self::MalformedMessage => write!(f, "malformed WebSocket message"),
         }
     }
 }
@@ -151,6 +156,7 @@ impl std::fmt::Display for UnsubscribeError {
             }
             Self::Timeout => write!(f, "operation timeout"),
             Self::Transport(err) => write!(f, "tungstenite transport error: {err}"),
+            Self::MalformedMessage => write!(f, "malformed WebSocket message"),
         }
     }
 }
