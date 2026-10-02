@@ -26,6 +26,7 @@ tungstenite = { workspace = true, features = ["url"] }
 
 [dev-dependencies]
 starknet-rust-providers = { workspace = true, features = ["no_unknown_fields"] }
+tokio = { workspace = true, features = ["macros", "net", "rt", "time"] }
 
 [lints]
 workspace = true
