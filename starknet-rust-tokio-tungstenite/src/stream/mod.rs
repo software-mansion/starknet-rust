@@ -1,8 +1,10 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::StreamExt;
 use serde::Deserialize;
+use serde_json::Error as SerdeJsonError;
 use starknet_rust_core::types::{
     ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus, StarknetError,
     SubscriptionId, SubscriptionTag,
@@ -24,6 +26,7 @@ pub(crate) use write::WriteAction;
 use write::{StreamWriteDriver, SubscribeWriteData};
 
 use crate::{
+    SubscriptionReceiveError,
     error::{CloseError, ConnectError, SubscribeError},
     subscription::{
         EventSubscriptionOptions, EventsSubscription, NewHeadsSubscription,
@@ -68,6 +71,9 @@ pub enum StreamUpdateType {
     Reorg,
 }
 
+/// Internal type for items delivered to subscription streams.
+pub(crate) type StreamUpdateResult = Result<StreamUpdateData, SubscriptionReceiveError>;
+
 /// Internal type for communicating subscribe action results.
 #[derive(Debug)]
 pub enum SubscriptionResult {
@@ -75,6 +81,7 @@ pub enum SubscriptionResult {
     JsonRpcError(JsonRpcError),
     TimeoutError,
     TransportError(TungsteniteError),
+    MalformedMessage(Arc<SerdeJsonError>),
 }
 
 /// Internal type for communicating unsubscribe action results.
@@ -84,6 +91,7 @@ pub enum UnsubscribeResult {
     JsonRpcError(JsonRpcError),
     TimeoutError,
     TransportError(TungsteniteError),
+    MalformedMessage(Arc<SerdeJsonError>),
 }
 
 /// Internal type for communicating close action results.
@@ -343,7 +351,7 @@ impl TungsteniteStream {
     async fn subscribe(&self, data: SubscribeWriteData) -> Result<Subscription, SubscribeError> {
         let (result_tx, mut result_rx) =
             tokio::sync::mpsc::unbounded_channel::<SubscriptionResult>();
-        let (stream_tx, stream_rx) = tokio::sync::mpsc::unbounded_channel::<StreamUpdateData>();
+        let (stream_tx, stream_rx) = tokio::sync::mpsc::unbounded_channel::<StreamUpdateResult>();
 
         if self
             .write_queue
@@ -377,6 +385,7 @@ impl TungsteniteStream {
             },
             SubscriptionResult::TimeoutError => Err(SubscribeError::Timeout),
             SubscriptionResult::TransportError(err) => Err(SubscribeError::Transport(err)),
+            SubscriptionResult::MalformedMessage(err) => Err(SubscribeError::MalformedMessage(err)),
         }
     }
 }

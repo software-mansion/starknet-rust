@@ -10,7 +10,7 @@ use starknet_rust_core::types::{
         SubscribeNewTransactionsRequest, SubscribeTransactionStatusRequest, UnsubscribeRequest,
     },
 };
-use starknet_rust_providers::{ProviderRequestData, StreamUpdateData, jsonrpc::JsonRpcRequest};
+use starknet_rust_providers::{ProviderRequestData, jsonrpc::JsonRpcRequest};
 use tokio::{
     net::TcpStream,
     sync::{
@@ -26,7 +26,7 @@ use tungstenite::Message;
 use crate::subscription::EventSubscriptionOptions;
 
 use super::{
-    CloseResult, SubscriptionResult, UnsubscribeResult,
+    CloseResult, StreamUpdateResult, SubscriptionResult, UnsubscribeResult,
     read::{ReadAcknowledgement, ReadAction},
 };
 
@@ -46,7 +46,7 @@ pub enum WriteAction {
     Subscribe {
         data: SubscribeWriteData,
         result: UnboundedSender<SubscriptionResult>,
-        stream: UnboundedSender<StreamUpdateData>,
+        stream: UnboundedSender<StreamUpdateResult>,
     },
     Unsubscribe {
         subscription_id: SubscriptionId,

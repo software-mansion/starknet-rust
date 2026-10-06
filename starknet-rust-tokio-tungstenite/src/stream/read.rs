@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use futures_util::{StreamExt, stream::SplitStream};
+use serde::Deserialize;
+use serde_json::Error as SerdeJsonError;
 use starknet_rust_core::types::SubscriptionId;
-use starknet_rust_providers::{StreamUpdateData, jsonrpc::JsonRpcResponse};
+use starknet_rust_providers::jsonrpc::JsonRpcResponse;
 use tokio::{
     net::TcpStream,
     sync::{
@@ -14,11 +16,14 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tokio_util::sync::CancellationToken;
 use tungstenite::Message;
 
-use super::{StreamUpdateOrResponse, SubscriptionIdOrBool, SubscriptionResult, UnsubscribeResult};
+use super::{
+    StreamUpdateOrResponse, StreamUpdateResult, SubscriptionIdOrBool, SubscriptionReceiveError,
+    SubscriptionResult, UnsubscribeResult,
+};
 
 /// An internal type for running the read direction of the WebSocket stream in the background.
 pub(super) struct StreamReadDriver {
-    pub registry: HashMap<SubscriptionId, UnboundedSender<StreamUpdateData>>,
+    pub registry: HashMap<SubscriptionId, UnboundedSender<StreamUpdateResult>>,
     pub pending_subscriptions: HashMap<u64, PendingSubscription>,
     pub pending_unsubscriptions: HashMap<u64, PendingUnsubscription>,
     pub stream: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
@@ -31,7 +36,7 @@ pub(super) enum ReadAction {
     Subscribe {
         request_id: u64,
         result: UnboundedSender<SubscriptionResult>,
-        stream: UnboundedSender<StreamUpdateData>,
+        stream: UnboundedSender<StreamUpdateResult>,
         ack: OneshotSender<ReadAcknowledgement>,
     },
     Unsubscribe {
@@ -50,7 +55,7 @@ pub(super) enum ReadAcknowledgement {
 
 pub(super) struct PendingSubscription {
     result: UnboundedSender<SubscriptionResult>,
-    stream: UnboundedSender<StreamUpdateData>,
+    stream: UnboundedSender<StreamUpdateResult>,
 }
 
 pub(super) struct PendingUnsubscription {
@@ -68,12 +73,30 @@ enum HandleActionResult {
 enum HandleMessageResult {
     /// A message was received and processed successfully.
     Success,
-    /// Malformed JSON message received.
-    MalformedMessage,
+    /// Message that failed to deserialize. Carries the subscription/request ID the message was addressed to,
+    /// if it could be recovered from the raw message.
+    MalformedMessage {
+        error: Arc<SerdeJsonError>,
+        id: Option<MalformedMessage>,
+    },
     /// The stream is closed and won't yield any more messages.
     StreamEnded,
     /// Unable to retrieved message due to an unexpectedly closed stream.
     StreamAborted,
+}
+
+#[derive(Deserialize)]
+struct MalformedStreamUpdateParams {
+    subscription_id: SubscriptionId,
+}
+
+/// Minimal shape of a stream update/response, used to recover the ID from messages that
+/// failed to parse fully.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum MalformedMessage {
+    StreamUpdate { params: MalformedStreamUpdateParams },
+    Response { id: u64 },
 }
 
 impl StreamReadDriver {
@@ -94,7 +117,31 @@ impl StreamReadDriver {
                 }
                 message = self.stream.next() => {
                     match self.handle_message(message) {
-                        HandleMessageResult::Success | HandleMessageResult::MalformedMessage => {}
+                        HandleMessageResult::Success | HandleMessageResult::MalformedMessage { id: None, .. } => {},
+                        HandleMessageResult::MalformedMessage{error, id: Some(id)} => {
+                            match id {
+                                MalformedMessage::StreamUpdate { params } => {
+                                    if let Some(stream) = self.registry.get(&params.subscription_id) {
+                                        _ = stream.send(Err(SubscriptionReceiveError::MalformedMessage(error)));
+                                    }
+                                }
+                                MalformedMessage::Response { id } => {
+                                    if let Some(subscription) = self.pending_subscriptions.remove(&id) {
+                                        _ = subscription
+                                            .result
+                                            .send(SubscriptionResult::MalformedMessage(error.clone()));
+                                    }
+
+                                    if let Some(stream) = self
+                                        .pending_unsubscriptions
+                                        .remove(&id)
+                                        .and_then(|u| u.result)
+                                    {
+                                        _ = stream.send(UnsubscribeResult::MalformedMessage(error));
+                                    }
+                                }
+                            }
+                        },
                         HandleMessageResult::StreamEnded | HandleMessageResult::StreamAborted => {
                             break
                         }
@@ -163,17 +210,28 @@ impl StreamReadDriver {
 
         match message {
             Message::Text(text) => {
-                let Ok(parsed_message) =
-                    serde_json::from_str::<StreamUpdateOrResponse>(text.as_str())
-                else {
-                    return HandleMessageResult::MalformedMessage;
-                };
+                let parsed_message =
+                    match serde_json::from_str::<StreamUpdateOrResponse>(text.as_str()) {
+                        Ok(parsed_message) => parsed_message,
+                        Err(err) => {
+                            log::warn!("WARNING: unable to deserialize message");
+                            log::debug!(r#"DEBUG: raw message = "{text}""#);
+
+                            let subscription_id =
+                                serde_json::from_str::<MalformedMessage>(text.as_str()).ok();
+
+                            return HandleMessageResult::MalformedMessage {
+                                error: Arc::new(err),
+                                id: subscription_id,
+                            };
+                        }
+                    };
 
                 match parsed_message {
                     StreamUpdateOrResponse::StreamUpdate(stream_update) => {
                         match self.registry.get_mut(stream_update.data.subscription_id()) {
                             Some(sub_stream) => {
-                                if sub_stream.send(stream_update.data).is_err() {
+                                if sub_stream.send(Ok(stream_update.data)).is_err() {
                                     // Subscriptions getting dropped should automatically trigger
                                     // unsubscribing. However, there could be a race condition where
                                     // an update arrives before that. This is normal but probably

@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use serde_json::Error as SerdeJsonError;
 use starknet_rust_providers::jsonrpc::JsonRpcError;
 use tungstenite::Error as TungsteniteError;
 
@@ -29,6 +32,8 @@ pub enum SubscribeError {
     Timeout,
     /// Error in the underlying WebSocket transport.
     Transport(TungsteniteError),
+    /// Received a message that couldn't be deserialized
+    MalformedMessage(Arc<SerdeJsonError>),
 }
 
 /// Error type for failures when receiving subscription updates.
@@ -43,6 +48,8 @@ pub enum SubscriptionReceiveError {
         /// The actual update type received.
         actual: StreamUpdateType,
     },
+    /// Received a message that couldn't be deserialized
+    MalformedMessage(Arc<SerdeJsonError>),
 }
 
 /// Error type for unsubscription failures.
@@ -58,6 +65,8 @@ pub enum UnsubscribeError {
     Timeout,
     /// Error in the underlying WebSocket transport.
     Transport(TungsteniteError),
+    /// Received a message that couldn't be deserialized
+    MalformedMessage(Arc<SerdeJsonError>),
 }
 
 /// Error type for WebSocket connection closing failures.
@@ -100,6 +109,7 @@ impl std::fmt::Display for SubscribeError {
             }
             Self::Timeout => write!(f, "operation timeout"),
             Self::Transport(err) => write!(f, "tungstenite transport error: {err}"),
+            Self::MalformedMessage(err) => write!(f, "malformed WebSocket message: {err:?}"),
         }
     }
 }
@@ -128,6 +138,7 @@ impl std::fmt::Display for SubscriptionReceiveError {
 
                 Ok(())
             }
+            Self::MalformedMessage(err) => write!(f, "malformed WebSocket message: {err:?}"),
         }
     }
 }
@@ -148,6 +159,7 @@ impl std::fmt::Display for UnsubscribeError {
             }
             Self::Timeout => write!(f, "operation timeout"),
             Self::Transport(err) => write!(f, "tungstenite transport error: {err}"),
+            Self::MalformedMessage(err) => write!(f, "malformed WebSocket message: {err:?}"),
         }
     }
 }
