@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `StarknetError` display messages now use the JSON-RPC error message instead of the Rust variant name, and string error data is formatted without debug quotes ([#160]).
 - **Breaking:** `JsonRpcResponse`'s response `id` changed from `u64` to `Option<u64>`. A `null` or string `id`, which some servers return for errors raised before the request id is read, now deserializes to `None` and surfaces the server's error message instead of failing with a generic deserialization error ([#159]).
 - **Breaking:** `JsonRpcClient::batch_requests` now surfaces the server's error when a batch is rejected as a whole (returned as a single JSON-RPC error object per the spec, e.g. exceeding the server's batch-size limit) instead of failing with a generic deserialization error; adds a `BatchError` variant to the transport error enums ([#163]).
+- **Breaking:** `SubscribeError`, `UnsubscribeError`, `SubscriptionReceiveError` enums received new variant `MalformedMessage(Arc<SerdeJsonError>)` indicating that server's message couldn't be decoded. ([#169])
 - **Breaking:** `eth-keystore` is now an optional dependency of `starknet-rust-signers`, behind a new `keystore` feature that is enabled by default. `SigningKey::from_keystore`, `SigningKey::save_as_keystore`, and `KeystoreError` require this feature. Crates that disable default features must enable `keystore` to use the keystore API. Crates that do not use keystores can now drop `eth-keystore` ([#170]).
-- **Breaking:** `SubscribeError`, `UnsubscribeError`, `SubscriptionReceiveError` enums received new variant `MalformedMessage(serde_json::Error)` indicating that server's message couldn't be decoded. ([#169])
 
 ### Fixed
 

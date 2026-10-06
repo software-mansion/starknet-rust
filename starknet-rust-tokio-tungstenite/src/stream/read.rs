@@ -75,7 +75,10 @@ enum HandleMessageResult {
     Success,
     /// Message that failed to deserialize. Carries the subscription/request ID the message was addressed to,
     /// if it could be recovered from the raw message.
-    MalformedMessage(Arc<SerdeJsonError>, Option<MalformedMessage>),
+    MalformedMessage {
+        error: Arc<SerdeJsonError>,
+        id: Option<MalformedMessage>,
+    },
     /// The stream is closed and won't yield any more messages.
     StreamEnded,
     /// Unable to retrieved message due to an unexpectedly closed stream.
@@ -114,21 +117,29 @@ impl StreamReadDriver {
                 }
                 message = self.stream.next() => {
                     match self.handle_message(message) {
-                        HandleMessageResult::Success | HandleMessageResult::MalformedMessage(_, None) => {},
-                        HandleMessageResult::MalformedMessage(err, Some(MalformedMessage::StreamUpdate { params })) => {
-                            if let Some(stream) = self.registry.get(&params.subscription_id) {
-                                _ = stream.send(Err(SubscriptionReceiveError::MalformedMessage(err)));
-                            }
-                        },
-                        HandleMessageResult::MalformedMessage(err, Some(MalformedMessage::Response{ id })) => {
-                            if let Some(subscription) = self.pending_subscriptions.remove(&id) {
-                                _ = subscription
-                                    .result
-                                    .send(SubscriptionResult::MalformedMessage(err.clone()));
-                            }
+                        HandleMessageResult::Success | HandleMessageResult::MalformedMessage { id: None, .. } => {},
+                        HandleMessageResult::MalformedMessage{error, id: Some(id)} => {
+                            match id {
+                                MalformedMessage::StreamUpdate { params } => {
+                                    if let Some(stream) = self.registry.get(&params.subscription_id) {
+                                        _ = stream.send(Err(SubscriptionReceiveError::MalformedMessage(error)));
+                                    }
+                                }
+                                MalformedMessage::Response { id } => {
+                                    if let Some(subscription) = self.pending_subscriptions.remove(&id) {
+                                        _ = subscription
+                                            .result
+                                            .send(SubscriptionResult::MalformedMessage(error.clone()));
+                                    }
 
-                            if let Some(stream) = self.pending_unsubscriptions.remove(&id).and_then(|u| u.result) {
-                                _ = stream.send(UnsubscribeResult::MalformedMessage(err));
+                                    if let Some(stream) = self
+                                        .pending_unsubscriptions
+                                        .remove(&id)
+                                        .and_then(|u| u.result)
+                                    {
+                                        _ = stream.send(UnsubscribeResult::MalformedMessage(error));
+                                    }
+                                }
                             }
                         },
                         HandleMessageResult::StreamEnded | HandleMessageResult::StreamAborted => {
@@ -209,10 +220,10 @@ impl StreamReadDriver {
                             let subscription_id =
                                 serde_json::from_str::<MalformedMessage>(text.as_str()).ok();
 
-                            return HandleMessageResult::MalformedMessage(
-                                Arc::new(err),
-                                subscription_id,
-                            );
+                            return HandleMessageResult::MalformedMessage {
+                                error: Arc::new(err),
+                                id: subscription_id,
+                            };
                         }
                     };
 
