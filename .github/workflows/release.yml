@@ -24,9 +24,9 @@ jobs:
         id: check_version
         shell: bash
         run: |
-          # Get versions, but EXCLUDE examples and test-common
+          # Get versions, but EXCLUDE examples, test-common, and non-publishable packages
           VERSIONS=$(cargo metadata --format-version 1 --no-deps | \
-            jq -r '.packages[] | select(.manifest_path | contains("/examples/") | not) | select(.name != "test-common") | .version' | \
+            jq -r '.packages[] | select(.manifest_path | contains("/examples/") | not) | select(.name != "test-common") | select(.publish != []) | .version' | \
             sort | uniq)
 
           # Ensure exactly one version exists
