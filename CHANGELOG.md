@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-07
+
 ### Changed
 
 - **Breaking:** Removed the redundant sequencer-specific `BlockId` in `starknet-rust-providers`. The sequencer gateway provider now uses the canonical `starknet_rust_core::types::BlockId` throughout ([#154]).
