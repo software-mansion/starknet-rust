@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `TryFrom<CompressedLegacyContractClass>` implementation for `LegacyContractClass` ([#176]).
+- `From<LegacyEntryPointsByType>` implementation for `RawLegacyEntryPoints` ([#176]).
+- `From<LegacyContractEntryPoint>` implementation for `RawLegacyEntryPoint` ([#176]).
+
 ## [0.20.0] - 2026-10-07
 
 ### Changed
@@ -103,3 +109,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#163]: https://github.com/software-mansion/starknet-rust/pull/163
 [#169]: https://github.com/software-mansion/starknet-rust/pull/169
 [#170]: https://github.com/software-mansion/starknet-rust/pull/170
+[#176]: https://github.com/software-mansion/starknet-rust/pull/176
