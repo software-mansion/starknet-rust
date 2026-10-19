@@ -64,7 +64,10 @@ pub trait Account: ExecutionEncoder + Sized {
 
     /// Generates an instance of [`ExecutionV3`] for sending `INVOKE` v3 transactions. Pays
     /// transaction fees in `STRK`.
-    #[deprecated = "transaction version used might change unexpectedly; use `execute_v3` instead"]
+    #[deprecated(
+        note = "transaction version used might change unexpectedly; use `execute_v3` instead",
+        since = "0.10.0"
+    )]
     fn execute(&self, calls: Vec<Call>) -> ExecutionV3<'_, Self> {
         self.execute_v3(calls)
     }
@@ -107,7 +110,10 @@ pub trait Account: ExecutionEncoder + Sized {
     ///
     /// This method is only used for declaring Sierra (Cairo 1) classes. Declaring legacy (Cairo 0)
     /// classes is no longer supported.
-    #[deprecated = "transaction version used might change unexpectedly; use `declare_v3` instead"]
+    #[deprecated(
+        note = "transaction version used might change unexpectedly; use `declare_v3` instead",
+        since = "0.10.0"
+    )]
     fn declare(
         &self,
         contract_class: Arc<FlattenedSierraClass>,

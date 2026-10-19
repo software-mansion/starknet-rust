@@ -103,7 +103,10 @@ pub trait AccountFactory: Sized {
 
     /// Generates an instance of [`AccountDeploymentV3`] for sending `DEPLOY_ACCOUNT` v3
     /// transactions. Pays transaction fees in `STRK`.
-    #[deprecated = "transaction version used might change unexpectedly; use `deploy_v3` instead"]
+    #[deprecated(
+        note = "transaction version used might change unexpectedly; use `deploy_v3` instead",
+        since = "0.10.0"
+    )]
     fn deploy(&self, salt: Felt) -> AccountDeploymentV3<'_, Self> {
         self.deploy_v3(salt)
     }
