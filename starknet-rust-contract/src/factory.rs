@@ -78,7 +78,10 @@ impl<A> ContractFactory<A> {
     ///
     /// The [`ContractFactory`] created uses the default address for the Universal Deployer
     /// Contract. To use a custom UDC deployment, use [`new_with_udc`](fn.new_with_udc) instead.
-    #[deprecated = "this method uses the legacy UDC; use `new_with_udc` instead"]
+    #[deprecated(
+        note = "this method uses the legacy UDC; use `new_with_udc` instead",
+        since = "0.16.0"
+    )]
     pub const fn new(class_hash: Felt, account: A) -> Self {
         Self::new_with_udc(class_hash, account, UdcSelector::Legacy)
     }
@@ -125,7 +128,10 @@ where
 
     /// Generates an instance of [`DeploymentV3`] for sending `INVOKE` v3 transactions for the
     /// contract deployment. Pays transaction fees in `STRK`.
-    #[deprecated = "transaction version used might change unexpectedly; use `deploy_v3` instead"]
+    #[deprecated(
+        note = "transaction version used might change unexpectedly; use `deploy_v3` instead",
+        since = "0.10.0"
+    )]
     pub const fn deploy(
         &self,
         constructor_calldata: Vec<Felt>,

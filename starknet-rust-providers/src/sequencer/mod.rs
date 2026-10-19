@@ -250,7 +250,8 @@ impl SequencerGatewayProvider {
 
 impl SequencerGatewayProvider {
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn add_transaction(
         &self,
@@ -264,7 +265,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_contract_addresses(&self) -> Result<ContractAddresses, ProviderError> {
         let request_url = self.extend_feeder_gateway_url("get_contract_addresses");
@@ -275,7 +277,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_block(&self, block_identifier: BlockId) -> Result<Block, ProviderError> {
         let mut request_url = self.extend_feeder_gateway_url("get_block");
@@ -287,7 +290,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_state_update(
         &self,
@@ -302,7 +306,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.12.0"
     )]
     pub async fn get_state_update_with_block(
         &self,
@@ -320,7 +325,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_compiled_class_by_class_hash(
         &self,
@@ -339,7 +345,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_class_by_hash(
         &self,
@@ -358,7 +365,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_transaction_status(
         &self,
@@ -375,7 +383,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_transaction(
         &self,
@@ -392,7 +401,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_block_hash_by_id(&self, block_number: u64) -> Result<Felt, ProviderError> {
         let mut request_url = self.extend_feeder_gateway_url("get_block_hash_by_id");
@@ -406,7 +416,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_block_id_by_hash(&self, block_hash: Felt) -> Result<u64, ProviderError> {
         let mut request_url = self.extend_feeder_gateway_url("get_block_id_by_hash");
@@ -420,7 +431,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_last_batch_id(&self) -> Result<u64, ProviderError> {
         let request_url = self.extend_feeder_gateway_url("get_last_batch_id");
@@ -431,7 +443,8 @@ impl SequencerGatewayProvider {
     }
 
     #[deprecated(
-        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead."
+        note = "Sequencer-specific functions are deprecated. Use it via the Provider trait instead.",
+        since = "0.3.0"
     )]
     pub async fn get_l1_blockchain_id(&self) -> Result<u64, ProviderError> {
         let request_url = self.extend_feeder_gateway_url("get_l1_blockchain_id");

@@ -9,7 +9,7 @@ pub const MAINNET: Felt = Felt::from_raw([
 ]);
 
 /// The chain identifier for Starknet Goerli. A Cairo short string encoding of `SN_GOERLI`.
-#[deprecated = "The Goerli testnet has been shutdown"]
+#[deprecated(note = "The Goerli testnet has been shutdown", since = "0.11.0")]
 pub const TESTNET: Felt = Felt::from_raw([
     398_700_013_197_595_345,
     18_446_744_073_709_551_615,
@@ -18,7 +18,7 @@ pub const TESTNET: Felt = Felt::from_raw([
 ]);
 
 /// The chain identifier for Starknet Goerli 2. A Cairo short string encoding of `SN_GOERLI2`.
-#[deprecated = "The Goerli testnet has been shutdown"]
+#[deprecated(note = "The Goerli testnet has been shutdown", since = "0.11.0")]
 pub const TESTNET2: Felt = Felt::from_raw([
     33_650_220_878_420_990,
     18_446_744_073_709_551_615,
