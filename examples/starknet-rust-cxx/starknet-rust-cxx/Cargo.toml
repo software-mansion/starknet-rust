@@ -13,13 +13,11 @@ cxx.workspace = true
 starknet-rust-core.workspace = true
 
 # Same as above.
-# 
+#
 # This entry is needed to enable the `signature-display` feature of `starknet-rust-crypto`.
 starknet-rust-crypto = { workspace = true, features = ["signature-display"] }
-
-[build-dependencies]
-cxx-build.workspace = true
 
 [lib]
 crate-type = ["staticlib"]
 
+[lints]

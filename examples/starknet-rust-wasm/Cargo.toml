@@ -21,3 +21,5 @@ default = ["console_error_panic_hook"]
 starknet-rust-crypto = { workspace = true, features = ["signature-display"] }
 console_error_panic_hook = { workspace = true, optional = true }
 wasm-bindgen.workspace = true
+
+[lints]
