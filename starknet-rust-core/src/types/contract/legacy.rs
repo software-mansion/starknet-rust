@@ -20,9 +20,14 @@ use serde_json_pythonic::to_string_pythonic;
 use serde_with::{SerializeAs, serde_as};
 
 #[cfg(feature = "std")]
-use crate::types::{CompressedLegacyContractClass, contract::CompressProgramError};
+use crate::types::{
+    CompressedLegacyContractClass,
+    contract::{CompressProgramError, DecompressProgramError},
+};
 #[cfg(feature = "std")]
-use flate2::{Compression, write::GzEncoder};
+use flate2::{Compression, read::GzDecoder, write::GzEncoder};
+#[cfg(feature = "std")]
+use std::io::Read;
 
 const API_VERSION: Felt = Felt::ZERO;
 
@@ -635,6 +640,41 @@ impl LegacyContractClass {
     }
 }
 
+#[cfg(feature = "std")]
+impl TryFrom<CompressedLegacyContractClass> for LegacyContractClass {
+    type Error = DecompressProgramError;
+
+    /// Decompresses a compressed legacy (Cairo 0) contract class.
+    ///
+    /// The compressed representation intentionally omits [`LegacyProgram::debug_info`], so the
+    /// reconstructed class always has `program.debug_info == None`.
+    fn try_from(value: CompressedLegacyContractClass) -> Result<Self, Self::Error> {
+        let mut decoder = GzDecoder::new(value.program.as_slice());
+        let mut program_json = String::new();
+        decoder
+            .read_to_string(&mut program_json)
+            .map_err(DecompressProgramError::Io)?;
+
+        let program: LegacyProgram = serde_json::from_str(&program_json).map_err(|err| {
+            DecompressProgramError::Json(JsonError {
+                message: err.to_string(),
+            })
+        })?;
+
+        let abi = value
+            .abi
+            .map(|abi| abi.into_iter().map(Into::into).collect());
+
+        let entry_points_by_type = value.entry_points_by_type.into();
+
+        Ok(Self {
+            abi,
+            entry_points_by_type,
+            program,
+        })
+    }
+}
+
 impl LegacyProgram {
     /// Compresses the legacy (Cairo 0) program with gzip.
     #[cfg(feature = "std")]
@@ -935,10 +975,29 @@ impl From<RawLegacyEntryPoints> for LegacyEntryPointsByType {
     }
 }
 
+impl From<LegacyEntryPointsByType> for RawLegacyEntryPoints {
+    fn from(value: LegacyEntryPointsByType) -> Self {
+        Self {
+            constructor: value.constructor.into_iter().map(Into::into).collect(),
+            external: value.external.into_iter().map(Into::into).collect(),
+            l1_handler: value.l1_handler.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
 impl From<RawLegacyEntryPoint> for LegacyContractEntryPoint {
     fn from(value: RawLegacyEntryPoint) -> Self {
         Self {
             offset: value.offset.into(),
+            selector: value.selector,
+        }
+    }
+}
+
+impl From<LegacyContractEntryPoint> for RawLegacyEntryPoint {
+    fn from(value: LegacyContractEntryPoint) -> Self {
+        Self {
+            offset: LegacyEntrypointOffset::U64AsInt(value.offset),
             selector: value.selector,
         }
     }
