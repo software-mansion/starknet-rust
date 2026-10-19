@@ -1096,6 +1096,129 @@ mod tests {
     use super::super::ContractArtifact;
     use super::*;
 
+    #[cfg(feature = "std")]
+    use flate2::{Compression, write::GzEncoder};
+
+    #[cfg(feature = "std")]
+    fn compressed_class_with_program(program: Vec<u8>) -> CompressedLegacyContractClass {
+        CompressedLegacyContractClass {
+            program,
+            entry_points_by_type: LegacyEntryPointsByType {
+                constructor: Vec::new(),
+                external: Vec::new(),
+                l1_handler: Vec::new(),
+            },
+            abi: None,
+        }
+    }
+
+    #[test]
+    fn test_legacy_entry_points_conversion() {
+        let expected = LegacyEntryPointsByType {
+            constructor: vec![LegacyContractEntryPoint {
+                offset: 1,
+                selector: Felt::from(2_u64),
+            }],
+            external: vec![LegacyContractEntryPoint {
+                offset: 3,
+                selector: Felt::from(4_u64),
+            }],
+            l1_handler: vec![LegacyContractEntryPoint {
+                offset: 5,
+                selector: Felt::from(6_u64),
+            }],
+        };
+
+        let raw: RawLegacyEntryPoints = expected.clone().into();
+
+        assert_eq!(LegacyEntryPointsByType::from(raw), expected);
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_legacy_contract_class_decompression() {
+        let artifact = serde_json::from_str::<LegacyContractClass>(include_str!(
+            "../../../test-data/contracts/cairo0/artifacts/oz_account.txt"
+        ))
+        .unwrap();
+        let compressed = artifact.compress().unwrap();
+        let decompressed = LegacyContractClass::try_from(compressed).unwrap();
+
+        assert_eq!(
+            decompressed.class_hash().unwrap(),
+            artifact.class_hash().unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(&decompressed.abi).unwrap(),
+            serde_json::to_value(&artifact.abi).unwrap()
+        );
+
+        for (decompressed, original) in [
+            (
+                &decompressed.entry_points_by_type.constructor,
+                &artifact.entry_points_by_type.constructor,
+            ),
+            (
+                &decompressed.entry_points_by_type.external,
+                &artifact.entry_points_by_type.external,
+            ),
+            (
+                &decompressed.entry_points_by_type.l1_handler,
+                &artifact.entry_points_by_type.l1_handler,
+            ),
+        ] {
+            assert_eq!(decompressed.len(), original.len());
+            for (decompressed, original) in decompressed.iter().zip(original) {
+                assert_eq!(decompressed.selector, original.selector);
+                assert_eq!(u64::from(decompressed.offset), u64::from(original.offset));
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_legacy_contract_class_compression_strips_debug_info() {
+        let mut artifact = serde_json::from_str::<LegacyContractClass>(include_str!(
+            "../../../test-data/contracts/cairo0/artifacts/oz_account.txt"
+        ))
+        .unwrap();
+        artifact.program.debug_info = Some(LegacyDebugInfo {
+            file_contents: BTreeMap::new(),
+            instruction_locations: BTreeMap::new(),
+        });
+
+        let expected_class_hash = artifact.class_hash().unwrap();
+        let compressed = artifact.compress().unwrap();
+        let decompressed = LegacyContractClass::try_from(compressed).unwrap();
+
+        assert!(artifact.program.debug_info.is_some());
+        assert!(decompressed.program.debug_info.is_none());
+        assert_eq!(decompressed.class_hash().unwrap(), expected_class_hash);
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_legacy_contract_class_decompression_invalid_gzip() {
+        let error = LegacyContractClass::try_from(compressed_class_with_program(vec![0, 1, 2, 3]))
+            .unwrap_err();
+
+        assert!(matches!(error, DecompressProgramError::Io(_)));
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_legacy_contract_class_decompression_invalid_json() {
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        std::io::Write::write_all(&mut encoder, b"not json").unwrap();
+        let compressed_program = encoder.finish().unwrap();
+
+        let error =
+            LegacyContractClass::try_from(compressed_class_with_program(compressed_program))
+                .unwrap_err();
+
+        assert!(matches!(error, DecompressProgramError::Json(_)));
+    }
+
     #[derive(serde::Deserialize)]
     struct ContractHashes {
         // Regression fixtures only ship `class_hash`; the hinted hash is intermediate and is
