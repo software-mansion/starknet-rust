@@ -433,6 +433,16 @@ mod errors {
         Io(std::io::Error),
     }
 
+    /// Errors decompressing a legacy (Cairo 0) class.
+    #[cfg(feature = "std")]
+    #[derive(Debug)]
+    pub enum DecompressProgramError {
+        /// Gzip decoding error.
+        Io(std::io::Error),
+        /// Json deserialization error when deserializing the contract program.
+        Json(JsonError),
+    }
+
     /// Json serialization error represented as a string message. This is done instead of exposing
     /// `serde_json` error types to avoid leaking implementation details and ease error handling.
     #[derive(Debug)]
@@ -496,6 +506,19 @@ mod errors {
     }
 
     #[cfg(feature = "std")]
+    impl std::error::Error for DecompressProgramError {}
+
+    #[cfg(feature = "std")]
+    impl Display for DecompressProgramError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            match self {
+                Self::Io(inner) => write!(f, "decompression io error: {inner}"),
+                Self::Json(inner) => write!(f, "json deserialization error: {inner}"),
+            }
+        }
+    }
+
+    #[cfg(feature = "std")]
     impl std::error::Error for JsonError {}
 
     impl Display for JsonError {
@@ -547,7 +570,7 @@ pub use errors::{
 
 use crate::crypto::HashFunction;
 #[cfg(feature = "std")]
-pub use errors::CompressProgramError;
+pub use errors::{CompressProgramError, DecompressProgramError};
 
 impl SierraClass {
     /// Computes the class hash of the Sierra (Cairo 1) class.
