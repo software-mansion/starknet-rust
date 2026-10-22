@@ -20,7 +20,7 @@ To use the crate from [crates.io](https://crates.io/crates/starknet), add the fo
 
 ```toml
 [dependencies]
-starknet-rust = "0.20.0"
+starknet-rust = "0.20.1"
 ```
 
 ## Features
