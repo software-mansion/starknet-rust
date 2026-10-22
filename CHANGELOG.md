@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-10-22
+
 ### Added
 
 - `TryFrom<CompressedLegacyContractClass>` implementation for `LegacyContractClass` ([#176]).
