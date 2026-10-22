@@ -84,7 +84,7 @@ proc-macro2 = "1.0.107"
 quote = "1.0.47"
 rand = { version = "0.8.8", default-features = false }
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
-rfc6979 = { version = "0.6.0", default-features = false }
+rfc6979 = { version = "0.5.0", default-features = false }
 semver = { version = "1.0.28", default-features = false }
 serde = { version = "1.0.229", default-features = false }
 serde_json = { version = "1.0.151", default-features = false }
@@ -93,8 +93,8 @@ serde_with = { version = "3.24.0", default-features = false }
 sha2 = { version = "0.11.0", default-features = false }
 sha3 = { version = "0.12.0", default-features = false }
 speculos-client = { path = "./utils/speculos-client" }
-starknet-types-core = { version = "1.0.0", default-features = false }
-syn = "3.0.6"
+starknet-types-core = { version = "0.2.4", default-features = false }
+syn = "2.0.119"
 test-case = "3.4.0"
 thiserror = "2.0.21"
 tokio = { version = "1.53.1", default-features = false }
