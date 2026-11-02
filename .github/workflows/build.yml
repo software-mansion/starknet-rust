@@ -28,6 +28,11 @@ jobs:
       - name: "Checkout source code"
         uses: "actions/checkout@v7"
 
+      - name: "Install hidapi dependencies"
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libudev-dev
+
       - name: "Setup stable toolchain"
         uses: "actions-rs/toolchain@v1"
         with:

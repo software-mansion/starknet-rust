@@ -24,7 +24,6 @@ async fn main() {
             .try_into()
             .expect("unable to parse path"),
     )
-    .await
     .expect("failed to initialize Starknet Ledger app");
     let address = Felt::from_hex("YOUR_ACCOUNT_CONTRACT_ADDRESS_IN_HEX_HERE").unwrap();
     let eth_token_address =

@@ -27,7 +27,6 @@ async fn main() {
             .try_into()
             .expect("unable to parse path"),
     )
-    .await
     .expect("failed to initialize Starknet Ledger app");
 
     let factory = OpenZeppelinAccountFactory::new(class_hash, chain_id::SEPOLIA, signer, provider)

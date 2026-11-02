@@ -5,7 +5,6 @@ async fn main() {
     let path = "m/2645'/1195502025'/1470455285'/0'/0'/0";
 
     let ledger = LedgerSigner::new(path.try_into().expect("unable to parse path"))
-        .await
         .expect("failed to initialize Starknet Ledger app");
 
     let public_key = ledger

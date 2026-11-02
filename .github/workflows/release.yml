@@ -67,6 +67,10 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v7
 
+      - name: Install hidapi dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install --yes libudev-dev
+
       - name: Setup stable toolchain
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
