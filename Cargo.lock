@@ -388,9 +388,9 @@ dependencies = [
 
 [[package]]
 name = "coins-bip32"
-version = "0.15.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a81e59195a8c62886658362d53c1ed61dc2bee856913978f77b6669e33aee026"
+checksum = "cfc8f6b87591355b762ca5eace648c2b403a0a96b72021bcc09dae02a1244fa4"
 dependencies = [
  "bs58",
  "coins-core",
@@ -407,9 +407,9 @@ dependencies = [
 
 [[package]]
 name = "coins-core"
-version = "0.15.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3edb0608322a58b1b6e007feb2d1d5b6690155db4f8f43d1754046c7d4fbbafe"
+checksum = "0f5b1057c839d4bded1b83b9450ca5ecb0356484ec93f77d6675d58aa9d1e54b"
 dependencies = [
  "digest 0.11.3",
  "hybrid-array",
@@ -419,24 +419,15 @@ dependencies = [
 
 [[package]]
 name = "coins-ledger"
-version = "0.15.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b2110c34d4641d2b40dc4778321a0b40db417a462148c7fbb08093256684b0e"
+checksum = "21a28cdd5e8b32179ff9e3e030a9700e0f9950ef3560928ed6370a355732e033"
 dependencies = [
- "async-trait",
- "byteorder",
- "cfg-if",
  "const-hex",
- "hidapi-rusb",
- "js-sys",
- "log",
- "nix",
- "once_cell",
+ "hidapi",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
- "wasm-bindgen",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -588,9 +579,9 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "crypto-bigint"
-version = "0.7.5"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a52aa3fcda4e6302a9f48734f234d35d4721b96f8fe07d073f07ce9df4f0271"
+checksum = "9c035cb64cba03dad2fb921f3e218785e8cf9a41790da5eb3a1400f62fa2be11"
 dependencies = [
  "cpubits",
  "ctutils",
@@ -632,9 +623,9 @@ dependencies = [
 
 [[package]]
 name = "ctutils"
-version = "0.4.2"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5515a3834141de9eafb9717ad39eea8247b5674e6066c404e8c4b365d2a29e"
+checksum = "a2376ffd6f96d8a9db59875b4b6b0237d6900b5baf64279714e05493ce64828a"
 dependencies = [
  "cmov",
  "subtle",
@@ -848,7 +839,7 @@ dependencies = [
  "der",
  "digest 0.11.3",
  "elliptic-curve",
- "rfc6979 0.6.0",
+ "rfc6979",
  "signature",
  "spki",
  "zeroize",
@@ -1173,15 +1164,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e712f64ec3850b98572bffac52e2c6f282b29fe6c5fa6d42334b30be438d95c1"
 
 [[package]]
-name = "hidapi-rusb"
-version = "1.3.3"
+name = "hidapi"
+version = "2.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efdc2ec354929a6e8f3c6b6923a4d97427ec2f764cfee8cd4bfe890946cdf08b"
+checksum = "818c0e1d27887aaf76fe737042e27a66b796a7b099e6d2e1a72d106c2dff3fa6"
 dependencies = [
  "cc",
+ "cfg-if",
  "libc",
  "pkg-config",
- "rusb",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1749,18 +1741,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
-name = "libusb1-sys"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da050ade7ac4ff1ba5379af847a10a10a8e284181e060105bf8d86960ce9ce0f"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
- "vcpkg",
-]
-
-[[package]]
 name = "link-cplusplus"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1809,15 +1789,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
-name = "memoffset"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "meta-package-consumer"
 version = "0.20.1"
 dependencies = [
@@ -1853,19 +1824,6 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "nix"
-version = "0.26.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "598beaf3cc6fdd9a5dfb1630c2800c7acd31df7aaf0f565796fba2b53ca1af1b"
-dependencies = [
- "bitflags 1.3.2",
- "cfg-if",
- "libc",
- "memoffset",
- "pin-utils",
 ]
 
 [[package]]
@@ -2041,12 +1999,6 @@ name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
-
-[[package]]
-name = "pin-utils"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pkcs8"
@@ -2451,16 +2403,6 @@ dependencies = [
 
 [[package]]
 name = "rfc6979"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5236ce872cac07e0fb3969b0cbf468c7d2f37d432f1b627dcb7b8d34563fb0c3"
-dependencies = [
- "hmac 0.13.0",
- "subtle",
-]
-
-[[package]]
-name = "rfc6979"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4a459cddafb3fe76b31fd8f1108007566c40301feb64dc7b54656eb7388172b"
@@ -2500,16 +2442,6 @@ checksum = "fa24e92bb2a83198bb76d661a71df9f7076b8c420b8696e4d3d97d50d94479e3"
 dependencies = [
  "bytes",
  "rustc-hex",
-]
-
-[[package]]
-name = "rusb"
-version = "0.9.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab9f9ff05b63a786553a4c02943b74b34a988448671001e9a27e2f0565cc05a4"
-dependencies = [
- "libc",
- "libusb1-sys",
 ]
 
 [[package]]
@@ -3097,7 +3029,7 @@ version = "0.20.1"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -3114,7 +3046,7 @@ dependencies = [
  "num-bigint 0.5.1",
  "num-integer",
  "num-traits",
- "rfc6979 0.5.0",
+ "rfc6979",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -3146,7 +3078,7 @@ name = "starknet-rust-macros"
 version = "0.20.1"
 dependencies = [
  "starknet-rust-core",
- "syn 2.0.119",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -3759,12 +3691,6 @@ dependencies = [
  "getrandom 0.2.17",
  "serde",
 ]
-
-[[package]]
-name = "vcpkg"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version_check"
