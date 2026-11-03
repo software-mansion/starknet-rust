@@ -30,7 +30,7 @@ impl LedgerTransport for SpeculosTransport {
         answer
             .extend_from_slice(&raw_answer)
             .map_err(|_| LedgerError::ResponseTooShort(raw_answer.len()))?;
-        ApduAnswer::from_answer(answer)
+        ApduAnswer::from_answer(answer)?.into_result()
     }
 }
 

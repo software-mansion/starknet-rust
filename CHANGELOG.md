@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Ledger integration is now compatible with `coins-ledger` 0.17. `LedgerSigner::new` is synchronous, and custom transports must implement `LedgerTransport` instead of the removed `LedgerAsync` ([#184]).
+- **Breaking:** Ledger APDU status errors now surface through `LedgerError::TransportError`; the `UnknownResponseCode` and `UnsuccessfulRequest` variants were removed ([#184]).
+- Building with the `ledger` feature on Linux now requires the `libudev` development package, such as `libudev-dev` on Debian and Ubuntu ([#184]).
+
 ## [0.20.1] - 2026-10-22
 
 ### Added
@@ -112,3 +118,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#169]: https://github.com/software-mansion/starknet-rust/pull/169
 [#170]: https://github.com/software-mansion/starknet-rust/pull/170
 [#176]: https://github.com/software-mansion/starknet-rust/pull/176
+[#184]: https://github.com/software-mansion/starknet-rust/pull/184

@@ -185,26 +185,7 @@ where
 {
     /// Gets the Ledger app version.
     pub async fn get_version(&self) -> Result<Version, LedgerError> {
-        let response = self
-            .transport
-            .lock()
-            .await
-            .exchange(get_version_command()?, None)
-            .await?;
-
-        let data = get_apdu_data(&response);
-        if data.len() != VERSION_SIZE {
-            return Err(LedgerError::UnexpectedResponseLength {
-                expected: VERSION_SIZE,
-                actual: data.len(),
-            });
-        }
-
-        Ok(Version::new(
-            u64::from(data[0]),
-            u64::from(data[1]),
-            u64::from(data[2]),
-        ))
+        get_version_with_transport(&mut *self.transport.lock().await).await
     }
 
     /// Gets a public key from the app for a particular derivation path, with optional on-device
@@ -278,13 +259,12 @@ where
         derivation_path: DerivationPath,
         hash: &Felt,
     ) -> Result<Signature, LedgerError> {
+        let mut transport = self.transport.lock().await;
+
         get_apdu_data(
-            &self
-                .transport
-                .lock()
-                .await
+            &transport
                 .exchange(
-                    sign_hash_command_1(&SignHashCommand1 {
+                    sign_hash_path_command(&SignHashCommand1 {
                         path: derivation_path,
                     })?,
                     None,
@@ -293,7 +273,7 @@ where
         );
 
         // The Ledger app prior to version 2.0.0 expects the input to be left shifted by 4 bits:
-        let app_version = self.get_version().await?;
+        let app_version = get_version_with_transport(&mut *transport).await?;
         let adjusted_bytes: [u8; 32] = if app_version < Version::new(2, 0, 0) {
             let adjusted_u256: U256 = U256::from_be_slice(&hash.to_bytes_be()) << 4;
             adjusted_u256.to_be_byte_array().into()
@@ -301,17 +281,15 @@ where
             hash.to_bytes_be()
         };
 
-        let response = self
-            .transport
-            .lock()
-            .await
+        let response = transport
             .exchange(
-                sign_hash_command_2(&SignHashCommand2 {
+                sign_hash_payload_command(&SignHashCommand2 {
                     hash: adjusted_bytes,
                 })?,
                 None,
             )
             .await?;
+        drop(transport);
 
         let data = get_apdu_data(&response);
 
@@ -338,6 +316,27 @@ impl From<coins_ledger::LedgerError> for LedgerError {
     }
 }
 
+async fn get_version_with_transport<T>(transport: &mut T) -> Result<Version, LedgerError>
+where
+    T: LedgerTransport,
+{
+    let response = transport.exchange(get_version_command()?, None).await?;
+
+    let data = get_apdu_data(&response);
+    if data.len() != VERSION_SIZE {
+        return Err(LedgerError::UnexpectedResponseLength {
+            expected: VERSION_SIZE,
+            actual: data.len(),
+        });
+    }
+
+    Ok(Version::new(
+        u64::from(data[0]),
+        u64::from(data[1]),
+        u64::from(data[2]),
+    ))
+}
+
 fn get_version_command() -> Result<ApduCommand, LedgerError> {
     ApduCommand::builder()
         .cla(CLA_STARKNET)
@@ -362,7 +361,7 @@ fn get_public_key_command(value: &GetPubKeyCommand) -> Result<ApduCommand, Ledge
         .map_err(Into::into)
 }
 
-fn sign_hash_command_1(value: &SignHashCommand1) -> Result<ApduCommand, LedgerError> {
+fn sign_hash_path_command(value: &SignHashCommand1) -> Result<ApduCommand, LedgerError> {
     let path = value
         .path
         .iter()
@@ -377,7 +376,7 @@ fn sign_hash_command_1(value: &SignHashCommand1) -> Result<ApduCommand, LedgerEr
         .map_err(Into::into)
 }
 
-fn sign_hash_command_2(value: &SignHashCommand2) -> Result<ApduCommand, LedgerError> {
+fn sign_hash_payload_command(value: &SignHashCommand2) -> Result<ApduCommand, LedgerError> {
     ApduCommand::builder()
         .cla(CLA_STARKNET)
         .ins(0x02)
