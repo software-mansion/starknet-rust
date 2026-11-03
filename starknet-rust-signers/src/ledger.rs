@@ -61,13 +61,13 @@ struct GetPubKeyCommand {
     path: DerivationPath,
 }
 
-/// Part 1 of the `SignHash` command for setting path.
-struct SignHashCommand1 {
+/// The `SignHash` command that sets the derivation path.
+struct SignHashPathCommand {
     path: DerivationPath,
 }
 
-/// Part 2 of the `SignHash` command for setting hash.
-struct SignHashCommand2 {
+/// The `SignHash` command that sends the hash payload.
+struct SignHashPayloadCommand {
     hash: [u8; 32],
 }
 
@@ -264,7 +264,7 @@ where
         get_apdu_data(
             &transport
                 .exchange(
-                    sign_hash_path_command(&SignHashCommand1 {
+                    sign_hash_path_command(&SignHashPathCommand {
                         path: derivation_path,
                     })?,
                     None,
@@ -283,7 +283,7 @@ where
 
         let response = transport
             .exchange(
-                sign_hash_payload_command(&SignHashCommand2 {
+                sign_hash_payload_command(&SignHashPayloadCommand {
                     hash: adjusted_bytes,
                 })?,
                 None,
@@ -361,7 +361,7 @@ fn get_public_key_command(value: &GetPubKeyCommand) -> Result<ApduCommand, Ledge
         .map_err(Into::into)
 }
 
-fn sign_hash_path_command(value: &SignHashCommand1) -> Result<ApduCommand, LedgerError> {
+fn sign_hash_path_command(value: &SignHashPathCommand) -> Result<ApduCommand, LedgerError> {
     let path = value
         .path
         .iter()
@@ -376,7 +376,7 @@ fn sign_hash_path_command(value: &SignHashCommand1) -> Result<ApduCommand, Ledge
         .map_err(Into::into)
 }
 
-fn sign_hash_payload_command(value: &SignHashCommand2) -> Result<ApduCommand, LedgerError> {
+fn sign_hash_payload_command(value: &SignHashPayloadCommand) -> Result<ApduCommand, LedgerError> {
     ApduCommand::builder()
         .cla(CLA_STARKNET)
         .ins(0x02)
