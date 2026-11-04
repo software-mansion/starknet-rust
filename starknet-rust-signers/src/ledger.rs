@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use coins_ledger::{
-    APDUAnswer, APDUCommand, Ledger,
-    common::{APDUData, APDUResponseCodes},
-    transports::LedgerAsync,
+    ApduAnswer, ApduCommand,
+    transports::{HidTransport, LedgerTransport},
 };
 use crypto_bigint::{ArrayEncoding, U256};
 use semver::Version;
@@ -26,15 +25,15 @@ const SIGNATURE_SIZE: usize = 65;
 
 /// Ledger app wrapper that implements the [`Signer`] trait.
 #[derive(Debug)]
-pub struct LedgerSigner<T = Ledger> {
+pub struct LedgerSigner<T = HidTransport> {
     app: LedgerStarknetApp<T>,
     derivation_path: DerivationPath,
 }
 
 /// A handle for communicating with the Ledger Starknet app.
 #[derive(Debug)]
-pub struct LedgerStarknetApp<T = Ledger> {
-    transport: T,
+pub struct LedgerStarknetApp<T = HidTransport> {
+    transport: tokio::sync::Mutex<T>,
 }
 
 /// Errors using the Ledger hardware wallet.
@@ -46,12 +45,6 @@ pub enum LedgerError {
     /// Error communicating with the Ledger hardware device.
     #[error(transparent)]
     TransportError(coins_ledger::LedgerError),
-    /// An unknown response code is returned from the device.
-    #[error("unknown response code from Ledger: {0}")]
-    UnknownResponseCode(u16),
-    /// The response code returned from the device does not indicate success.
-    #[error("failed Ledger request: {0}")]
-    UnsuccessfulRequest(APDUResponseCodes),
     /// The response has an unexpected size.
     #[error("unexpected response length - expected: {expected}; actual: {actual}")]
     UnexpectedResponseLength {
@@ -63,21 +56,18 @@ pub enum LedgerError {
 }
 
 /// The `GetPubKey` Ledger command.
-struct GetVersion;
-
-/// The `GetPubKey` Ledger command.
 struct GetPubKeyCommand {
     display: bool,
     path: DerivationPath,
 }
 
-/// Part 1 of the `SignHash` command for setting path.
-struct SignHashCommand1 {
+/// The `SignHash` command that sets the derivation path.
+struct SignHashPathCommand {
     path: DerivationPath,
 }
 
-/// Part 2 of the `SignHash` command for setting hash.
-struct SignHashCommand2 {
+/// The `SignHash` command that sends the hash payload.
+struct SignHashPayloadCommand {
     hash: [u8; 32],
 }
 
@@ -99,7 +89,7 @@ impl LedgerSigner {
     /// - `1470455285'`, decimal for `0x57a55df5`, is the 31 lowest bits for `sha256(starkli)`
     ///
     /// Currently, the Ledger app only enforces the length and the first level of the path.
-    pub async fn new(derivation_path: DerivationPath) -> Result<Self, LedgerError> {
+    pub fn new(derivation_path: DerivationPath) -> Result<Self, LedgerError> {
         if !matches!(derivation_path.iter().next(), Some(&EIP_2645_PURPOSE))
             || derivation_path.len() != EIP_2645_PATH_LENGTH
         {
@@ -107,7 +97,7 @@ impl LedgerSigner {
         }
 
         Ok(Self {
-            app: LedgerStarknetApp::new().await?,
+            app: LedgerStarknetApp::new()?,
             derivation_path,
         })
     }
@@ -150,7 +140,7 @@ impl<T> LedgerSigner<T> {
 #[async_trait]
 impl<T> Signer for LedgerSigner<T>
 where
-    T: LedgerAsync + Sync,
+    T: LedgerTransport + Send,
 {
     type GetPublicKeyError = LedgerError;
     type SignError = LedgerError;
@@ -172,40 +162,30 @@ where
 
 impl<T> LedgerStarknetApp<T> {
     /// Creates Starknet Ledger app handle using an already-initialized transport.
-    pub const fn from_transport(transport: T) -> Self {
-        Self { transport }
+    pub fn from_transport(transport: T) -> Self {
+        Self {
+            transport: tokio::sync::Mutex::new(transport),
+        }
+    }
+}
+
+impl LedgerStarknetApp {
+    /// Initializes the Starknet Ledger app. Attempts to find and connect to a Ledger device. The
+    /// device must be unlocked and have the Starknet app open.
+    pub fn new() -> Result<Self, LedgerError> {
+        Ok(Self::from_transport(
+            HidTransport::open_first().map_err(coins_ledger::LedgerError::from)?,
+        ))
     }
 }
 
 impl<T> LedgerStarknetApp<T>
 where
-    T: LedgerAsync,
+    T: LedgerTransport + Send,
 {
-    /// Initializes the Starknet Ledger app. Attempts to find and connect to a Ledger device. The
-    /// device must be unlocked and have the Starknet app open.
-    pub async fn new() -> Result<Self, LedgerError> {
-        let transport = T::init().await?;
-
-        Ok(Self { transport })
-    }
-
     /// Gets the Ledger app version.
     pub async fn get_version(&self) -> Result<Version, LedgerError> {
-        let response = self.transport.exchange(&GetVersion.into()).await?;
-
-        let data = get_apdu_data(&response)?;
-        if data.len() != VERSION_SIZE {
-            return Err(LedgerError::UnexpectedResponseLength {
-                expected: VERSION_SIZE,
-                actual: data.len(),
-            });
-        }
-
-        Ok(Version::new(
-            u64::from(data[0]),
-            u64::from(data[1]),
-            u64::from(data[2]),
-        ))
+        get_version_with_transport(&mut *self.transport.lock().await).await
     }
 
     /// Gets a public key from the app for a particular derivation path, with optional on-device
@@ -232,16 +212,18 @@ where
     ) -> Result<VerifyingKey, LedgerError> {
         let response = self
             .transport
+            .lock()
+            .await
             .exchange(
-                &GetPubKeyCommand {
+                get_public_key_command(&GetPubKeyCommand {
                     display,
                     path: derivation_path,
-                }
-                .into(),
+                })?,
+                None,
             )
             .await?;
 
-        let data = get_apdu_data(&response)?;
+        let data = get_apdu_data(&response);
         if data.len() != PUBLIC_KEY_SIZE {
             return Err(LedgerError::UnexpectedResponseLength {
                 expected: PUBLIC_KEY_SIZE,
@@ -277,20 +259,21 @@ where
         derivation_path: DerivationPath,
         hash: &Felt,
     ) -> Result<Signature, LedgerError> {
+        let mut transport = self.transport.lock().await;
+
         get_apdu_data(
-            &self
-                .transport
+            &transport
                 .exchange(
-                    &SignHashCommand1 {
+                    sign_hash_path_command(&SignHashPathCommand {
                         path: derivation_path,
-                    }
-                    .into(),
+                    })?,
+                    None,
                 )
                 .await?,
-        )?;
+        );
 
         // The Ledger app prior to version 2.0.0 expects the input to be left shifted by 4 bits:
-        let app_version = self.get_version().await?;
+        let app_version = get_version_with_transport(&mut *transport).await?;
         let adjusted_bytes: [u8; 32] = if app_version < Version::new(2, 0, 0) {
             let adjusted_u256: U256 = U256::from_be_slice(&hash.to_bytes_be()) << 4;
             adjusted_u256.to_be_byte_array().into()
@@ -298,17 +281,17 @@ where
             hash.to_bytes_be()
         };
 
-        let response = self
-            .transport
+        let response = transport
             .exchange(
-                &SignHashCommand2 {
+                sign_hash_payload_command(&SignHashPayloadCommand {
                     hash: adjusted_bytes,
-                }
-                .into(),
+                })?,
+                None,
             )
             .await?;
+        drop(transport);
 
-        let data = get_apdu_data(&response)?;
+        let data = get_apdu_data(&response);
 
         if data.len() != SIGNATURE_SIZE + 1 || data[0] != SIGNATURE_SIZE as u8 {
             return Err(LedgerError::UnexpectedResponseLength {
@@ -333,82 +316,76 @@ impl From<coins_ledger::LedgerError> for LedgerError {
     }
 }
 
-impl From<GetVersion> for APDUCommand {
-    fn from(_value: GetVersion) -> Self {
-        Self {
-            cla: CLA_STARKNET,
-            ins: 0x00,
-            p1: 0x00,
-            p2: 0x00,
-            data: APDUData::new(&[]),
-            response_len: None,
-        }
+async fn get_version_with_transport<T>(transport: &mut T) -> Result<Version, LedgerError>
+where
+    T: LedgerTransport,
+{
+    let response = transport.exchange(get_version_command()?, None).await?;
+
+    let data = get_apdu_data(&response);
+    if data.len() != VERSION_SIZE {
+        return Err(LedgerError::UnexpectedResponseLength {
+            expected: VERSION_SIZE,
+            actual: data.len(),
+        });
     }
+
+    Ok(Version::new(
+        u64::from(data[0]),
+        u64::from(data[1]),
+        u64::from(data[2]),
+    ))
 }
 
-impl From<GetPubKeyCommand> for APDUCommand {
-    fn from(value: GetPubKeyCommand) -> Self {
-        let path = value
-            .path
-            .iter()
-            .flat_map(|level| level.to_be_bytes())
-            .collect::<Vec<_>>();
-
-        Self {
-            cla: CLA_STARKNET,
-            ins: 0x01,
-            p1: u8::from(value.display),
-            p2: 0x00,
-            data: APDUData::new(&path),
-            response_len: None,
-        }
-    }
+fn get_version_command() -> Result<ApduCommand, LedgerError> {
+    ApduCommand::builder()
+        .cla(CLA_STARKNET)
+        .ins(0x00)
+        .build()
+        .map_err(Into::into)
 }
 
-impl From<SignHashCommand1> for APDUCommand {
-    fn from(value: SignHashCommand1) -> Self {
-        let path = value
-            .path
-            .iter()
-            .flat_map(|level| level.to_be_bytes())
-            .collect::<Vec<_>>();
+fn get_public_key_command(value: &GetPubKeyCommand) -> Result<ApduCommand, LedgerError> {
+    let path = value
+        .path
+        .iter()
+        .flat_map(|level| level.to_be_bytes())
+        .collect::<Vec<_>>();
 
-        Self {
-            cla: CLA_STARKNET,
-            ins: 0x02,
-            p1: 0x00,
-            p2: 0x00,
-            data: APDUData::new(&path),
-            response_len: None,
-        }
-    }
+    ApduCommand::builder()
+        .cla(CLA_STARKNET)
+        .ins(0x01)
+        .p1(u8::from(value.display))
+        .data(&path)
+        .build()
+        .map_err(Into::into)
 }
 
-impl From<SignHashCommand2> for APDUCommand {
-    fn from(value: SignHashCommand2) -> Self {
-        Self {
-            cla: CLA_STARKNET,
-            ins: 0x02,
-            p1: 0x01,
-            p2: 0x00,
-            data: APDUData::new(&value.hash),
-            response_len: None,
-        }
-    }
+fn sign_hash_path_command(value: &SignHashPathCommand) -> Result<ApduCommand, LedgerError> {
+    let path = value
+        .path
+        .iter()
+        .flat_map(|level| level.to_be_bytes())
+        .collect::<Vec<_>>();
+
+    ApduCommand::builder()
+        .cla(CLA_STARKNET)
+        .ins(0x02)
+        .data(&path)
+        .build()
+        .map_err(Into::into)
 }
 
-fn get_apdu_data(answer: &APDUAnswer) -> Result<&[u8], LedgerError> {
-    let ret_code = answer.retcode();
+fn sign_hash_payload_command(value: &SignHashPayloadCommand) -> Result<ApduCommand, LedgerError> {
+    ApduCommand::builder()
+        .cla(CLA_STARKNET)
+        .ins(0x02)
+        .p1(0x01)
+        .data(&value.hash)
+        .build()
+        .map_err(Into::into)
+}
 
-    TryInto::<APDUResponseCodes>::try_into(ret_code).map_or_else(
-        |_| Err(LedgerError::UnknownResponseCode(ret_code)),
-        |status| {
-            if status.is_success() {
-                // Unwrapping here as we've already checked success
-                Ok(answer.data().unwrap())
-            } else {
-                Err(LedgerError::UnsuccessfulRequest(status))
-            }
-        },
-    )
+fn get_apdu_data(answer: &ApduAnswer) -> &[u8] {
+    answer.data()
 }

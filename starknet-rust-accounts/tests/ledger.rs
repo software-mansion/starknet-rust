@@ -2,8 +2,7 @@
 
 use std::sync::Arc;
 
-use async_trait::async_trait;
-use coins_ledger::{APDUAnswer, APDUCommand, LedgerError, transports::LedgerAsync};
+use coins_ledger::{ApduAnswer, ApduBuffer, ApduCommand, LedgerError, transports::LedgerTransport};
 use speculos_client::SpeculosClient;
 use speculos_client::starknet_app::{APPROVE_BLIND_SIGN_HASH, ENABLE_BLIND_SIGN, set_automation};
 use starknet_rust_core::types::Felt;
@@ -15,18 +14,23 @@ const APP_PATH: &str = "./test-data/ledger-app/nanox.elf";
 #[derive(Debug)]
 struct SpeculosTransport(Arc<SpeculosClient>);
 
-#[async_trait]
-impl LedgerAsync for SpeculosTransport {
-    async fn init() -> Result<Self, LedgerError> {
-        Ok(Self(Arc::new(SpeculosClient::new(5001, APP_PATH).unwrap())))
+impl LedgerTransport for SpeculosTransport {
+    fn identity(&self) -> Option<coins_ledger::transports::DeviceIdentity<'_>> {
+        None
     }
 
-    async fn exchange(&self, packet: &APDUCommand) -> Result<APDUAnswer, LedgerError> {
-        let raw_asnwer = self.0.apdu(&packet.serialize()).await.unwrap();
-        Ok(APDUAnswer::from_answer(raw_asnwer).unwrap())
+    async fn exchange(
+        &mut self,
+        packet: ApduCommand,
+        _timeout: Option<std::time::Duration>,
+    ) -> Result<ApduAnswer, LedgerError> {
+        let raw_answer = self.0.apdu(packet.as_bytes()).await.unwrap();
+        let mut answer = ApduBuffer::new();
+        answer
+            .extend_from_slice(&raw_answer)
+            .map_err(|_| LedgerError::ResponseTooShort(raw_answer.len()))?;
+        ApduAnswer::from_answer(answer)?.into_result()
     }
-
-    fn close(self) {}
 }
 
 fn setup_app(port: u16) -> (Arc<SpeculosClient>, LedgerStarknetApp<SpeculosTransport>) {
