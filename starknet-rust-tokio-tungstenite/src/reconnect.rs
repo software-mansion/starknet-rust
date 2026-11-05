@@ -313,3 +313,40 @@ impl ReconnectingSubscription {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn cancelled_backoff_preserves_deadline_and_attempt_budget() {
+        // Construct an observed-disconnected handle. Long backoff ensures this test never
+        // opens a socket; polling once and dropping exercises cancellation without relying
+        // on OS timer granularity or wall-clock races with a real connection.
+        let mut subscription = ReconnectingSubscription {
+            active: None,
+            stream: None,
+            request: ReconnectingRequest::NewHeads(ConfirmedBlockId::Latest),
+            url: "ws://127.0.0.1:0".into(),
+            options: ReconnectOptions {
+                max_attempts: 1,
+                initial_delay: Duration::from_secs(3600),
+                max_delay: Duration::from_secs(3600),
+                ..Default::default()
+            },
+            closed: false,
+            attempts: 0,
+            retry_at: None,
+            last_error: None,
+        };
+        let mut original_deadline = None;
+        for _ in 0..5 {
+            let mut receive = Box::pin(subscription.recv());
+            assert!(futures_util::poll!(&mut receive).is_pending());
+            drop(receive);
+            assert_eq!(subscription.attempts, 0);
+            assert!(!subscription.closed);
+            let deadline = subscription.retry_at.expect("backoff deadline set");
+            assert_eq!(*original_deadline.get_or_insert(deadline), deadline);
+        }
+    }
+}
