@@ -262,14 +262,30 @@ async fn retries_are_bounded_and_exhaustion_is_terminal() {
 }
 #[tokio::test]
 async fn invalid_options_do_not_connect() {
-    let result = ReconnectingSubscription::connect(
-        "invalid-url",
-        ReconnectingRequest::NewHeads(ConfirmedBlockId::Latest),
+    for options in [
         ReconnectOptions {
             initial_delay: Duration::ZERO,
             ..options()
         },
-    )
-    .await;
-    assert!(matches!(result, Err(ReconnectError::InvalidOptions)));
+        ReconnectOptions {
+            max_delay: Duration::MAX,
+            ..options()
+        },
+        ReconnectOptions {
+            request_timeout: Duration::MAX,
+            ..options()
+        },
+        ReconnectOptions {
+            keepalive_interval: Duration::MAX,
+            ..options()
+        },
+    ] {
+        let result = ReconnectingSubscription::connect(
+            "invalid-url",
+            ReconnectingRequest::NewHeads(ConfirmedBlockId::Latest),
+            options,
+        )
+        .await;
+        assert!(matches!(result, Err(ReconnectError::InvalidOptions)));
+    }
 }

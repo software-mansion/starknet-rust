@@ -75,9 +75,13 @@ impl ReconnectOptions {
             && self.max_delay >= self.initial_delay
             && !self.request_timeout.is_zero()
             && !self.keepalive_interval.is_zero()
-            && tokio::time::Instant::now()
-                .checked_add(self.max_delay)
-                .is_some()
+            && [
+                self.max_delay,
+                self.request_timeout,
+                self.keepalive_interval,
+            ]
+            .into_iter()
+            .all(|duration| tokio::time::Instant::now().checked_add(duration).is_some())
     }
     fn delay(self, attempt: u32) -> Duration {
         self.initial_delay
