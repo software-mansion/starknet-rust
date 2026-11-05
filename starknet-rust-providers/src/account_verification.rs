@@ -268,6 +268,49 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn typed_data_preserves_precomputed_selectors_for_both_revisions() {
+        for (revision_one, reference_hash) in [
+            (
+                false,
+                "0x0778d68fe2baf73ee78a6711c29bad4722680984c1553a8035c8cb3feb5310c9",
+            ),
+            (
+                true,
+                "0x045bca39274d2b7fdf7dc7c4ecf75f6549f614ce44359cc62ec106f4e5cc87b4",
+            ),
+        ] {
+            let mut data = typed_data_json(revision_one);
+            data["message"]["Some Object"]["Some Selector"] = json!(format!(
+                "{:#x}",
+                get_selector_from_name("transfer").unwrap()
+            ));
+            let message: TypedData = serde_json::from_value(data).unwrap();
+            let transport = std::sync::Arc::new(Mock {
+                response: json!({"id":1,"result":["0x56414c4944"]}),
+                params: Mutex::new(None),
+            });
+            let rpc = JsonRpcClient::new(transport.clone());
+            assert!(
+                verify_typed_data(
+                    &rpc,
+                    Felt::from(0x1234u64),
+                    &message,
+                    &[],
+                    latest(),
+                    &SignatureVerificationOptions::default()
+                )
+                .await
+                .unwrap()
+            );
+            let params = transport.params.lock().unwrap().clone().unwrap();
+            assert_eq!(
+                params["request"]["calldata"][0],
+                format!("{:#x}", Felt::from_hex(reference_hash).unwrap())
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn typed_data_hash_errors_do_not_call_rpc() {
         for revision_one in [false, true] {
             let mut data = typed_data_json(revision_one);
