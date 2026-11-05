@@ -275,6 +275,47 @@ mod tests {
             json!(["INCLUDE_PROOF_FACTS"])
         );
     }
+    #[tokio::test]
+    async fn storage_flags_are_version_gated_and_preserve_request_fields() {
+        let old = VersionedRpcClient::new(mock("0.9.0"), RpcVersion::V0_9_0);
+        let flags = ["INCLUDE_PROOF_FACTS".to_owned()];
+        assert!(matches!(
+            old.storage_at(Felt::ONE, Felt::TWO, BlockId::Number(7), &flags)
+                .await,
+            Err(VersionedRpcError::UnsupportedFeature { .. })
+        ));
+        assert!(old.transport.requests.lock().unwrap().is_empty());
+
+        for version in [
+            RpcVersion::V0_9_0,
+            RpcVersion::V0_10_2,
+            RpcVersion::V0_10_3,
+            RpcVersion::V0_10_4,
+        ] {
+            let channel = VersionedRpcClient::new(mock("unused"), version);
+            channel
+                .storage_at(Felt::ONE, Felt::TWO, BlockId::Number(7), &[])
+                .await
+                .unwrap();
+            assert_eq!(
+                channel.transport.requests.lock().unwrap()[0],
+                (
+                    "starknet_getStorageAt".to_owned(),
+                    json!({"contract_address":"0x1","key":"0x2","block_id":{"block_number":7}})
+                )
+            );
+            if version != RpcVersion::V0_9_0 {
+                channel
+                    .storage_at(Felt::ONE, Felt::TWO, BlockId::Number(7), &flags)
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    channel.transport.requests.lock().unwrap()[1].1,
+                    json!({"contract_address":"0x1","key":"0x2","block_id":{"block_number":7},"response_flags":flags})
+                );
+            }
+        }
+    }
     struct WireEnvelope(&'static str);
     #[async_trait]
     impl JsonRpcTransport for WireEnvelope {
