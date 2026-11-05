@@ -61,3 +61,24 @@ test("legacy nonempty account and chain changes retain their wire shapes", () =>
   ]);
   unsubscribe();
 });
+
+test("failed second legacy registration removes the first handler", () => {
+  const wallet = legacyWallet();
+  const register = wallet.on;
+  const failure = new Error("network registration rejected");
+  wallet.on = (name, callback) => {
+    if (name === "networkChanged") throw failure;
+    register(name, callback);
+  };
+  let calls = 0;
+  assert.throws(
+    () =>
+      walletSubscribe(wallet, () => {
+        calls += 1;
+      }),
+    (error) => error === failure,
+  );
+  assert.equal(wallet.handlers.size, 0);
+  wallet.handlers.get("accountsChanged")?.(["0x123"]);
+  assert.equal(calls, 0);
+});

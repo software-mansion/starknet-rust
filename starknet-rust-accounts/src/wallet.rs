@@ -161,8 +161,14 @@ impl<T: WalletTransport> WalletClient<T> {
     /// Numeric JSON values must fit JavaScript's safe integer range; use decimal/hex
     /// strings for larger amounts. Validation happens before the wallet receives a request.
     pub async fn sign_typed_data(&self, data: &TypedData) -> Result<Vec<Felt>, WalletError> {
-        self.call("wallet_signTypedData", Some(serde_json::to_value(data)?))
-            .await
+        let mut wire = serde_json::to_value(data)?;
+        // Domain shortstrings can have numeric-looking ASCII representations. Preserve
+        // the already parsed field values instead of letting a wallet reinterpret them.
+        let domain = data.encoder().domain();
+        wire["domain"]["name"] = json!(format!("{:#x}", domain.name));
+        wire["domain"]["version"] = json!(format!("{:#x}", domain.version));
+        wire["domain"]["chainId"] = json!(format!("{:#x}", domain.chain_id));
+        self.call("wallet_signTypedData", Some(wire)).await
     }
     /// Submit an atomic list of calls through the wallet.
     pub async fn execute(&self, calls: &[WalletCall]) -> Result<WalletTransaction, WalletError> {
@@ -204,7 +210,8 @@ export function walletSubscribe(wallet, callback) {
   const accounts = value => callback(JSON.stringify({Accounts:value ?? []}));
   const chain = value => callback(JSON.stringify(value == null ? {Accounts:[]} : {Chain:value}));
   wallet.on('accountsChanged', accounts);
-  wallet.on('networkChanged', chain);
+  try { wallet.on('networkChanged', chain); }
+  catch (error) { wallet.off('accountsChanged', accounts); throw error; }
   return () => { wallet.off('accountsChanged', accounts); wallet.off('networkChanged', chain); };
 }
 export function walletConnect(wallet, silent) {
@@ -494,6 +501,42 @@ mod tests {
             "message":{"amount":amount}
         })).unwrap()
     }
+    #[tokio::test]
+    async fn numeric_looking_domain_fields_keep_their_original_hash_for_both_revisions() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../starknet-rust-core/test-data/typed-data/wallet-domain/starknet_js_11_5_1.json"
+        ))
+        .unwrap();
+        let account: Felt = serde_json::from_value(fixture["account"].clone()).unwrap();
+        for vector in fixture["vectors"].as_array().unwrap() {
+            let data: TypedData = serde_json::from_value(vector["original"].clone()).unwrap();
+            let expected: Felt = serde_json::from_value(vector["message_hash"].clone()).unwrap();
+            assert_eq!(data.message_hash(account).unwrap(), expected);
+            if vector["numeric"] == true {
+                // Generic shortstring serialization produces ASCII "1", "2", "3" here.
+                let roundtrip: TypedData =
+                    serde_json::from_value(serde_json::to_value(&data).unwrap()).unwrap();
+                assert_ne!(roundtrip.message_hash(account).unwrap(), expected);
+            }
+            let client = WalletClient::new(Mock {
+                seen: Mutex::new(vec![]),
+                response: json!(["0x1", "0x2"]),
+            });
+            client.sign_typed_data(&data).await.unwrap();
+            let seen = client.transport.seen.lock().unwrap();
+            assert_eq!(seen[0].0, "wallet_signTypedData");
+            let wire = seen[0].1.as_ref().unwrap().clone();
+            drop(seen);
+            let mut expected_domain = vector["wire"]["domain"].clone();
+            if vector["revision"] == 0 {
+                expected_domain.as_object_mut().unwrap().remove("revision");
+            }
+            assert_eq!(wire["domain"], expected_domain);
+            let received: TypedData = serde_json::from_value(wire.clone()).unwrap();
+            assert_eq!(received.message_hash(account).unwrap(), expected);
+        }
+    }
+
     #[tokio::test]
     async fn unsafe_typed_data_integer_is_rejected_before_wallet_dispatch() {
         let client = WalletClient::new(Mock {
