@@ -19,3 +19,6 @@ recovery; timeouts include in-flight receipt queries. Pre-confirmed receipts are
 The helpers use the account's standard fee estimation; callers needing manual transaction bounds
 can continue using the existing declaration and deployment builders directly. The connected result
 uses selectors/raw calldata and does not add ABI bindings.
+
+Confirmation polling requires a Tokio runtime with time enabled. Browser timer integration is
+not provided by these helpers.

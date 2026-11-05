@@ -320,16 +320,19 @@ mod tests {
         type Error = serde_json::Error;
         async fn send_request<P: Serialize + Send + Sync, R: DeserializeOwned + Send>(
             &self,
-            _method: JsonRpcMethod,
+            method: JsonRpcMethod,
             _params: P,
         ) -> Result<JsonRpcResponse<R>, Self::Error> {
-            serde_json::from_value(
-                self.responses
-                    .lock()
-                    .unwrap()
-                    .pop_front()
-                    .expect("unexpected RPC"),
-            )
+            let mut response = self
+                .responses
+                .lock()
+                .unwrap()
+                .pop_front()
+                .expect("unexpected RPC");
+            if let Some(expected) = response.as_object_mut().unwrap().remove("_method") {
+                assert_eq!(serde_json::to_value(method)?, expected);
+            }
+            serde_json::from_value(response)
         }
         async fn send_requests<R: AsRef<[ProviderRequestData]> + Send + Sync>(
             &self,
@@ -433,6 +436,87 @@ mod tests {
             .validate()
             .is_err()
         );
+    }
+    #[tokio::test]
+    async fn declares_confirms_deploys_and_verifies_in_order() {
+        use serde_json::json;
+        use starknet_rust_accounts::{ExecutionEncoding, SingleOwnerAccount};
+        use starknet_rust_signers::{LocalWallet, SigningKey};
+        fn response(method: &str, result: serde_json::Value) -> serde_json::Value {
+            let mut response = json!({"id":1,"_method":method});
+            response["result"] = result;
+            response
+        }
+        fn confirmed(method: &str, hash: &str) -> serde_json::Value {
+            let mut r = receipt(hash, true, false);
+            r["_method"] = json!(method);
+            r
+        }
+        let class = Arc::new(FlattenedSierraClass {
+            sierra_program: vec![],
+            contract_class_version: "0.1.0".into(),
+            entry_points_by_type: starknet_rust_core::types::EntryPointsByType {
+                constructor: vec![],
+                external: vec![],
+                l1_handler: vec![],
+            },
+            abi: "[]".into(),
+        });
+        let hash = class.class_hash();
+        let fee = starknet_rust_core::types::FeeEstimate {
+            l1_gas_consumed: 1,
+            l1_gas_price: 1,
+            l2_gas_consumed: 1,
+            l2_gas_price: 1,
+            l1_data_gas_consumed: 1,
+            l1_data_gas_price: 1,
+            overall_fee: 3,
+        };
+        let block = json!({"status":"ACCEPTED_ON_L2","block_hash":"0x123","parent_hash":"0x0","block_number":42,"new_root":"0x0","timestamp":0,"sequencer_address":"0x0","l1_gas_price":{"price_in_wei":"0x1","price_in_fri":"0x1"},"l2_gas_price":{"price_in_wei":"0x1","price_in_fri":"0x1"},"l1_data_gas_price":{"price_in_wei":"0x1","price_in_fri":"0x1"},"l1_da_mode":"BLOB","starknet_version":"0.14.0","event_commitment":"0x0","transaction_commitment":"0x0","receipt_commitment":"0x0","state_diff_commitment":"0x0","event_count":0,"transaction_count":0,"state_diff_length":0,"transactions":[]});
+        let p = provider(vec![
+            json!({"id":1,"_method":"starknet_getClass","error":{"code":28,"message":"Class hash not found"}}),
+            response("starknet_getNonce", json!("0x0")),
+            response("starknet_estimateFee", json!([fee.clone()])),
+            response("starknet_getBlockWithTxs", block.clone()),
+            response(
+                "starknet_addDeclareTransaction",
+                json!({"transaction_hash":"0x1","class_hash":format!("{hash:#x}")}),
+            ),
+            confirmed("starknet_getTransactionReceipt", "0x1"),
+            response("starknet_getNonce", json!("0x1")),
+            response("starknet_estimateFee", json!([fee])),
+            response("starknet_getBlockWithTxs", block),
+            response(
+                "starknet_addInvokeTransaction",
+                json!({"transaction_hash":"0x2"}),
+            ),
+            confirmed("starknet_getTransactionReceipt", "0x2"),
+            response("starknet_getClassHashAt", json!(format!("{hash:#x}"))),
+        ]);
+        let account = SingleOwnerAccount::new(
+            p,
+            LocalWallet::from_signing_key(SigningKey::from_secret_scalar(Felt::ONE)),
+            Felt::THREE,
+            starknet_rust_core::chain_id::SEPOLIA,
+            ExecutionEncoding::New,
+        );
+        let workflow = DeclareAndDeploy {
+            class,
+            compiled_class_hash: Felt::TWO,
+            salt: Felt::ONE,
+            constructor_calldata: vec![Felt::THREE],
+            unique: true,
+            udc: UdcSelector::New,
+            confirmation: ConfirmationOptions::default(),
+        };
+        let expected = ContractFactory::new_with_udc(hash, &account, UdcSelector::New)
+            .deploy_v3(vec![Felt::THREE], Felt::ONE, true)
+            .deployed_address();
+        let deployed = workflow.send(&account).await.unwrap();
+        assert_eq!(deployed.class_hash, hash);
+        assert_eq!(deployed.address, expected);
+        assert_eq!(deployed.declaration_transaction_hash, Some(Felt::ONE));
+        assert_eq!(deployed.deployment_transaction_hash, Felt::TWO);
     }
     #[tokio::test]
     async fn existing_class_skips_signing_and_submission() {
