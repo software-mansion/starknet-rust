@@ -259,16 +259,16 @@ mod tests {
         for v in [OutsideExecutionVersion::V1, OutsideExecutionVersion::V2] {
             let e = sample();
             let hash = e
-                .message_hash(Felt::from(0x534e5f4d41494eu64), Felt::ONE, v)
+                .message_hash(Felt::from(0x0053_4e5f_4d41_494e_u64), Felt::ONE, v)
                 .unwrap();
             assert_ne!(
                 hash,
-                e.message_hash(Felt::from(0x534e5f4d41494eu64), Felt::TWO, v)
+                e.message_hash(Felt::from(0x0053_4e5f_4d41_494e_u64), Felt::TWO, v)
                     .unwrap()
             );
             assert_ne!(
                 hash,
-                e.message_hash(Felt::from(0x534e5f5345504fu64), Felt::ONE, v)
+                e.message_hash(Felt::from(0x0053_4e5f_5345_504f_u64), Felt::ONE, v)
                     .unwrap()
             );
             let mut changed = e.clone();
@@ -276,7 +276,7 @@ mod tests {
             assert_ne!(
                 hash,
                 changed
-                    .message_hash(Felt::from(0x534e5f4d41494eu64), Felt::ONE, v)
+                    .message_hash(Felt::from(0x0053_4e5f_4d41_494e_u64), Felt::ONE, v)
                     .unwrap()
             );
         }
@@ -330,7 +330,7 @@ mod tests {
         let s = e
             .sign(
                 &signer,
-                Felt::from(0x534e5f4d41494eu64),
+                Felt::from(0x0053_4e5f_4d41_494e_u64),
                 Felt::ONE,
                 OutsideExecutionVersion::V2,
             )
@@ -338,7 +338,7 @@ mod tests {
             .unwrap();
         let hash = e
             .message_hash(
-                Felt::from(0x534e5f4d41494eu64),
+                Felt::from(0x0053_4e5f_4d41_494e_u64),
                 Felt::ONE,
                 OutsideExecutionVersion::V2,
             )
