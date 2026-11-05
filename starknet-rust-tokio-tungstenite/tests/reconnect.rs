@@ -27,7 +27,7 @@ async fn restores_filters_reports_gap_and_delivers_new_subscription_updates() {
     let address = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let mut original = None;
-        for subscription_id in ["1", "9"] {
+        for subscription_id in ["1", "9", "12"] {
             let (tcp, _) = listener.accept().await.unwrap();
             let mut ws = tokio_tungstenite::accept_async(tcp).await.unwrap();
             loop {
@@ -49,7 +49,7 @@ async fn restores_filters_reports_gap_and_delivers_new_subscription_updates() {
                     break;
                 }
             }
-            if subscription_id == "1" {
+            if subscription_id != "12" {
                 ws.close(None).await.unwrap();
                 continue;
             }
@@ -71,6 +71,7 @@ async fn restores_filters_reports_gap_and_delivers_new_subscription_updates() {
         format!("ws://{address}"),
         ReconnectingRequest::NewHeads(ConfirmedBlockId::Number(42)),
         ReconnectOptions {
+            max_attempts: 1,
             initial_delay: Duration::from_millis(50),
             max_delay: Duration::from_millis(100),
             ..options()
@@ -92,6 +93,11 @@ async fn restores_filters_reports_gap_and_delivers_new_subscription_updates() {
         .unwrap();
     assert!(matches!(
         restored,
+        ReconnectingUpdate::Reconnected { attempts: 1 }
+    ));
+    // A successful resubscription resets the outage budget even on quiet subscriptions.
+    assert!(matches!(
+        subscription.recv().await.unwrap(),
         ReconnectingUpdate::Reconnected { attempts: 1 }
     ));
     assert!(matches!(

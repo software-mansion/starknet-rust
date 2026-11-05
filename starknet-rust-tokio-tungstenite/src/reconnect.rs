@@ -279,9 +279,10 @@ impl ReconnectingSubscription {
             self.attempts += 1;
             match self.open().await {
                 Ok(()) => {
-                    return Ok(ReconnectingUpdate::Reconnected {
-                        attempts: self.attempts,
-                    });
+                    let attempts = self.attempts;
+                    self.attempts = 0;
+                    self.last_error = None;
+                    return Ok(ReconnectingUpdate::Reconnected { attempts });
                 }
                 Err(ReconnectError::Subscribe(error))
                     if !matches!(
