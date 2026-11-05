@@ -798,6 +798,231 @@ mod tests {
             json!({"execute_after":"10","execute_before":"200"})
         );
     }
+    fn deployment_setup(
+        with_invoke: bool,
+        mode: FeeMode,
+    ) -> (
+        UserTransaction,
+        ExecutionParameters,
+        ApprovalPolicy,
+        PreparedTransaction,
+    ) {
+        let (request, parameters, policy, prepared) = setup(mode);
+        let UserTransaction::Invoke { invoke } = request else {
+            unreachable!()
+        };
+        let PreparedTransaction::Invoke {
+            typed_data, fee, ..
+        } = prepared
+        else {
+            unreachable!()
+        };
+        let deployment =
+            json!({"address":"0x8","class_hash":"0x123","salt":"0x456","calldata":["0x789"]});
+        if with_invoke {
+            (
+                UserTransaction::DeployAndInvoke {
+                    deployment: deployment.clone(),
+                    invoke,
+                },
+                parameters.clone(),
+                policy,
+                PreparedTransaction::DeployAndInvoke {
+                    deployment,
+                    typed_data,
+                    parameters,
+                    fee,
+                },
+            )
+        } else {
+            (
+                UserTransaction::Deploy {
+                    deployment: deployment.clone(),
+                },
+                parameters.clone(),
+                policy,
+                PreparedTransaction::Deploy {
+                    deployment,
+                    parameters,
+                    fee,
+                },
+            )
+        }
+    }
+    struct CountingSigner {
+        wallet: starknet_rust_signers::LocalWallet,
+        calls: std::sync::atomic::AtomicUsize,
+    }
+    #[async_trait]
+    impl Signer for CountingSigner {
+        type GetPublicKeyError = <starknet_rust_signers::LocalWallet as Signer>::GetPublicKeyError;
+        type SignError = <starknet_rust_signers::LocalWallet as Signer>::SignError;
+        async fn get_public_key(
+            &self,
+        ) -> Result<starknet_rust_signers::VerifyingKey, Self::GetPublicKeyError> {
+            panic!("paymaster signing must not request a public key")
+        }
+        async fn sign_hash(
+            &self,
+            hash: &Felt,
+        ) -> Result<starknet_rust_core::crypto::Signature, Self::SignError> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            self.wallet.sign_hash(hash).await
+        }
+        fn is_interactive(&self, _: starknet_rust_signers::SignerInteractivityContext<'_>) -> bool {
+            false
+        }
+    }
+    struct ScriptedTransport {
+        responses: std::sync::Mutex<std::collections::VecDeque<Value>>,
+        seen: std::sync::Mutex<Vec<(String, Value)>>,
+    }
+    #[async_trait]
+    impl PaymasterTransport for ScriptedTransport {
+        async fn request(&self, method: &str, params: Value) -> Result<Value, PaymasterError> {
+            self.seen.lock().unwrap().push((method.into(), params));
+            Ok(self
+                .responses
+                .lock()
+                .unwrap()
+                .pop_front()
+                .expect("unexpected paymaster request"))
+        }
+    }
+    #[tokio::test]
+    async fn deployment_flows_build_validate_sign_and_execute_exact_descriptors() {
+        for with_invoke in [false, true] {
+            let (request, parameters, policy, prepared) =
+                deployment_setup(with_invoke, FeeMode::Sponsored);
+            let key = starknet_rust_signers::SigningKey::from_random();
+            let public = key.verifying_key();
+            let signer = CountingSigner {
+                wallet: starknet_rust_signers::LocalWallet::from(key),
+                calls: std::sync::atomic::AtomicUsize::new(0),
+            };
+            let client = PaymasterClient::new(ScriptedTransport {
+                responses: std::sync::Mutex::new(
+                    vec![
+                        serde_json::to_value(prepared).unwrap(),
+                        json!({"transaction_hash":"0x123"}),
+                    ]
+                    .into(),
+                ),
+                seen: std::sync::Mutex::new(vec![]),
+            });
+            let built = client.build(&request, &parameters).await.unwrap();
+            let authorization = built
+                .validate(&request, &parameters, &policy)
+                .unwrap()
+                .sign(&signer)
+                .await
+                .unwrap();
+            assert_eq!(
+                signer.calls.load(Ordering::SeqCst),
+                usize::from(with_invoke)
+            );
+            assert_eq!(
+                client.execute(authorization).await.unwrap(),
+                json!({"transaction_hash":"0x123"})
+            );
+            let seen = client.transport.seen.lock().unwrap();
+            assert_eq!(seen.len(), 2);
+            assert_eq!(seen[0].0, "paymaster_buildTransaction");
+            assert_eq!(
+                seen[0].1,
+                json!({"transaction":request,"parameters":parameters})
+            );
+            assert_eq!(seen[1].0, "paymaster_executeTransaction");
+            let submitted = &seen[1].1["transaction"];
+            assert_eq!(
+                submitted["type"],
+                if with_invoke {
+                    "deploy_and_invoke"
+                } else {
+                    "deploy"
+                }
+            );
+            assert_eq!(
+                submitted["deployment"],
+                seen[0].1["transaction"]["deployment"]
+            );
+            if with_invoke {
+                assert_eq!(submitted["invoke"]["user_address"], "0x8");
+                let signature: Vec<Felt> =
+                    serde_json::from_value(submitted["invoke"]["signature"].clone()).unwrap();
+                assert_eq!(signature.len(), 2);
+                let data: TypedData =
+                    serde_json::from_value(submitted["invoke"]["typed_data"].clone()).unwrap();
+                assert!(
+                    starknet_rust_crypto::verify(
+                        &public.scalar(),
+                        &data.message_hash(Felt::from(8u64)).unwrap(),
+                        &signature[0],
+                        &signature[1]
+                    )
+                    .unwrap()
+                );
+            } else {
+                assert!(submitted.get("invoke").is_none());
+                assert!(submitted.get("signature").is_none());
+            }
+        }
+    }
+    #[test]
+    fn altered_deployment_descriptors_are_rejected_for_both_flows() {
+        for with_invoke in [false, true] {
+            let (request, parameters, policy, mut prepared) =
+                deployment_setup(with_invoke, FeeMode::Sponsored);
+            match &mut prepared {
+                PreparedTransaction::Deploy { deployment, .. }
+                | PreparedTransaction::DeployAndInvoke { deployment, .. } => {
+                    deployment["class_hash"] = json!("0x999");
+                }
+                PreparedTransaction::Invoke { .. } => unreachable!(),
+            }
+            assert!(matches!(
+                prepared.validate(&request, &parameters, &policy),
+                Err(PaymasterError::Invalid(
+                    "paymaster changed transaction type or deployment descriptor"
+                ))
+            ));
+        }
+    }
+    #[test]
+    fn every_transaction_type_substitution_is_rejected() {
+        let cases = [
+            setup(FeeMode::Sponsored),
+            deployment_setup(false, FeeMode::Sponsored),
+            deployment_setup(true, FeeMode::Sponsored),
+        ];
+        for (requested_index, (request, parameters, policy, _)) in cases.iter().enumerate() {
+            for (returned_index, (_, _, _, prepared)) in cases.iter().enumerate() {
+                if requested_index != returned_index {
+                    assert!(matches!(
+                        prepared.clone().validate(request, parameters, policy),
+                        Err(PaymasterError::Invalid(
+                            "paymaster changed transaction type or deployment descriptor"
+                        ))
+                    ));
+                }
+            }
+        }
+    }
+    #[test]
+    fn standalone_deployment_rejects_token_paid_fee_mode() {
+        let (request, parameters, policy, prepared) = deployment_setup(
+            false,
+            FeeMode::Default {
+                gas_token: Felt::THREE,
+            },
+        );
+        assert!(matches!(
+            prepared.validate(&request, &parameters, &policy),
+            Err(PaymasterError::Invalid(
+                "standalone deployment only supports sponsored mode"
+            ))
+        ));
+    }
     struct ResponseMock {
         response: Value,
         seen: std::sync::Mutex<Vec<(String, Value)>>,
