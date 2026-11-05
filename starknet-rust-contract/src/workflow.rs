@@ -500,17 +500,20 @@ mod tests {
             starknet_rust_core::chain_id::SEPOLIA,
             ExecutionEncoding::New,
         );
+        // UDC salt is public address-derivation input, not a password/KDF salt.
+        // An arbitrary shared value exercises the workflow without a trivial fixed fixture.
+        let deployment_salt = SigningKey::from_random().secret_scalar();
         let workflow = DeclareAndDeploy {
             class,
             compiled_class_hash: Felt::TWO,
-            salt: Felt::ONE,
+            salt: deployment_salt,
             constructor_calldata: vec![Felt::THREE],
             unique: true,
             udc: UdcSelector::New,
             confirmation: ConfirmationOptions::default(),
         };
         let expected = ContractFactory::new_with_udc(hash, &account, UdcSelector::New)
-            .deploy_v3(vec![Felt::THREE], Felt::ONE, true)
+            .deploy_v3(vec![Felt::THREE], deployment_salt, true)
             .deployed_address();
         let deployed = workflow.send(&account).await.unwrap();
         assert_eq!(deployed.class_hash, hash);
