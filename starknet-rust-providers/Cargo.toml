@@ -27,6 +27,8 @@ serde_json.workspace = true
 serde_with = { workspace = true, features = ["std"] }
 worker = { workspace = true, optional = true }
 
+tokio = { workspace = true, features = ["time"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }
 
