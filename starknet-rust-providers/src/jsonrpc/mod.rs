@@ -1935,3 +1935,6 @@ mod tests {
         assert_eq!(value.get("keys"), None);
     }
 }
+
+/// Explicitly selected wire-version channels and negotiation.
+pub mod versioned;
