@@ -9,3 +9,5 @@ The account contract must verify secp256k1 and the five-felt serialization. Ordi
 The private key is held by RustCrypto's zeroizing `SigningKey`. `Debug` exposes the public key only. The signer compiles for native and wasm32-unknown-unknown targets. The dependency enables only the required ECDSA feature, avoiding an unused OS-RNG dependency in wasm builds. No browser runtime or live chain execution was performed.
 
 Run the offline example: `cargo run --example eth_signer --features eth`.
+
+Feature-enabled CI steps run the Ethereum signer vectors, public signer-import compatibility regression, and EncodedAccount integration in the existing Unix and Windows matrices.

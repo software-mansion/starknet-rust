@@ -46,6 +46,12 @@ jobs:
         run: |
           cargo test --all
 
+      - name: Run eth feature tests
+        run: |
+          cargo test -p starknet-rust-signers --features eth --lib eth::tests
+          cargo test -p starknet-rust-signers --features eth --test account_signer_compatibility
+          cargo test -p starknet-rust-accounts --features eth --lib encoded::tests
+
       - name: Test free RPC provider (zan)
         env:
           TEST_NODE_URL: "https://api.zan.top/public/starknet-sepolia/rpc/v0_10"
@@ -84,6 +90,12 @@ jobs:
       - name: Run cargo tests
         run: |
           cargo test --all --target ${{ matrix.target }} --exclude starknet-rust-cxx
+
+      - name: Run eth feature tests
+        run: |
+          cargo test -p starknet-rust-signers --features eth --target ${{ matrix.target }} --lib eth::tests
+          cargo test -p starknet-rust-signers --features eth --target ${{ matrix.target }} --test account_signer_compatibility
+          cargo test -p starknet-rust-accounts --features eth --target ${{ matrix.target }} --lib encoded::tests
 
   wasm-test:
     name: WASM tests
