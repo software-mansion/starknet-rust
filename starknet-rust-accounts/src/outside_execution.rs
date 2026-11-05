@@ -348,4 +348,51 @@ mod tests {
                 .unwrap()
         );
     }
+    #[test]
+    fn nonempty_authorizations_match_independent_starknet_js_vectors() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../starknet-rust-core/test-data/typed-data/snip9/starknet_js_11_5_1.json"
+        ))
+        .unwrap();
+        let field = |name: &str| serde_json::from_value::<Felt>(fixture[name].clone()).unwrap();
+        let calls = fixture["calls"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .map(|(index, call)| Call {
+                to: serde_json::from_value(call["contractAddress"].clone()).unwrap(),
+                selector: serde_json::from_value(fixture["selectors"][index].clone()).unwrap(),
+                calldata: serde_json::from_value(call["calldata"].clone()).unwrap(),
+            })
+            .collect();
+        let request = OutsideExecution {
+            caller: field("caller"),
+            nonce: field("nonce"),
+            execute_after: fixture["execute_after"].as_u64().unwrap(),
+            execute_before: fixture["execute_before"].as_u64().unwrap(),
+            calls,
+        };
+        for vector in fixture["vectors"].as_array().unwrap() {
+            let version = match vector["version"].as_str().unwrap() {
+                "1" => OutsideExecutionVersion::V1,
+                "2" => OutsideExecutionVersion::V2,
+                other => panic!("unexpected fixture version {other}"),
+            };
+            let source: TypedData = serde_json::from_value(vector["typed_data"].clone()).unwrap();
+            let expected: Felt = serde_json::from_value(vector["message_hash"].clone()).unwrap();
+            let local = request.typed_data(field("chain_id"), version).unwrap();
+            // JS normalizes calldata to decimal strings; Rust uses equivalent hex strings.
+            assert_eq!(
+                local.message_hash(field("account")).unwrap(),
+                source.message_hash(field("account")).unwrap()
+            );
+            assert_eq!(
+                request
+                    .message_hash(field("chain_id"), field("account"), version)
+                    .unwrap(),
+                expected
+            );
+        }
+    }
 }

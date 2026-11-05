@@ -27,3 +27,9 @@ bounds before signing. `ANY_CALLER` permits any relayer to submit it. The RNG
 helper uses the existing cryptographically random Stark scalar generator and
 bounds its attempts rather than retrying forever. Support/nonce queries propagate
 RPC errors. No live contract compatibility has been exercised by the unit tests.
+
+Nonempty SNIP-9 v1/v2 hashes are checked against independently generated
+`starknet@11.5.1` fixtures in `starknet-rust-core/test-data/typed-data/snip9/`.
+The fixture includes the exact messages, expected hashes, npm integrity digest,
+and a version-checked regeneration script. Precomputed hexadecimal selectors are
+encoded as field elements; malformed or out-of-field-range values are rejected.
