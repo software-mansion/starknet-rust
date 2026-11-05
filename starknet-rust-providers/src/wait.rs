@@ -278,4 +278,31 @@ mod tests {
             Err(WaitError::InvalidOptions)
         ));
     }
+    #[tokio::test]
+    async fn dropping_waiter_stops_future_checks() {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+        let checks = Arc::new(AtomicUsize::new(0));
+        let counter = checks.clone();
+        let waiting = poll::<(), _, _>(
+            WaitOptions {
+                poll_interval: Duration::from_millis(20),
+                ..opts()
+            },
+            move || {
+                counter.fetch_add(1, Ordering::SeqCst);
+                async { Ok(None) }
+            },
+        );
+        assert!(
+            tokio::time::timeout(Duration::from_millis(1), waiting)
+                .await
+                .is_err()
+        );
+        let checks_at_drop = checks.load(Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        assert_eq!(checks.load(Ordering::SeqCst), checks_at_drop);
+    }
 }

@@ -36,6 +36,7 @@ pub enum FastExecutionError<S: std::error::Error + Send + Sync + 'static> {
 /// Executes calls with the account's pre-confirmed nonce, waits for a successful receipt, then
 /// waits for that nonce to advance. Gas and tip estimation use the account's configured block.
 ///
+/// `options.finality` is ignored: readiness always uses `PreConfirmed`.
 /// Each waiting phase has its own `options.timeout`; submission is governed by the provider's
 /// request timeout. Pre-confirmation may be reorganized. Dropping this future after submission
 /// does not cancel the transaction; a waiting error includes its hash for recovery.
