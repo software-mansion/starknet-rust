@@ -1,6 +1,6 @@
 //! Starknet Wallet API integration, without taking custody of wallet keys.
 //!
-//! [`WalletClient`] sends Wallet API requests through a transport. On WASM,
+//! `WalletClient` sends Wallet API requests through a transport. On WASM,
 //! `BrowserWallet` wraps a wallet object selected by the application's wallet discovery UI.
 //! Both legacy `request` objects and wallet-standard `starknet:walletApi` objects work.
 //! Wallet discovery and selection remain application concerns. Wallet results are authoritative;
