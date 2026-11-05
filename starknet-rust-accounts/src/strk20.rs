@@ -292,6 +292,9 @@ impl<T: Strk20Transport> Strk20Client<T> {
     }
     /// Ask the wallet to approve and submit ordinary calls with a prepared STRK20 proof.
     /// Review the calls and proof output before requesting approval. Simulation proofs are rejected.
+    /// Uses the browser Wallet API `AddInvokeTransactionParameters` shape (`calls`, `proof`),
+    /// matching Starknet.js v6 and `@starknet-io/types-js`. The raw `OpenRPC` wallet schema's
+    /// `invoke_transaction` parameter describes a different wire shape and is not sent here.
     pub async fn execute_with_proof(
         &self,
         calls: &[WalletCall],
@@ -304,7 +307,7 @@ impl<T: Strk20Transport> Strk20Client<T> {
         }
         self.call(
             "wallet_addInvokeTransaction",
-            json!({"invoke_transaction": calls, "proof": proof}),
+            json!({"calls": calls, "proof": proof}),
         )
         .await
     }
@@ -465,7 +468,7 @@ mod tests {
         {
             let seen = client.transport.seen.lock().unwrap();
             assert_eq!(seen[0].0, "wallet_addInvokeTransaction");
-            assert_eq!(seen[0].1, json!({"invoke_transaction":calls,"proof":proof}));
+            assert_eq!(seen[0].1, json!({"calls":calls,"proof":proof}));
             assert_eq!(seen[0].1["proof"]["data"], "AAA=");
             assert_eq!(seen[0].1["proof"]["proof_facts"], json!(["0x3"]));
         }
