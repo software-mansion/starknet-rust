@@ -185,11 +185,93 @@ where
 mod tests {
     use super::*;
     use rand::RngCore;
+    use serde_json::Value;
+    use starknet_rust_providers::{
+        ProviderRequestData,
+        jsonrpc::{JsonRpcMethod, JsonRpcResponse, JsonRpcTransport},
+    };
     use starknet_rust_providers::{
         Url,
         jsonrpc::{HttpTransport, JsonRpcClient},
     };
     use starknet_rust_signers::{Falcon512Signer, falcon::verify_hash};
+    use std::sync::{Arc, Mutex};
+
+    struct FeeCapture(Arc<Mutex<Option<Value>>>);
+    #[async_trait]
+    impl JsonRpcTransport for FeeCapture {
+        type Error = std::io::Error;
+        async fn send_request<P, R>(
+            &self,
+            method: JsonRpcMethod,
+            params: P,
+        ) -> Result<JsonRpcResponse<R>, Self::Error>
+        where
+            P: serde::Serialize + Send + Sync,
+            R: serde::de::DeserializeOwned + Send,
+        {
+            assert!(matches!(method, JsonRpcMethod::EstimateFee));
+            *self.0.lock().unwrap() = Some(serde_json::to_value(params).unwrap());
+            Err(std::io::Error::other("offline fee estimate captured"))
+        }
+        async fn send_requests<R>(&self, _: R) -> Result<Vec<JsonRpcResponse<Value>>, Self::Error>
+        where
+            R: AsRef<[ProviderRequestData]> + Send + Sync,
+        {
+            unreachable!()
+        }
+    }
+
+    #[tokio::test]
+    async fn fee_estimation_includes_falcon_signature_and_validation() {
+        let signer = Falcon512Signer::generate().unwrap();
+        let key = signer.packed_public_key().to_vec();
+        let captured = Arc::new(Mutex::new(None));
+        let account = EncodedAccount::new(
+            JsonRpcClient::new(FeeCapture(captured.clone())),
+            signer,
+            Felt::ONE,
+            Felt::TWO,
+            ExecutionEncoding::New,
+        );
+        let nonce = Felt::from(rand::rngs::OsRng.next_u64());
+        assert!(
+            account
+                .execute_v3(vec![])
+                .nonce(nonce)
+                .estimate_fee()
+                .await
+                .is_err()
+        );
+        let params = captured.lock().unwrap().take().unwrap();
+        assert_eq!(params["simulation_flags"], serde_json::json!([]));
+        let signature: Vec<Felt> =
+            serde_json::from_value(params["request"][0]["signature"].clone()).unwrap();
+        let prepared = account
+            .execute_v3(vec![])
+            .nonce(nonce)
+            .l1_gas(0)
+            .l1_gas_price(0)
+            .l2_gas(0)
+            .l2_gas_price(0)
+            .l1_data_gas(0)
+            .l1_data_gas_price(0)
+            .tip(0)
+            .prepared()
+            .unwrap();
+        assert_eq!(signature.len(), 61);
+        assert!(verify_hash(
+            prepared.transaction_hash(true),
+            &signature,
+            &key
+        ));
+        assert!(!verify_hash(
+            prepared.transaction_hash(false),
+            &signature,
+            &key
+        ));
+        assert!(!account.is_signer_interactive(SignerInteractivityContext::Other));
+    }
     #[tokio::test]
     async fn signs_invoke_and_query_with_falcon() {
         let signer = Falcon512Signer::generate().unwrap();

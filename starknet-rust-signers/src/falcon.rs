@@ -213,7 +213,7 @@ impl AccountSigner for Falcon512Signer {
         self.sign_hash(hash)
     }
     fn is_account_signer_interactive(&self, _: SignerInteractivityContext<'_>) -> bool {
-        true
+        false
     }
 }
 /// Verifies the complete S2morrow equation and norm; malformed/noncanonical input is false.

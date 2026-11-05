@@ -6,6 +6,8 @@ Enable `falcon` on `starknet-rust` or `starknet-rust-signers`. Generate a fresh 
 
 Use `accounts::EncodedAccount` for INVOKE/DECLARE v3 transaction integration. It supports arbitrary account-defined signature encodings without changing existing STARK-curve account APIs. Custom account deployment constructors can call the signer's hash-signing method on their deployment hash. This requires the S2morrow-compatible verifier contract; ordinary STARK-curve accounts and standard FN-DSA/SHAKE verifiers do not understand these signatures.
 
+The local signer is noninteractive. Fee estimation includes a real Falcon signature and account validation, so the estimate accounts for the verifier's gas costs before transaction bounds are derived.
+
 ## Backend and randomness
 
 The implementation pins `falcon-rs` 0.3.1 (https://github.com/lattice-safe/falcon-rs), using its validated NIST keys and raw `sign_dyn` hash-point API. No Gaussian sampler, FFT arithmetic, or private-key generator is reimplemented here. S2morrow's Poseidon hash-to-point, base-12289 packing, public polynomial multiplication, and NTT ordering match Starknet.js/Cairo.
