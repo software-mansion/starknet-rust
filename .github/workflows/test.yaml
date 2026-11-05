@@ -22,6 +22,10 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v7
 
+      - name: Test browser wallet JavaScript bridge
+        if: matrix.os == 'ubuntu-latest' && matrix.toolchain == 'stable'
+        run: node --test starknet-rust-accounts/tests/browser_wallet_bridge.mjs
+
       - name: Install hidapi dependencies
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install --yes libudev-dev

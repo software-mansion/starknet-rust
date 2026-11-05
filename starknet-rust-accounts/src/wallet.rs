@@ -20,6 +20,30 @@ pub enum WalletError {
     /// The wallet returned an incompatible response.
     #[error(transparent)]
     InvalidResponse(#[from] serde_json::Error),
+    /// A JSON number cannot cross the JavaScript bridge without risking precision loss.
+    #[error("wallet JSON numbers must be safe JavaScript integers; encode other values as strings")]
+    UnsafeNumber,
+}
+
+// Wallet API numeric fields are integers. Strings (including decimal/hex encodings)
+// are intentionally left unchanged so their typed-data semantics stay with the wallet.
+fn validate_json_numbers(value: &Value) -> Result<(), WalletError> {
+    const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
+    match value {
+        Value::Number(number) => {
+            if number
+                .as_i64()
+                .is_some_and(|n| (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&n))
+            {
+                Ok(())
+            } else {
+                Err(WalletError::UnsafeNumber)
+            }
+        }
+        Value::Array(values) => values.iter().try_for_each(validate_json_numbers),
+        Value::Object(values) => values.values().try_for_each(validate_json_numbers),
+        Value::Null | Value::Bool(_) | Value::String(_) => Ok(()),
+    }
 }
 
 /// Transport for a selected wallet. Implementations must not silently select another wallet.
@@ -73,14 +97,18 @@ impl<T: WalletTransport> WalletClient<T> {
     pub const fn transport(&self) -> &T {
         &self.transport
     }
+    async fn request(&self, method: &str, params: Option<Value>) -> Result<Value, WalletError> {
+        if let Some(params) = &params {
+            validate_json_numbers(params)?;
+        }
+        self.transport.request(method, params).await
+    }
     async fn call<R: DeserializeOwned>(
         &self,
         method: &str,
         params: Option<Value>,
     ) -> Result<R, WalletError> {
-        Ok(serde_json::from_value(
-            self.transport.request(method, params).await?,
-        )?)
+        Ok(serde_json::from_value(self.request(method, params).await?)?)
     }
     /// Request authorized addresses. Silent mode must not prompt the user.
     pub async fn request_accounts(&self, silent: bool) -> Result<Vec<Felt>, WalletError> {
@@ -119,6 +147,8 @@ impl<T: WalletTransport> WalletClient<T> {
         .await
     }
     /// Sign SNIP-12 typed data through the wallet, after wallet approval.
+    /// Numeric JSON values must fit JavaScript's safe integer range; use decimal/hex
+    /// strings for larger amounts. Validation happens before the wallet receives a request.
     pub async fn sign_typed_data(&self, data: &TypedData) -> Result<Vec<Felt>, WalletError> {
         self.call("wallet_signTypedData", Some(serde_json::to_value(data)?))
             .await
@@ -130,8 +160,7 @@ impl<T: WalletTransport> WalletClient<T> {
     }
     /// Submit a declaration described using Wallet API parameters.
     pub async fn declare(&self, parameters: Value) -> Result<Value, WalletError> {
-        self.transport
-            .request("wallet_addDeclareTransaction", Some(parameters))
+        self.request("wallet_addDeclareTransaction", Some(parameters))
             .await
     }
     /// Query the supported wallet API versions.
@@ -144,7 +173,7 @@ impl<T: WalletTransport> WalletClient<T> {
     }
     /// Read the selected account's deployment data.
     pub async fn deployment_data(&self) -> Result<Value, WalletError> {
-        self.transport.request("wallet_deploymentData", None).await
+        self.request("wallet_deploymentData", None).await
     }
 }
 
@@ -161,8 +190,8 @@ export function walletRequest(wallet, request) {
 export function walletSubscribe(wallet, callback) {
   const events = wallet.features?.['standard:events'];
   if (events) return events.on('change', value => callback(JSON.stringify({Standard:value})));
-  const accounts = value => callback(JSON.stringify({Accounts:value}));
-  const chain = value => callback(JSON.stringify({Chain:value}));
+  const accounts = value => callback(JSON.stringify({Accounts:value ?? []}));
+  const chain = value => callback(JSON.stringify(value == null ? {Accounts:[]} : {Chain:value}));
   wallet.on('accountsChanged', accounts);
   wallet.on('networkChanged', chain);
   return () => { wallet.off('accountsChanged', accounts); wallet.off('networkChanged', chain); };
@@ -243,6 +272,8 @@ export function walletConnect(wallet, silent) {
             if let Some(params) = params {
                 request["params"] = params;
             }
+            // Also protect direct WalletTransport calls that bypass WalletClient.
+            validate_json_numbers(&request)?;
             let request = js_sys::JSON::parse(&request.to_string()).map_err(error)?;
             let response = JsFuture::from(request_js(&self.object, &request).map_err(error)?)
                 .await
@@ -323,5 +354,78 @@ mod tests {
             client.request_accounts(false).await,
             Err(WalletError::InvalidResponse(_))
         ));
+    }
+    fn amount_typed_data(amount: &Value) -> TypedData {
+        serde_json::from_value(json!({
+            "types": {
+                "StarknetDomain": [
+                    {"name":"name","type":"shortstring"},
+                    {"name":"version","type":"shortstring"},
+                    {"name":"chainId","type":"shortstring"},
+                    {"name":"revision","type":"shortstring"}
+                ],
+                "Amount": [{"name":"amount","type":"u128"}]
+            },
+            "primaryType":"Amount",
+            "domain":{"name":"Wallet numeric regression","version":"1","chainId":"SN_MAIN","revision":"1"},
+            "message":{"amount":amount}
+        })).unwrap()
+    }
+    #[tokio::test]
+    async fn unsafe_typed_data_integer_is_rejected_before_wallet_dispatch() {
+        let client = WalletClient::new(Mock {
+            seen: RefCell::new(vec![]),
+            response: json!(["0x1", "0x2"]),
+        });
+        let data = amount_typed_data(&json!(9_007_199_254_740_993u64));
+        assert!(matches!(
+            client.sign_typed_data(&data).await,
+            Err(WalletError::UnsafeNumber)
+        ));
+        assert!(client.transport.seen.borrow().is_empty());
+        let quoted = amount_typed_data(&json!("9007199254740993"));
+        assert_eq!(
+            data.message_hash(Felt::ONE).unwrap(),
+            quoted.message_hash(Felt::ONE).unwrap()
+        );
+        client.sign_typed_data(&quoted).await.unwrap();
+        assert_eq!(
+            client.transport.seen.borrow()[0].1.as_ref().unwrap()["message"]["amount"],
+            "9007199254740993"
+        );
+    }
+    #[tokio::test]
+    async fn nested_unsafe_numbers_in_raw_requests_never_reach_the_wallet() {
+        let client = WalletClient::new(Mock {
+            seen: RefCell::new(vec![]),
+            response: json!(true),
+        });
+        for number in [
+            json!(9_007_199_254_740_992u64),
+            json!(-9_007_199_254_740_992i64),
+            json!(1.5),
+        ] {
+            let params = json!({"outer":[{"inner":number}]});
+            assert!(matches!(
+                client.add_chain(params.clone()).await,
+                Err(WalletError::UnsafeNumber)
+            ));
+            assert!(matches!(
+                client.declare(params).await,
+                Err(WalletError::UnsafeNumber)
+            ));
+        }
+        assert!(client.transport.seen.borrow().is_empty());
+        client.add_chain(json!({"bounds":[-9_007_199_254_740_991i64,9_007_199_254_740_991u64],"literal":"9007199254740993"})).await.unwrap();
+        assert_eq!(client.transport.seen.borrow().len(), 1);
+    }
+    #[test]
+    fn normalized_disconnect_clears_the_selected_account() {
+        let mut selected_account = Some(Felt::ONE);
+        let change: WalletChange = serde_json::from_str(r#"{"Accounts":[]}"#).unwrap();
+        if let WalletChange::Accounts(accounts) = change {
+            selected_account = accounts.first().copied();
+        }
+        assert_eq!(selected_account, None);
     }
 }
