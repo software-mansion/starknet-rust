@@ -7,7 +7,7 @@
 use super::{JsonRpcError, JsonRpcMethod, JsonRpcResponse, JsonRpcTransport};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
-use starknet_rust_core::types::{BlockId, Felt};
+use starknet_rust_core::types::{BlockId, ConfirmedBlockId, Felt};
 
 /// Specifications for which this module supplies request adapters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,6 +49,9 @@ pub enum VersionedRpcError<E: std::error::Error> {
     /// Transport failure.
     #[error("RPC transport failed: {0}")]
     Transport(E),
+    /// A successful JSON-RPC result could not be decoded into the requested type.
+    #[error("RPC result decoding failed: {0}")]
+    ResultDecoding(#[source] serde_json::Error),
     /// JSON-RPC error with the server's original code and optional data preserved.
     #[error("RPC failed: {0}")]
     Rpc(JsonRpcError),
@@ -135,10 +138,10 @@ impl<T: JsonRpcTransport + Send + Sync> VersionedRpcClient<T> {
         }
         Ok(params)
     }
-    /// Traces a block; initial storage reads are only available in 0.10.
+    /// Traces a confirmed block; initial storage reads are only available in 0.10.
     pub async fn trace_block(
         &self,
-        block: BlockId,
+        block: ConfirmedBlockId,
         initial_reads: bool,
     ) -> Result<Value, VersionedRpcError<T::Error>> {
         let mut params = json!({"block_id":block});
@@ -176,12 +179,16 @@ where
     P: Serialize + Send + Sync,
     R: DeserializeOwned + Send,
 {
+    // Decode a required JSON value before the caller's R: Option<R> accepts a missing
+    // result and can otherwise make an untagged error envelope look like success.
     match transport
-        .send_request(method, params)
+        .send_request::<_, Value>(method, params)
         .await
         .map_err(VersionedRpcError::Transport)?
     {
-        JsonRpcResponse::Success { result, .. } => Ok(result),
+        JsonRpcResponse::Success { result, .. } => {
+            serde_json::from_value(result).map_err(VersionedRpcError::ResultDecoding)
+        }
         JsonRpcResponse::Error { error, .. } => Err(VersionedRpcError::Rpc(error)),
     }
 }
@@ -266,6 +273,98 @@ mod tests {
         assert_eq!(
             new.transport.requests.lock().unwrap()[0].1["response_flags"],
             json!(["INCLUDE_PROOF_FACTS"])
+        );
+    }
+    struct WireEnvelope(&'static str);
+    #[async_trait]
+    impl JsonRpcTransport for WireEnvelope {
+        type Error = serde_json::Error;
+        async fn send_request<P, R>(
+            &self,
+            _: JsonRpcMethod,
+            _: P,
+        ) -> Result<JsonRpcResponse<R>, Self::Error>
+        where
+            P: Serialize + Send + Sync,
+            R: DeserializeOwned + Send,
+        {
+            serde_json::from_str(self.0)
+        }
+        async fn send_requests<R>(&self, _: R) -> Result<Vec<JsonRpcResponse<Value>>, Self::Error>
+        where
+            R: AsRef<[ProviderRequestData]> + Send + Sync,
+        {
+            unreachable!()
+        }
+    }
+    #[tokio::test]
+    async fn optional_result_preserves_rpc_error_code_message_and_data() {
+        let channel = VersionedRpcClient::new(
+            WireEnvelope(
+                r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32001,"message":"denied","data":{"reason":"policy"}}}"#,
+            ),
+            RpcVersion::V0_10_4,
+        );
+        let response = channel
+            .request::<_, Option<Value>>(JsonRpcMethod::BlockNumber, [] as [u8; 0])
+            .await;
+        match response {
+            Err(VersionedRpcError::Rpc(error)) => {
+                assert_eq!(error.code, -32_001);
+                assert_eq!(error.message, "denied");
+                assert_eq!(error.data, Some(json!({"reason":"policy"})));
+            }
+            other => panic!("server error was lost: {other:?}"),
+        }
+    }
+    #[tokio::test]
+    async fn explicit_null_is_a_valid_optional_success() {
+        let channel = VersionedRpcClient::new(
+            WireEnvelope(r#"{"jsonrpc":"2.0","id":1,"result":null}"#),
+            RpcVersion::V0_10_4,
+        );
+        let response: Option<Value> = channel
+            .request(JsonRpcMethod::BlockNumber, [] as [u8; 0])
+            .await
+            .unwrap();
+        assert!(response.is_none());
+    }
+    #[tokio::test]
+    async fn successful_result_type_errors_are_separate_from_transport_errors() {
+        let channel = VersionedRpcClient::new(
+            WireEnvelope(r#"{"jsonrpc":"2.0","id":1,"result":"not a block number"}"#),
+            RpcVersion::V0_10_4,
+        );
+        let response = channel
+            .request::<_, u64>(JsonRpcMethod::BlockNumber, [] as [u8; 0])
+            .await;
+        assert!(matches!(
+            response,
+            Err(VersionedRpcError::ResultDecoding(_))
+        ));
+    }
+    #[tokio::test]
+    async fn tracing_uses_confirmed_block_ids_and_versioned_trace_flags() {
+        let old = VersionedRpcClient::new(mock("0.9.0"), RpcVersion::V0_9_0);
+        old.trace_block(ConfirmedBlockId::Number(7), false)
+            .await
+            .unwrap();
+        assert_eq!(
+            old.transport.requests.lock().unwrap()[0].1,
+            json!({"block_id":{"block_number":7}})
+        );
+        assert!(matches!(
+            old.trace_block(ConfirmedBlockId::Latest, true).await,
+            Err(VersionedRpcError::UnsupportedFeature { .. })
+        ));
+        assert_eq!(old.transport.requests.lock().unwrap().len(), 1);
+        let new = VersionedRpcClient::new(mock("0.10.4"), RpcVersion::V0_10_4);
+        new.trace_block(ConfirmedBlockId::Latest, true)
+            .await
+            .unwrap();
+        assert_eq!(
+            new.transport.requests.lock().unwrap()[0].1,
+            json!({"block_id":"latest","trace_flags":["RETURN_INITIAL_READS"]})
         );
     }
 }
