@@ -285,11 +285,89 @@ export function walletConnect(wallet, silent) {
             Ok(serde_json::from_str(&text)?)
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use wasm_bindgen_test::wasm_bindgen_test;
+
+        #[wasm_bindgen(inline_js = r#"
+export function walletTestSpy(standard) {
+  const requests = [];
+  const request = value => {
+    requests.push(value);
+    return Promise.resolve(value.params);
+  };
+  return standard
+    ? { requests, features: { 'starknet:walletApi': { request } } }
+    : { requests, request };
+}
+export function walletTestRequests(wallet) {
+  return JSON.stringify(wallet.requests);
+}
+"#)]
+        extern "C" {
+            #[wasm_bindgen(js_name = walletTestSpy)]
+            fn wallet_test_spy(standard: bool) -> JsValue;
+            #[wasm_bindgen(js_name = walletTestRequests)]
+            fn wallet_test_requests(wallet: &JsValue) -> String;
+        }
+
+        #[wasm_bindgen_test(async)]
+        async fn direct_transport_rejects_nested_unsafe_numbers_before_dispatch() {
+            for standard in [false, true] {
+                let object = wallet_test_spy(standard);
+                let transport = BrowserWallet::new(object.clone());
+                for number in [
+                    json!(9_007_199_254_740_992u64),
+                    json!(9_007_199_254_740_993u64),
+                    json!(-9_007_199_254_740_992i64),
+                    json!(1.5),
+                ] {
+                    let params = json!({"nested":[{"amount":number}]});
+                    let result =
+                        WalletTransport::request(&transport, "wallet_test", Some(params)).await;
+                    assert!(matches!(result, Err(WalletError::UnsafeNumber)));
+                    let requests: Vec<Value> =
+                        serde_json::from_str(&wallet_test_requests(&object)).unwrap();
+                    assert!(
+                        requests.is_empty(),
+                        "unsafe input reached the selected wallet"
+                    );
+                }
+            }
+        }
+
+        #[wasm_bindgen_test(async)]
+        async fn direct_transport_preserves_safe_boundaries_and_quoted_values() {
+            for standard in [false, true] {
+                let object = wallet_test_spy(standard);
+                let transport = BrowserWallet::new(object.clone());
+                let params = json!({"nested":[{
+                    "minimum":-9_007_199_254_740_991i64,
+                    "maximum":9_007_199_254_740_991u64,
+                    "decimal":"9007199254740993",
+                    "hex":"0x20000000000001"
+                }]});
+                let response =
+                    WalletTransport::request(&transport, "wallet_test", Some(params.clone()))
+                        .await
+                        .unwrap();
+                assert_eq!(response, params);
+                let requests: Vec<Value> =
+                    serde_json::from_str(&wallet_test_requests(&object)).unwrap();
+                assert_eq!(
+                    requests,
+                    vec![json!({"type":"wallet_test","params":params})]
+                );
+            }
+        }
+    }
 }
 #[cfg(target_arch = "wasm32")]
 pub use browser::{BrowserWallet, WalletSubscription};
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use std::cell::RefCell;

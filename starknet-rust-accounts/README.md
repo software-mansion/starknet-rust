@@ -32,3 +32,8 @@ so the application can clear its selected account.
 
 The embedded JavaScript event bridge has a standalone offline regression suite:
 `node --test starknet-rust-accounts/tests/browser_wallet_bridge.mjs`.
+
+Direct WASM transport dispatch is tested with both legacy and wallet-standard spy
+wallets. From `starknet-rust-accounts`, run `wasm-pack test --node --lib` to execute
+the unsafe-number rejection, zero-dispatch, safe-boundary and quoted-value
+regressions in Node.js. CI executes this command in its existing WASM test job.
