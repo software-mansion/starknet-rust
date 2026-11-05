@@ -212,7 +212,7 @@ impl AccountSigner for Falcon512Signer {
     async fn sign_account_hash(&self, hash: &Felt) -> Result<Vec<Felt>, FalconError> {
         self.sign_hash(hash)
     }
-    fn is_interactive(&self, _: SignerInteractivityContext<'_>) -> bool {
+    fn is_account_signer_interactive(&self, _: SignerInteractivityContext<'_>) -> bool {
         true
     }
 }
