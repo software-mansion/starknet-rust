@@ -22,6 +22,7 @@ auto_impl.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+url.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tokio = { workspace = true, features = ["full"] }
@@ -33,6 +34,7 @@ speculos-client.workspace = true
 starknet-rust-signers = { workspace = true, features = ["ledger"] }
 
 [features]
+eth = ["starknet-rust-signers/eth"]
 default = ["std"]
 std = [
     "starknet-rust-core/std",
