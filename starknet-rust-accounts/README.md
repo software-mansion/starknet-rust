@@ -11,8 +11,19 @@ shadow-account calls with `all`/`diff`/`exact` collection policies.
 On WASM, wrap an already connected wallet-standard object with
 `BrowserStrk20Wallet::new(selected_wallet)`. Discovery and the initial
 `standard:connect` approval belong to the application. Native applications can
-implement `Strk20Transport` over their selected wallet bridge. This independent
-module does not require the separate browser-wallet feature branch.
+implement `Strk20Transport` over their selected wallet bridge. Native transports
+must be `Sync` and implement the trait with `#[async_trait]`, yielding `Send`
+request futures suitable for Tokio tasks. WASM implementations use
+`#[async_trait(?Send)]` so browser JavaScript objects can stay on their local
+runtime. This independent module does not require the separate browser-wallet
+feature branch.
+
+`execute_with_proof` sends `{calls, proof}` as the browser Wallet API parameters,
+matching the pinned [types-js v0.10.4 `AddInvokeTransactionParameters`](https://github.com/starknet-io/types-js/blob/v0.10.4/src/wallet-api/components.ts#L75-L84)
+and Starknet.js v6. The raw OpenRPC wallet schema describes an
+`invoke_transaction` parameter instead; this selected-browser-wallet bridge uses
+the browser interface and does not rewrite or retry transaction requests using a
+different schema.
 
 ```rust,ignore
 let wallet = Strk20Client::new(transport);
