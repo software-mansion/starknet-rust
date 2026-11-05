@@ -48,7 +48,7 @@ pub struct WalletTransaction {
 }
 
 /// A wallet event normalized from the legacy or wallet-standard interface.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum WalletChange {
     /// Authorized addresses changed.
     Accounts(Vec<Felt>),
