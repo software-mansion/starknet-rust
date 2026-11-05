@@ -103,6 +103,21 @@ impl AccountSigner for EthSigner {
 mod tests {
     use super::*;
     #[test]
+    fn matches_starknet_js_noble_prehash_vector() {
+        // Cross-checked against the @noble/curves backend shipped with starknet.js 11.5.1.
+        // Public demonstration key only: 32 bytes of 0x01, message hash 42.
+        let signer = EthSigner::from_bytes(&[1; 32]).unwrap();
+        let expected = [
+            "0xea17d9ff80d8fe910f25f2f4fead5b34",
+            "0x85374ecb6e0ea7cb84429448bf06ca12",
+            "0x4bf15d3493b9043af65b7dced9bbed44",
+            "0x42c30ba1656842a610ff1da4bf182360",
+            "0x0",
+        ]
+        .map(|value| Felt::from_hex(value).unwrap());
+        assert_eq!(signer.sign_hash(&Felt::from(42u8)), expected);
+    }
+    #[test]
     fn validates_secret_scalar_and_full_coordinates() {
         assert!(EthSigner::from_bytes(&[0; 32]).is_err());
         assert!(EthSigner::from_bytes(&[255; 32]).is_err());
