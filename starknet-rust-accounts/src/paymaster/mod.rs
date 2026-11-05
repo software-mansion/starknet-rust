@@ -726,4 +726,80 @@ mod tests {
         assert_eq!(felt(&json!("100")).unwrap(), Felt::from(100u64));
         assert_eq!(felt(&json!("0x100")).unwrap(), Felt::from(256u64));
     }
+    #[tokio::test]
+    async fn canonical_validation_and_signatures_match_independent_starknet_js_vectors() {
+        use starknet_rust_signers::{LocalWallet, SigningKey};
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../starknet-rust-core/test-data/typed-data/snip9/starknet_js_11_5_1.json"
+        ))
+        .unwrap();
+        let field = |name: &str| serde_json::from_value::<Felt>(fixture[name].clone()).unwrap();
+        let calls = fixture["calls"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .map(|(index, call)| Call {
+                to: serde_json::from_value(call["contractAddress"].clone()).unwrap(),
+                selector: serde_json::from_value(fixture["selectors"][index].clone()).unwrap(),
+                calldata: serde_json::from_value(call["calldata"].clone()).unwrap(),
+            })
+            .collect();
+        let request = UserTransaction::Invoke {
+            invoke: UserInvoke {
+                user_address: field("account"),
+                calls,
+            },
+        };
+        let parameters = ExecutionParameters::new(
+            FeeMode::Sponsored,
+            TimeBounds {
+                execute_after: fixture["execute_after"].as_u64().unwrap(),
+                execute_before: fixture["execute_before"].as_u64().unwrap(),
+            },
+        );
+        let policy = ApprovalPolicy {
+            chain_id: field("chain_id"),
+            caller: field("caller"),
+            max_fee: U256::from_words(0, 0),
+            fee_recipient: None,
+        };
+        let key = SigningKey::from_secret_scalar(Felt::from(42u64));
+        let public_key = key.verifying_key();
+        let owner = LocalWallet::from(key);
+        for vector in fixture["vectors"].as_array().unwrap() {
+            let expected: Felt = serde_json::from_value(vector["message_hash"].clone()).unwrap();
+            let (_, _, _, sample) = setup(FeeMode::Sponsored);
+            let PreparedTransaction::Invoke { fee, .. } = sample else {
+                unreachable!()
+            };
+            let prepared = PreparedTransaction::Invoke {
+                typed_data: vector["typed_data"].clone(),
+                parameters: parameters.clone(),
+                fee,
+            };
+            let transaction = prepared
+                .validate(&request, &parameters, &policy)
+                .unwrap()
+                .sign(&owner)
+                .await
+                .unwrap();
+            let typed_data: TypedData =
+                serde_json::from_value(transaction.transaction["invoke"]["typed_data"].clone())
+                    .unwrap();
+            assert_eq!(typed_data.message_hash(field("account")).unwrap(), expected);
+            let signature: Vec<Felt> =
+                serde_json::from_value(transaction.transaction["invoke"]["signature"].clone())
+                    .unwrap();
+            assert!(
+                starknet_rust_crypto::verify(
+                    &public_key.scalar(),
+                    &expected,
+                    &signature[0],
+                    &signature[1]
+                )
+                .unwrap()
+            );
+        }
+    }
 }

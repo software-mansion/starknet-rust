@@ -33,3 +33,9 @@ is supported in sponsored mode and requires the deployment descriptor to match
 exactly. Deployment descriptors and execute results remain protocol-shaped JSON;
 the library does not choose deployment keys, inspect class safety, implement a
 relayer, or verify actual network settlement. No live paymaster is used in tests.
+
+Nonempty SNIP-9 v1/v2 hashes are checked against independently generated
+`starknet@11.5.1` fixtures in `starknet-rust-core/test-data/typed-data/snip9/`.
+The fixture includes the exact messages, expected hashes, npm integrity digest,
+and a version-checked regeneration script. Precomputed hexadecimal selectors are
+encoded as field elements; malformed or out-of-field-range values are rejected.
