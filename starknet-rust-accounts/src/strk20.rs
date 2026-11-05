@@ -85,7 +85,7 @@ pub enum CollectPolicy {
     },
 }
 /// Atomic privacy-pool intent passed to the wallet.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Strk20Action {
     /// Move public funds into the user's shielded balance.
@@ -137,12 +137,11 @@ impl Strk20Action {
         if let Self::ShadowAccountInvoke {
             dapp_name, calls, ..
         } = self
+            && (dapp_name.is_empty() || calls.is_empty())
         {
-            if dapp_name.is_empty() || calls.is_empty() {
-                return Err(Strk20Error::Invalid(
-                    "shadow invocation requires a dapp name and at least one call",
-                ));
-            }
+            return Err(Strk20Error::Invalid(
+                "shadow invocation requires a dapp name and at least one call",
+            ));
         }
         if let Self::Invoke { calldata, .. } = self {
             for item in calldata {
@@ -152,10 +151,10 @@ impl Strk20Action {
                 if let Some(index) = item
                     .strip_prefix("${openNoteIds[")
                     .and_then(|s| s.strip_suffix("]}"))
+                    && !index.is_empty()
+                    && index.bytes().all(|c| c.is_ascii_digit())
                 {
-                    if !index.is_empty() && index.bytes().all(|c| c.is_ascii_digit()) {
-                        continue;
-                    }
+                    continue;
                 }
                 if Felt::from_hex(item).is_err() {
                     return Err(Strk20Error::Invalid(
