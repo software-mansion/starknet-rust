@@ -172,6 +172,127 @@ mod tests {
     const fn latest() -> BlockId {
         BlockId::Tag(starknet_rust_core::types::BlockTag::Latest)
     }
+
+    // The core SNIP-12 reference messages and hashes exercise both revision encoders.
+    fn typed_data_json(revision_one: bool) -> Value {
+        let mut data = json!({
+            "types": {
+                "Example Message": [
+                    {"name":"Name","type":"string"},
+                    {"name":"Some Array","type":"u128*"},
+                    {"name":"Some Object","type":"My Object"}
+                ],
+                "My Object": [
+                    {"name":"Some Selector","type":"selector"},
+                    {"name":"Some Contract Address","type":"ContractAddress"}
+                ]
+            },
+            "primaryType":"Example Message",
+            "domain":{"name":"Starknet Example","version":"1","chainId":"SN_MAIN"},
+            "message":{
+                "Name":"some name","Some Array":[1,2,3,4],
+                "Some Object":{"Some Selector":"transfer","Some Contract Address":"0x0123"}
+            }
+        });
+        let domain_name = if revision_one {
+            "StarknetDomain"
+        } else {
+            "StarkNetDomain"
+        };
+        let field_type = if revision_one { "shortstring" } else { "felt" };
+        data["types"][domain_name] = json!([
+            {"name":"name","type":field_type},
+            {"name":"version","type":field_type},
+            {"name":"chainId","type":field_type}
+        ]);
+        if revision_one {
+            data["types"][domain_name]
+                .as_array_mut()
+                .unwrap()
+                .push(json!({"name":"revision","type":"shortstring"}));
+            data["domain"]["revision"] = json!("1");
+        }
+        data
+    }
+
+    #[tokio::test]
+    async fn typed_data_uses_account_bound_hash_for_both_revisions() {
+        for (revision_one, reference_hash) in [
+            (
+                false,
+                "0x0778d68fe2baf73ee78a6711c29bad4722680984c1553a8035c8cb3feb5310c9",
+            ),
+            (
+                true,
+                "0x045bca39274d2b7fdf7dc7c4ecf75f6549f614ce44359cc62ec106f4e5cc87b4",
+            ),
+        ] {
+            let message: TypedData = serde_json::from_value(typed_data_json(revision_one)).unwrap();
+            let reference_hash = Felt::from_hex(reference_hash).unwrap();
+            for account in [Felt::from(0x1234u64), Felt::from(0x4321u64)] {
+                let expected_hash = message.message_hash(account).unwrap();
+                if account == Felt::from(0x1234u64) {
+                    assert_eq!(expected_hash, reference_hash);
+                } else {
+                    assert_ne!(expected_hash, reference_hash);
+                }
+                let transport = std::sync::Arc::new(Mock {
+                    response: json!({"id":1,"result":["0x56414c4944"]}),
+                    params: Mutex::new(None),
+                });
+                let rpc = JsonRpcClient::new(transport.clone());
+                assert!(
+                    verify_typed_data(
+                        &rpc,
+                        account,
+                        &message,
+                        &[Felt::THREE],
+                        latest(),
+                        &SignatureVerificationOptions::default()
+                    )
+                    .await
+                    .unwrap()
+                );
+                let params = transport.params.lock().unwrap().clone().unwrap();
+                assert_eq!(
+                    params["request"]["contract_address"],
+                    format!("{account:#x}")
+                );
+                assert_eq!(
+                    params["request"]["calldata"],
+                    json!([format!("{expected_hash:#x}"), "0x1", "0x3"])
+                );
+                assert_eq!(params["block_id"], "latest");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn typed_data_hash_errors_do_not_call_rpc() {
+        for revision_one in [false, true] {
+            let mut data = typed_data_json(revision_one);
+            data["message"].as_object_mut().unwrap().remove("Name");
+            let message: TypedData = serde_json::from_value(data).unwrap();
+            let transport = std::sync::Arc::new(Mock {
+                response: json!({"id":1,"result":["0x1"]}),
+                params: Mutex::new(None),
+            });
+            let rpc = JsonRpcClient::new(transport.clone());
+            assert!(matches!(
+                verify_typed_data(
+                    &rpc,
+                    Felt::ONE,
+                    &message,
+                    &[],
+                    latest(),
+                    &SignatureVerificationOptions::default()
+                )
+                .await,
+                Err(AccountVerificationError::TypedData(_))
+            ));
+            assert!(transport.params.lock().unwrap().is_none());
+        }
+    }
     #[tokio::test]
     async fn validates_explicit_success_and_false_values() {
         for (value, expected) in [("0x56414c4944", true), ("0x1", true), ("0x0", false)] {
