@@ -12,6 +12,15 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tungstenite::Message;
 
+async fn finish_server(mut server: tokio::task::JoinHandle<()>) {
+    if let Ok(result) = tokio::time::timeout(Duration::from_secs(10), &mut server).await {
+        result.unwrap();
+    } else {
+        server.abort();
+        panic!("local WebSocket server did not finish before the deadline");
+    }
+}
+
 #[tokio::test]
 async fn initial_subscription_acknowledgement_is_bounded() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -46,9 +55,15 @@ async fn initial_subscription_acknowledgement_is_bounded() {
         result,
         Err(ReconnectError::Subscribe(SubscribeError::Timeout))
     ));
-    seen_rx.await.unwrap();
+    tokio::time::timeout(Duration::from_secs(10), seen_rx)
+        .await
+        .unwrap_or_else(|_| {
+            server.abort();
+            panic!("server did not observe the subscription request before the deadline");
+        })
+        .unwrap();
     release_tx.send(()).unwrap();
-    server.await.unwrap();
+    finish_server(server).await;
 }
 
 async fn recovers_after_missing_acknowledgement(close_before_ack: bool) {
@@ -112,10 +127,7 @@ async fn recovers_after_missing_acknowledgement(close_before_ack: bool) {
         ReconnectingUpdate::Reconnected { attempts: 2 }
     ));
     subscription.close().await.unwrap();
-    tokio::time::timeout(Duration::from_secs(10), server)
-        .await
-        .unwrap()
-        .unwrap();
+    finish_server(server).await;
 }
 
 #[tokio::test]
@@ -205,18 +217,21 @@ async fn restores_filters_reports_gap_and_delivers_new_subscription_updates() {
     ));
     // A successful resubscription resets the outage budget even on quiet subscriptions.
     assert!(matches!(
-        subscription.recv().await.unwrap(),
+        tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+            .await
+            .unwrap()
+            .unwrap(),
         ReconnectingUpdate::Reconnected { attempts: 1 }
     ));
     assert!(matches!(
-        subscription.recv().await.unwrap(),
+        tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+            .await
+            .unwrap()
+            .unwrap(),
         ReconnectingUpdate::NewHeads(NewHeadsUpdate::Reorg(_))
     ));
     subscription.close().await.unwrap();
-    tokio::time::timeout(Duration::from_secs(10), server)
-        .await
-        .unwrap()
-        .unwrap();
+    finish_server(server).await;
 }
 #[tokio::test]
 async fn retries_are_bounded_and_exhaustion_is_terminal() {
@@ -255,10 +270,12 @@ async fn retries_are_bounded_and_exhaustion_is_terminal() {
         ReconnectError::Exhausted { attempts: 2, .. }
     ));
     assert!(matches!(
-        subscription.recv().await,
+        tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+            .await
+            .unwrap(),
         Err(ReconnectError::Closed)
     ));
-    server.await.unwrap();
+    finish_server(server).await;
 }
 #[tokio::test]
 async fn invalid_options_do_not_connect() {
