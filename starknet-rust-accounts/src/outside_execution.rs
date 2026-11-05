@@ -271,7 +271,7 @@ mod tests {
                 e.message_hash(Felt::from(0x0053_4e5f_5345_504f_u64), Felt::ONE, v)
                     .unwrap()
             );
-            let mut changed = e.clone();
+            let mut changed = e;
             changed.calls[0].calldata.push(Felt::from(4u64));
             assert_ne!(
                 hash,
