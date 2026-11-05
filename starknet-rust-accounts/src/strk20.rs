@@ -27,6 +27,14 @@ pub enum Strk20Error {
     Invalid(&'static str),
 }
 /// Request bridge to a selected wallet's `starknet:walletApi` feature.
+#[cfg(not(target_arch = "wasm32"))]
+#[async_trait]
+pub trait Strk20Transport: Sync {
+    /// Send a Wallet API request, preserving its exact method and parameters.
+    async fn request(&self, method: &str, params: Value) -> Result<Value, Strk20Error>;
+}
+/// Request bridge to a selected browser wallet's `starknet:walletApi` feature.
+#[cfg(target_arch = "wasm32")]
 #[async_trait(?Send)]
 pub trait Strk20Transport {
     /// Send a Wallet API request, preserving its exact method and parameters.
@@ -296,7 +304,7 @@ impl<T: Strk20Transport> Strk20Client<T> {
         }
         self.call(
             "wallet_addInvokeTransaction",
-            json!({"calls": calls, "proof": proof}),
+            json!({"invoke_transaction": calls, "proof": proof}),
         )
         .await
     }
@@ -363,26 +371,33 @@ export function strk20Request(wallet, request) {
 #[cfg(target_arch = "wasm32")]
 pub use browser::BrowserStrk20Wallet;
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
-    use std::cell::RefCell;
+    use std::sync::Mutex;
     struct Mock {
-        seen: RefCell<Vec<(String, Value)>>,
+        seen: Mutex<Vec<(String, Value)>>,
         response: Value,
     }
-    #[async_trait(?Send)]
+    #[async_trait]
     impl Strk20Transport for Mock {
         async fn request(&self, m: &str, p: Value) -> Result<Value, Strk20Error> {
-            self.seen.borrow_mut().push((m.into(), p));
+            self.seen.lock().unwrap().push((m.into(), p));
             Ok(self.response.clone())
         }
     }
-    fn mock(response: Value) -> Strk20Client<Mock> {
+    const fn mock(response: Value) -> Strk20Client<Mock> {
         Strk20Client::new(Mock {
-            seen: RefCell::new(vec![]),
+            seen: Mutex::new(vec![]),
             response,
         })
+    }
+    #[test]
+    fn native_workflow_future_is_send() {
+        fn assert_send<T: Send>(_: T) {}
+        let client = mock(json!(null));
+        assert_send(client.shadow_account_commitment("app", None));
+        assert_send(client.prepare(&[], false));
     }
     #[tokio::test]
     async fn optional_commitment_nonce_is_omitted_not_zeroed() {
@@ -391,11 +406,11 @@ mod tests {
             c.shadow_account_commitment("app", None).await.unwrap(),
             Felt::from(0x123u64)
         );
-        assert!(c.transport.seen.borrow()[0].1.get("nonce").is_none());
+        assert!(c.transport.seen.lock().unwrap()[0].1.get("nonce").is_none());
         c.shadow_account_commitment("app", Some(Felt::ZERO))
             .await
             .unwrap();
-        assert_eq!(c.transport.seen.borrow()[1].1["nonce"], "0x0");
+        assert_eq!(c.transport.seen.lock().unwrap()[1].1["nonce"], "0x0");
     }
     #[test]
     fn actions_preserve_open_notes_and_placeholders() {
@@ -411,7 +426,7 @@ mod tests {
     async fn empty_actions_never_reach_wallet() {
         let c = mock(json!(null));
         assert!(c.prepare(&[], false).await.is_err());
-        assert!(c.transport.seen.borrow().is_empty());
+        assert!(c.transport.seen.lock().unwrap().is_empty());
     }
     #[tokio::test]
     async fn prepared_proof_and_wallet_call_decode_for_rust() {
@@ -428,7 +443,10 @@ mod tests {
             get_selector_from_name("apply_actions").unwrap()
         );
         assert_eq!(prepared.proof.proof_facts, vec![Felt::THREE]);
-        assert_eq!(c.transport.seen.borrow()[0].0, "wallet_strk20PrepareInvoke");
+        assert_eq!(
+            c.transport.seen.lock().unwrap()[0].0,
+            "wallet_strk20PrepareInvoke"
+        );
     }
     #[tokio::test]
     async fn wallet_execution_preserves_proof_fields_and_rejects_simulation() {
@@ -445,8 +463,9 @@ mod tests {
         };
         client.execute_with_proof(&calls, &proof).await.unwrap();
         {
-            let seen = client.transport.seen.borrow();
+            let seen = client.transport.seen.lock().unwrap();
             assert_eq!(seen[0].0, "wallet_addInvokeTransaction");
+            assert_eq!(seen[0].1, json!({"invoke_transaction":calls,"proof":proof}));
             assert_eq!(seen[0].1["proof"]["data"], "AAA=");
             assert_eq!(seen[0].1["proof"]["proof_facts"], json!(["0x3"]));
         }
@@ -461,6 +480,6 @@ mod tests {
                 .await
                 .is_err()
         );
-        assert_eq!(client.transport.seen.borrow().len(), 1);
+        assert_eq!(client.transport.seen.lock().unwrap().len(), 1);
     }
 }
