@@ -74,6 +74,9 @@ impl ReconnectOptions {
             && self.max_delay >= self.initial_delay
             && !self.request_timeout.is_zero()
             && !self.keepalive_interval.is_zero()
+            && tokio::time::Instant::now()
+                .checked_add(self.max_delay)
+                .is_some()
     }
     fn delay(self, attempt: u32) -> Duration {
         self.initial_delay
@@ -159,6 +162,8 @@ pub struct ReconnectingSubscription {
     options: ReconnectOptions,
     closed: bool,
     attempts: u32,
+    retry_at: Option<tokio::time::Instant>,
+    last_error: Option<String>,
 }
 impl ReconnectingSubscription {
     /// Opens a socket and subscribes once. Initial errors are returned immediately.
@@ -178,6 +183,8 @@ impl ReconnectingSubscription {
             options,
             closed: false,
             attempts: 0,
+            retry_at: None,
+            last_error: None,
         };
         result.open().await?;
         Ok(result)
@@ -249,6 +256,8 @@ impl ReconnectingSubscription {
             match active.recv().await {
                 Ok(update) => {
                     self.attempts = 0;
+                    self.retry_at = None;
+                    self.last_error = None;
                     return Ok(update);
                 }
                 Err(SubscriptionReceiveError::StreamClosed) => {
@@ -258,12 +267,16 @@ impl ReconnectingSubscription {
                 Err(error) => return Err(ReconnectError::Receive(error)),
             }
         }
-        let mut last_error = None;
         while self.attempts < self.options.max_attempts {
             let delay = self.options.delay(self.attempts);
-            // Reserve the attempt before waiting, so repeated cancellation cannot evade the bound.
+            // Retain the deadline across cancelled recv futures. Only an actual connection
+            // attempt consumes the budget, so select!/timeouts during backoff cannot exhaust it.
+            let retry_at = *self
+                .retry_at
+                .get_or_insert_with(|| tokio::time::Instant::now() + delay);
+            tokio::time::sleep_until(retry_at).await;
+            self.retry_at = None;
             self.attempts += 1;
-            tokio::time::sleep(delay).await;
             match self.open().await {
                 Ok(()) => {
                     return Ok(ReconnectingUpdate::Reconnected {
@@ -279,13 +292,13 @@ impl ReconnectingSubscription {
                     self.closed = true;
                     return Err(ReconnectError::Subscribe(error));
                 }
-                Err(error) => last_error = Some(error.to_string()),
+                Err(error) => self.last_error = Some(error.to_string()),
             }
         }
         self.closed = true;
         Err(ReconnectError::Exhausted {
             attempts: self.attempts,
-            last_error,
+            last_error: self.last_error.take(),
         })
     }
     /// Stops recovery and closes the underlying connection. Dropping the handle also stops it.

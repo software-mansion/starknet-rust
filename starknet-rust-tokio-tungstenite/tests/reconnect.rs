@@ -70,10 +70,22 @@ async fn restores_filters_reports_gap_and_delivers_new_subscription_updates() {
     let mut subscription = ReconnectingSubscription::connect(
         format!("ws://{address}"),
         ReconnectingRequest::NewHeads(ConfirmedBlockId::Number(42)),
-        options(),
+        ReconnectOptions {
+            initial_delay: Duration::from_millis(50),
+            max_delay: Duration::from_millis(100),
+            ..options()
+        },
     )
     .await
     .unwrap();
+    // Cancelling backoff repeatedly must not consume real connection attempts.
+    for _ in 0..5 {
+        assert!(
+            tokio::time::timeout(Duration::from_millis(1), subscription.recv())
+                .await
+                .is_err()
+        );
+    }
     let restored = tokio::time::timeout(Duration::from_secs(3), subscription.recv())
         .await
         .unwrap()
