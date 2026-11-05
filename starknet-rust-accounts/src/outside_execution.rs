@@ -532,20 +532,17 @@ mod provider_tests {
     #[tokio::test]
     async fn nonce_check_uses_dedicated_namespace_and_supplied_candidate() {
         for valid in [true, false] {
+            let candidate = SigningKey::from_random().secret_scalar();
             let (provider, mock) = provider(vec![response(valid)]);
             assert_eq!(
-                is_valid_nonce(&provider, ACCOUNT, Felt::THREE, BLOCK)
+                is_valid_nonce(&provider, ACCOUNT, candidate, BLOCK)
                     .await
                     .unwrap(),
                 valid
             );
             let requests = mock.requests.lock().unwrap();
             assert_eq!(requests.len(), 1);
-            assert_request(
-                &requests[0],
-                "is_valid_outside_execution_nonce",
-                Felt::THREE,
-            );
+            assert_request(&requests[0], "is_valid_outside_execution_nonce", candidate);
         }
     }
     #[tokio::test]
