@@ -11,3 +11,6 @@ pub use stream::{StreamUpdateType, TungsteniteStream, TungsteniteStreamBuilder};
 
 mod subscription;
 pub use subscription::*;
+
+/// Opt-in reconnecting subscription handles.
+pub mod reconnect;
