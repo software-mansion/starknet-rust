@@ -29,3 +29,6 @@ pub use any::AnyProvider;
 
 // Re-export
 pub use url::Url;
+
+/// Tip statistics and historical sampling.
+pub mod tips;
