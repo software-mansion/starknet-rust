@@ -33,6 +33,7 @@ tokio = { workspace = true, features = ["time"] }
 getrandom = { workspace = true, features = ["js"] }
 
 [dev-dependencies]
+rand = { workspace = true, features = ["std", "std_rng", "getrandom"] }
 starknet-rust-providers = { path = ".", features = ["no_unknown_fields"] }
 tokio = { workspace = true, features = ["full"] }
 test-common.workspace = true

@@ -242,15 +242,19 @@ mod tests {
             json!({"id":1,"result":3}),
         ]))));
         assert_eq!(wait_for_block(&rpc, 2, opts()).await.unwrap(), 3);
+        // This is a public account counter, not a secret cryptographic nonce. Vary the
+        // initial counter to cover advancement independently of a particular fixed value.
+        let initial = Felt::from(rand::random::<u64>());
+        let next = initial + Felt::ONE;
         let rpc = JsonRpcClient::new(Mock(Mutex::new(VecDeque::from([
-            json!({"id":1,"result":"0x2"}),
-            json!({"id":1,"result":"0x3"}),
+            json!({"id":1,"result":initial}),
+            json!({"id":1,"result":next}),
         ]))));
         assert_eq!(
-            wait_for_nonce(&rpc, Felt::ONE, Felt::TWO, opts())
+            wait_for_nonce(&rpc, Felt::ONE, initial, opts())
                 .await
                 .unwrap(),
-            Felt::THREE
+            next
         );
     }
     #[tokio::test]
