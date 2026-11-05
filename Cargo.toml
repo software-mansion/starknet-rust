@@ -127,6 +127,7 @@ tokio = { workspace = true, features = ["full"] }
 url.workspace = true
 
 [features]
+falcon = ["starknet-rust-signers/falcon", "starknet-rust-accounts/falcon"]
 default = []
 ledger = ["starknet-rust-signers/ledger"]
 no_unknown_fields = [

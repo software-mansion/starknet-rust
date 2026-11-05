@@ -29,3 +29,12 @@ pub use ledger::{DerivationPath, LedgerError, LedgerSigner};
 #[allow(clippy::empty_enums)]
 #[derive(Debug, thiserror::Error)]
 pub enum Infallible {}
+
+mod account_signer;
+pub use account_signer::AccountSigner;
+
+/// Falcon-512 signatures for S2morrow-compatible accounts.
+#[cfg(feature = "falcon")]
+pub mod falcon;
+#[cfg(feature = "falcon")]
+pub use falcon::Falcon512Signer;

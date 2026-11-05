@@ -33,6 +33,7 @@ speculos-client.workspace = true
 starknet-rust-signers = { workspace = true, features = ["ledger"] }
 
 [features]
+falcon = ["starknet-rust-signers/falcon"]
 default = ["std"]
 std = [
     "starknet-rust-core/std",
