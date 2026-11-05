@@ -1,7 +1,7 @@
 //! SNIP-9 v1/v2 outside execution.
 //!
 //! A signing account authorizes calls with a separate, unordered SNIP-9 nonce. The relayer
-//! submits [`SignedOutsideExecution::call`] through its ordinary `execute_v3` builder and pays
+//! submits `SignedOutsideExecution::call` through its ordinary `execute_v3` builder and pays
 //! fees. Inspect the full request before signing. An `ANY_CALLER` request permits any relayer.
 //! Time bounds are Unix seconds and must satisfy `execute_after < execute_before`.
 use serde_json::{Value, json};
