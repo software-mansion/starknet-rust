@@ -25,8 +25,18 @@ nonce; the contract enforces replay protection and timestamp/caller restrictions
 An application must inspect the complete authorization and choose appropriate
 bounds before signing. `ANY_CALLER` permits any relayer to submit it. The RNG
 helper uses the existing cryptographically random Stark scalar generator and
-bounds its attempts rather than retrying forever. Support/nonce queries propagate
-RPC errors. No live contract compatibility has been exercised by the unit tests.
+bounds its attempts rather than retrying forever.
+
+`supported_version` queries v2 support first and checks v1 only if v2 is unsupported;
+it returns `None` when neither interface is supported. `fresh_nonce` checks each
+candidate in the account's dedicated outside-execution nonce namespace at the
+supplied block. Zero attempts returns `None` without making an RPC call; exhausting
+`max_attempts` also returns `None`. Both helpers propagate RPC errors immediately,
+without continuing discovery or generating another candidate. A nonce accepted at
+a historical block may already be used at the current head, so choose the query
+block accordingly and account for the check/reservation race before signing.
+These provider behaviors are covered by offline mocks; no live contract
+compatibility has been exercised by the unit tests.
 
 Nonempty SNIP-9 v1/v2 hashes are checked against independently generated
 `starknet@11.5.1` fixtures in `starknet-rust-core/test-data/typed-data/snip9/`.
