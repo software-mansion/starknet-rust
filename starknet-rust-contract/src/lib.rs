@@ -10,3 +10,6 @@
 
 mod factory;
 pub use factory::{ContractFactory, DeploymentV3, UdcSelector};
+
+/// Naming service clients and domain encoding.
+pub mod names;
