@@ -367,7 +367,7 @@ fn parse_brother(data: Vec<Felt>) -> Result<BrotherProfile, NameError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    type Step = (&'static str, Vec<Felt>, Vec<Felt>);
+    type Step = (Felt, &'static str, Vec<Felt>, Vec<Felt>);
     #[derive(Debug)]
     struct Mock {
         steps: std::sync::Mutex<std::collections::VecDeque<Step>>,
@@ -387,13 +387,17 @@ mod tests {
                 method,
                 starknet_rust_providers::jsonrpc::JsonRpcMethod::Call
             ));
-            let (entrypoint, calldata, result) = self
+            let (contract_address, entrypoint, calldata, result) = self
                 .steps
                 .lock()
                 .unwrap()
                 .pop_front()
                 .expect("unexpected RPC");
             let params = serde_json::to_value(params)?;
+            assert_eq!(
+                params["request"]["contract_address"],
+                format!("{contract_address:#x}")
+            );
             assert_eq!(
                 params["request"]["entry_point_selector"],
                 format!("{:#x}", get_selector_from_name(entrypoint).unwrap())
@@ -429,11 +433,13 @@ mod tests {
         let label = encode_label("starknetjs").unwrap();
         let steps = vec![
             (
+                Felt::ONE,
                 "domain_to_address",
                 vec![Felt::ONE, label, Felt::ZERO],
                 vec![Felt::THREE],
             ),
             (
+                Felt::ONE,
                 "address_to_domain",
                 vec![Felt::THREE, Felt::ZERO],
                 vec![Felt::ONE, label],
@@ -465,11 +471,93 @@ mod tests {
         );
     }
     #[tokio::test]
+    async fn starknet_profile_routes_identity_reads_and_preserves_social_field_mapping() {
+        use std::sync::Arc;
+        let naming = Felt::from(11u8);
+        let identity = Felt::from(22u8);
+        let verifier = Felt::from(33u8);
+        let address = Felt::from(99u8);
+        let id = Felt::from(7u8);
+        let twitter = Felt::from(111u8);
+        let discord = Felt::from(222u8);
+        let label = encode_label("alice").unwrap();
+        let steps = vec![
+            (
+                naming,
+                "address_to_domain",
+                vec![address, Felt::ZERO],
+                vec![Felt::ONE, label],
+            ),
+            (naming, "domain_to_id", vec![Felt::ONE, label], vec![id]),
+            // Exact Cairo short-string field IDs, with different values and an unset GitHub ID.
+            (
+                identity,
+                "get_verifier_data",
+                vec![
+                    id,
+                    Felt::from_hex_unchecked("0x74776974746572"),
+                    verifier,
+                    Felt::ZERO,
+                ],
+                vec![twitter],
+            ),
+            (
+                identity,
+                "get_verifier_data",
+                vec![
+                    id,
+                    Felt::from_hex_unchecked("0x676974687562"),
+                    verifier,
+                    Felt::ZERO,
+                ],
+                vec![Felt::ZERO],
+            ),
+            (
+                identity,
+                "get_verifier_data",
+                vec![
+                    id,
+                    Felt::from_hex_unchecked("0x646973636f7264"),
+                    verifier,
+                    Felt::ZERO,
+                ],
+                vec![discord],
+            ),
+        ];
+        let mock = Arc::new(Mock {
+            steps: std::sync::Mutex::new(steps.into()),
+        });
+        let resolver = StarknetIdResolver {
+            provider: starknet_rust_providers::JsonRpcClient::new(mock.clone()),
+            contracts: StarknetIdContracts {
+                naming,
+                identity,
+                verifier,
+            },
+        };
+        let profile = resolver
+            .profile(address, BlockId::Number(42))
+            .await
+            .unwrap();
+        assert_eq!(
+            profile,
+            StarknetIdProfile {
+                name: "alice.stark".into(),
+                id,
+                twitter,
+                github: Felt::ZERO,
+                discord
+            }
+        );
+        assert_eq!(mock.steps.lock().unwrap().len(), 0);
+    }
+    #[tokio::test]
     async fn brother_registration_fields() {
         let label = encode_label("alice").unwrap();
         let steps = vec![
-            ("getPrimary", vec![Felt::THREE], vec![label]),
+            (Felt::ONE, "getPrimary", vec![Felt::THREE], vec![label]),
             (
+                Felt::ONE,
                 "get_details_by_domain",
                 vec![label],
                 vec![label, Felt::THREE, Felt::ONE, Felt::TWO, Felt::ZERO],
@@ -526,6 +614,14 @@ mod tests {
         assert!(encode_label(&"z".repeat(100)).is_err());
         assert!(decode_label(Felt::ZERO).is_err());
         assert!(encode_stark_domain("a..stark").is_err());
+    }
+    #[test]
+    fn maximum_length_labels_validate_numeric_field_capacity_without_modular_reduction() {
+        assert!(encode_label(&"z".repeat(48)).is_err());
+        let valid = format!("{}b", "a".repeat(47));
+        let encoded =
+            encode_label(&valid).expect("a valid 48-character encoding must pass the length guard");
+        assert_eq!(decode_label(encoded).unwrap(), valid);
     }
     #[test]
     fn domain_and_response_validation() {
