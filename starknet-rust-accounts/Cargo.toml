@@ -13,6 +13,8 @@ keywords.workspace = true
 exclude = ["test-data/**"]
 
 [dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 starknet-rust-core = { workspace = true, features = ["std"] }
 starknet-rust-crypto = { workspace = true, features = ["std"] }
 starknet-rust-providers = { workspace = true, features = ["std"] }
@@ -43,3 +45,7 @@ std = [
 
 [lints]
 workspace = true
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true
+js-sys = "0.3.106"
+wasm-bindgen-futures = "0.4.79"
