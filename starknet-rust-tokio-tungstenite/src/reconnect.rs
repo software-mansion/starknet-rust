@@ -52,7 +52,8 @@ pub struct ReconnectOptions {
     pub initial_delay: Duration,
     /// Maximum exponentially increasing retry delay; at least `initial_delay`.
     pub max_delay: Duration,
-    /// Timeout for each connection/subscription request; must be nonzero.
+    /// Separate timeout for connection establishment and subscription acknowledgement;
+    /// must be nonzero.
     pub request_timeout: Duration,
     /// Socket heartbeat interval; must be nonzero.
     pub keepalive_interval: Duration,
@@ -196,52 +197,56 @@ impl ReconnectingSubscription {
             .connect(self.url.as_str())
             .await
             .map_err(ReconnectError::Connect)?;
-        let active = match &self.request {
-            ReconnectingRequest::NewHeads(block) => Active::Heads(
-                stream
-                    .subscribe_new_heads(*block)
-                    .await
-                    .map_err(ReconnectError::Subscribe)?,
-            ),
-            ReconnectingRequest::Events(options) => Active::Events(
-                stream
-                    .subscribe_events(options.clone())
-                    .await
-                    .map_err(ReconnectError::Subscribe)?,
-            ),
-            ReconnectingRequest::TransactionStatus(hash) => Active::Status(
-                stream
-                    .subscribe_transaction_status(*hash)
-                    .await
-                    .map_err(ReconnectError::Subscribe)?,
-            ),
-            ReconnectingRequest::NewTransactionReceipts {
-                finality_status,
-                sender_address,
-            } => Active::Receipts(
-                stream
-                    .subscribe_new_transaction_receipts(
-                        finality_status.clone(),
-                        sender_address.clone(),
-                    )
-                    .await
-                    .map_err(ReconnectError::Subscribe)?,
-            ),
-            ReconnectingRequest::NewTransactions {
-                finality_status,
-                sender_address,
-                tags,
-            } => Active::Transactions(
-                stream
-                    .subscribe_new_transactions(
-                        finality_status.clone(),
-                        sender_address.clone(),
-                        tags.clone(),
-                    )
-                    .await
-                    .map_err(ReconnectError::Subscribe)?,
-            ),
-        };
+        let active = tokio::time::timeout(self.options.request_timeout, async {
+            Ok::<_, ReconnectError>(match &self.request {
+                ReconnectingRequest::NewHeads(block) => Active::Heads(
+                    stream
+                        .subscribe_new_heads(*block)
+                        .await
+                        .map_err(ReconnectError::Subscribe)?,
+                ),
+                ReconnectingRequest::Events(options) => Active::Events(
+                    stream
+                        .subscribe_events(options.clone())
+                        .await
+                        .map_err(ReconnectError::Subscribe)?,
+                ),
+                ReconnectingRequest::TransactionStatus(hash) => Active::Status(
+                    stream
+                        .subscribe_transaction_status(*hash)
+                        .await
+                        .map_err(ReconnectError::Subscribe)?,
+                ),
+                ReconnectingRequest::NewTransactionReceipts {
+                    finality_status,
+                    sender_address,
+                } => Active::Receipts(
+                    stream
+                        .subscribe_new_transaction_receipts(
+                            finality_status.clone(),
+                            sender_address.clone(),
+                        )
+                        .await
+                        .map_err(ReconnectError::Subscribe)?,
+                ),
+                ReconnectingRequest::NewTransactions {
+                    finality_status,
+                    sender_address,
+                    tags,
+                } => Active::Transactions(
+                    stream
+                        .subscribe_new_transactions(
+                            finality_status.clone(),
+                            sender_address.clone(),
+                            tags.clone(),
+                        )
+                        .await
+                        .map_err(ReconnectError::Subscribe)?,
+                ),
+            })
+        })
+        .await
+        .map_err(|_| ReconnectError::Subscribe(SubscribeError::Timeout))??;
         self.stream = Some(stream);
         self.active = Some(active);
         Ok(())

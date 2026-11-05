@@ -44,7 +44,9 @@ opt-in resilient handle supporting new heads, events, transaction status,
 transaction receipts and new transactions. Each handle owns its own socket. On
 stream closure, `recv()` reconnects with configurable bounded exponential backoff,
 restores the original filter, and returns `ReconnectingUpdate::Reconnected` before
-new data. Request timeout and heartbeat settings remain configurable. Dropping the
+new data. Connection establishment and subscription acknowledgement each obey
+`request_timeout`; an unacknowledged subscription times out and permits recovery.
+Heartbeat settings remain configurable. Dropping the
 handle stops all recovery; `close().await` explicitly closes the connection.
 
 A reconnection is a discontinuity, not a guarantee of complete event delivery.

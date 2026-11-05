@@ -2,7 +2,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
 use starknet_rust_core::types::ConfirmedBlockId;
 use starknet_rust_tokio_tungstenite::{
-    NewHeadsUpdate,
+    NewHeadsUpdate, SubscribeError,
     reconnect::{
         ReconnectError, ReconnectOptions, ReconnectingRequest, ReconnectingSubscription,
         ReconnectingUpdate,
@@ -11,6 +11,122 @@ use starknet_rust_tokio_tungstenite::{
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tungstenite::Message;
+
+#[tokio::test]
+async fn initial_subscription_acknowledgement_is_bounded() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let (seen_tx, seen_rx) = tokio::sync::oneshot::channel();
+    let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        let (tcp, _) = listener.accept().await.unwrap();
+        let mut ws = tokio_tungstenite::accept_async(tcp).await.unwrap();
+        while let Some(Ok(message)) = ws.next().await {
+            if let Message::Text(text) = message {
+                let request: Value = serde_json::from_str(text.as_str()).unwrap();
+                assert_eq!(request["method"], "starknet_subscribeNewHeads");
+                seen_tx.send(()).unwrap();
+                // Keep the socket alive without acknowledging until the client returns.
+                let _ = release_rx.await;
+                break;
+            }
+        }
+    });
+    let result = tokio::time::timeout(
+        Duration::from_secs(10),
+        ReconnectingSubscription::connect(
+            format!("ws://{address}"),
+            ReconnectingRequest::NewHeads(ConfirmedBlockId::Latest),
+            options(),
+        ),
+    )
+    .await
+    .expect("the subscription acknowledgement must obey request_timeout");
+    assert!(matches!(
+        result,
+        Err(ReconnectError::Subscribe(SubscribeError::Timeout))
+    ));
+    seen_rx.await.unwrap();
+    release_tx.send(()).unwrap();
+    server.await.unwrap();
+}
+
+async fn recovers_after_missing_acknowledgement(close_before_ack: bool) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let mut held_sockets = Vec::new();
+        for attempt in 0..3 {
+            let (tcp, _) = listener.accept().await.unwrap();
+            let mut ws = tokio_tungstenite::accept_async(tcp).await.unwrap();
+            let request = loop {
+                if let Message::Text(text) = ws.next().await.unwrap().unwrap() {
+                    break serde_json::from_str::<Value>(text.as_str()).unwrap();
+                }
+            };
+            assert_eq!(request["method"], "starknet_subscribeNewHeads");
+            if attempt == 1 {
+                if close_before_ack {
+                    ws.close(None).await.unwrap();
+                } else {
+                    // Allow another connection while this replacement never acknowledges.
+                    held_sockets.push(ws);
+                }
+                continue;
+            }
+            ws.send(Message::text(
+                json!({"jsonrpc":"2.0","id":request["id"],"result":"1"}).to_string(),
+            ))
+            .await
+            .unwrap();
+            if attempt == 0 {
+                ws.close(None).await.unwrap();
+                continue;
+            }
+            while let Some(Ok(message)) = ws.next().await {
+                if let Message::Text(text) = message {
+                    let request: Value = serde_json::from_str(text.as_str()).unwrap();
+                    assert_eq!(request["method"], "starknet_unsubscribe");
+                    ws.send(Message::text(
+                        json!({"jsonrpc":"2.0","id":request["id"],"result":true}).to_string(),
+                    ))
+                    .await
+                    .unwrap();
+                }
+            }
+        }
+        assert_eq!(held_sockets.len(), usize::from(!close_before_ack));
+    });
+    let mut subscription = ReconnectingSubscription::connect(
+        format!("ws://{address}"),
+        ReconnectingRequest::NewHeads(ConfirmedBlockId::Number(42)),
+        options(),
+    )
+    .await
+    .unwrap();
+    assert!(matches!(
+        tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+            .await
+            .expect("a missing acknowledgement must permit another recovery attempt")
+            .unwrap(),
+        ReconnectingUpdate::Reconnected { attempts: 2 }
+    ));
+    subscription.close().await.unwrap();
+    tokio::time::timeout(Duration::from_secs(10), server)
+        .await
+        .unwrap()
+        .unwrap();
+}
+
+#[tokio::test]
+async fn replacement_closing_before_acknowledgement_is_retried_without_panicking() {
+    recovers_after_missing_acknowledgement(true).await;
+}
+
+#[tokio::test]
+async fn replacement_without_acknowledgement_times_out_and_is_retried() {
+    recovers_after_missing_acknowledgement(false).await;
+}
 
 const fn options() -> ReconnectOptions {
     ReconnectOptions {
