@@ -184,6 +184,7 @@ where
 #[cfg(all(test, feature = "eth"))]
 mod tests {
     use super::*;
+    use rand::RngCore;
     use starknet_rust_providers::jsonrpc::{HttpTransport, JsonRpcClient};
     use starknet_rust_signers::EthSigner;
     #[tokio::test]
@@ -206,7 +207,7 @@ mod tests {
                 selector: Felt::TWO,
                 calldata: vec![Felt::THREE],
             }])
-            .nonce(Felt::ZERO)
+            .nonce(Felt::from(rand::rngs::OsRng.next_u64()))
             .l1_gas(1)
             .l1_gas_price(1)
             .l2_gas(1)

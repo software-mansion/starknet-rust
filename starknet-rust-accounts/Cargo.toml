@@ -22,6 +22,7 @@ auto_impl.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+rand = { workspace = true, features = ["std_rng", "getrandom"] }
 url.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
