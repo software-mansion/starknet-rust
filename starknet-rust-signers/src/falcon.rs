@@ -454,12 +454,26 @@ mod tests {
     }
     #[test]
     fn cairo_hash_to_point_vector() {
-        let expected: Vec<u16> =
+        // Inputs and expected output are one published, public interoperability vector.
+        // Production signing draws the public salt independently from OS randomness.
+        let fixture: serde_json::Value =
             serde_json::from_str(include_str!("../test-data/falcon/hash_point.json")).unwrap();
-        assert_eq!(
-            hash_to_point(Felt::from(42u8), [Felt::ONE, Felt::TWO]).as_slice(),
-            expected
-        );
+        let message = Felt::from_hex(fixture["message_hash"].as_str().unwrap()).unwrap();
+        let salt: [Felt; 2] = fixture["salt"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| Felt::from_hex(value.as_str().unwrap()).unwrap())
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        let expected: Vec<u16> = fixture["expected"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| u16::try_from(value.as_u64().unwrap()).unwrap())
+            .collect();
+        assert_eq!(hash_to_point(message, salt).as_slice(), expected);
     }
     #[test]
     fn starknet_js_signatures() {
