@@ -47,6 +47,17 @@ fn validate_json_numbers(value: &Value) -> Result<(), WalletError> {
 }
 
 /// Transport for a selected wallet. Implementations must not silently select another wallet.
+/// Native transports are thread-safe and return `Send` futures.
+#[cfg(not(target_arch = "wasm32"))]
+#[async_trait]
+pub trait WalletTransport: Sync {
+    /// Send a request shaped as `{ "type": method, "params": params }`.
+    async fn request(&self, method: &str, params: Option<Value>) -> Result<Value, WalletError>;
+}
+
+/// Transport for a selected wallet. Implementations must not silently select another wallet.
+/// Browser transports can retain local JavaScript objects and return non-`Send` futures.
+#[cfg(target_arch = "wasm32")]
 #[async_trait(?Send)]
 pub trait WalletTransport {
     /// Send a request shaped as `{ "type": method, "params": params }`.
@@ -370,22 +381,56 @@ pub use browser::{BrowserWallet, WalletSubscription};
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
-    use std::cell::RefCell;
+    use std::sync::Mutex;
     struct Mock {
-        seen: RefCell<Vec<(String, Option<Value>)>>,
+        seen: Mutex<Vec<(String, Option<Value>)>>,
         response: Value,
     }
-    #[async_trait(?Send)]
+    #[async_trait]
     impl WalletTransport for Mock {
         async fn request(&self, method: &str, params: Option<Value>) -> Result<Value, WalletError> {
-            self.seen.borrow_mut().push((method.into(), params));
+            self.seen.lock().unwrap().push((method.into(), params));
             Ok(self.response.clone())
         }
+    }
+    #[test]
+    fn native_wallet_request_futures_are_send() {
+        fn assert_send<F: Send>(_: F) {}
+        let client = WalletClient::new(Mock {
+            seen: Mutex::new(vec![]),
+            response: Value::Null,
+        });
+        let typed_data = amount_typed_data(&json!("9007199254740993"));
+        assert_send(client.transport().request("wallet_test", None));
+        assert_send(client.request_accounts(true));
+        assert_send(client.permissions());
+        assert_send(client.chain_id());
+        assert_send(client.switch_chain(Felt::ONE));
+        assert_send(client.add_chain(json!({})));
+        assert_send(client.watch_asset(Felt::ONE));
+        assert_send(client.sign_typed_data(&typed_data));
+        assert_send(client.execute(&[]));
+        assert_send(client.declare(json!({})));
+        assert_send(client.supported_versions());
+        assert_send(client.supported_specs());
+        assert_send(client.deployment_data());
+    }
+    #[tokio::test]
+    async fn native_wallet_request_runs_in_a_spawned_task() {
+        let client = WalletClient::new(Mock {
+            seen: Mutex::new(vec![]),
+            response: json!(["0x123"]),
+        });
+        let result = tokio::spawn(async move { client.request_accounts(true).await })
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(result, vec![Felt::from(0x123u64)]);
     }
     #[tokio::test]
     async fn accounts_preserve_silent_mode_and_decode_felts() {
         let client = WalletClient::new(Mock {
-            seen: RefCell::new(vec![]),
+            seen: Mutex::new(vec![]),
             response: json!(["0x123"]),
         });
         assert_eq!(
@@ -393,7 +438,7 @@ mod tests {
             vec![Felt::from(0x123u64)]
         );
         assert_eq!(
-            client.transport.seen.borrow()[0],
+            client.transport.seen.lock().unwrap()[0],
             (
                 "wallet_requestAccounts".into(),
                 Some(json!({"silent_mode":true}))
@@ -403,7 +448,7 @@ mod tests {
     #[tokio::test]
     async fn invoke_uses_wallet_wire_names_and_decodes_hash() {
         let client = WalletClient::new(Mock {
-            seen: RefCell::new(vec![]),
+            seen: Mutex::new(vec![]),
             response: json!({"transaction_hash":"0x456"}),
         });
         let call = WalletCall {
@@ -415,7 +460,7 @@ mod tests {
             client.execute(&[call]).await.unwrap().transaction_hash,
             Felt::from(0x456u64)
         );
-        let seen = client.transport.seen.borrow();
+        let seen = client.transport.seen.lock().unwrap();
         assert_eq!(seen[0].0, "wallet_addInvokeTransaction");
         assert_eq!(
             seen[0].1.as_ref().unwrap()["calls"][0]["entry_point"],
@@ -425,7 +470,7 @@ mod tests {
     #[tokio::test]
     async fn incompatible_response_is_not_silently_accepted() {
         let client = WalletClient::new(Mock {
-            seen: RefCell::new(vec![]),
+            seen: Mutex::new(vec![]),
             response: json!(false),
         });
         assert!(matches!(
@@ -452,7 +497,7 @@ mod tests {
     #[tokio::test]
     async fn unsafe_typed_data_integer_is_rejected_before_wallet_dispatch() {
         let client = WalletClient::new(Mock {
-            seen: RefCell::new(vec![]),
+            seen: Mutex::new(vec![]),
             response: json!(["0x1", "0x2"]),
         });
         let data = amount_typed_data(&json!(9_007_199_254_740_993u64));
@@ -460,7 +505,7 @@ mod tests {
             client.sign_typed_data(&data).await,
             Err(WalletError::UnsafeNumber)
         ));
-        assert!(client.transport.seen.borrow().is_empty());
+        assert!(client.transport.seen.lock().unwrap().is_empty());
         let quoted = amount_typed_data(&json!("9007199254740993"));
         assert_eq!(
             data.message_hash(Felt::ONE).unwrap(),
@@ -468,14 +513,14 @@ mod tests {
         );
         client.sign_typed_data(&quoted).await.unwrap();
         assert_eq!(
-            client.transport.seen.borrow()[0].1.as_ref().unwrap()["message"]["amount"],
+            client.transport.seen.lock().unwrap()[0].1.as_ref().unwrap()["message"]["amount"],
             "9007199254740993"
         );
     }
     #[tokio::test]
     async fn nested_unsafe_numbers_in_raw_requests_never_reach_the_wallet() {
         let client = WalletClient::new(Mock {
-            seen: RefCell::new(vec![]),
+            seen: Mutex::new(vec![]),
             response: json!(true),
         });
         for number in [
@@ -493,9 +538,9 @@ mod tests {
                 Err(WalletError::UnsafeNumber)
             ));
         }
-        assert!(client.transport.seen.borrow().is_empty());
+        assert!(client.transport.seen.lock().unwrap().is_empty());
         client.add_chain(json!({"bounds":[-9_007_199_254_740_991i64,9_007_199_254_740_991u64],"literal":"9007199254740993"})).await.unwrap();
-        assert_eq!(client.transport.seen.borrow().len(), 1);
+        assert_eq!(client.transport.seen.lock().unwrap().len(), 1);
     }
     #[test]
     fn normalized_disconnect_clears_the_selected_account() {

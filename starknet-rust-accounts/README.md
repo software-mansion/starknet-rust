@@ -7,6 +7,10 @@ signing and transaction methods over `WalletTransport`. Native applications can
 implement a bridge transport; on `wasm32`, use `wallet::BrowserWallet` around an
 application-selected JS wallet object. No private key is imported into Rust.
 
+Native transports require `Sync` and return `Send` request futures, allowing
+wallet calls in spawned Tokio tasks. WASM transports retain local JavaScript
+objects and do not require `Send` or `Sync`.
+
 ```rust,ignore
 let transport = BrowserWallet::new(selected_wallet);
 transport.connect(false).await?; // initializes wallet-standard events
