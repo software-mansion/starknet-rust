@@ -6,7 +6,7 @@
 //! OS randomness; the sampler seed is never derived from the public salt.
 use crate::{AccountSigner, SignerInteractivityContext};
 use async_trait::async_trait;
-use falcon_backend::{codec, safe_api::FnDsaKeyPair, shake, sign, vrfy};
+use falcon_backend::{codec, fft, fpr, safe_api::FnDsaKeyPair, shake, sign, vrfy};
 use rand::{RngCore, rngs::OsRng};
 use starknet_rust_core::types::{Felt, TypedData, typed_data::TypedDataError};
 use starknet_rust_crypto::{poseidon_hash_many, poseidon_permute_comp};
@@ -23,8 +23,8 @@ pub enum FalconError {
     /// Backend key validation/generation failure.
     #[error("Falcon backend: {0}")]
     Backend(#[from] falcon_backend::safe_api::FalconError),
-    /// Key must use the Falcon-512 NIST encoding.
-    #[error("invalid Falcon-512 key encoding")]
+    /// Key encoding, NTRU identity, or sampler basis-quality constraints are invalid.
+    #[error("invalid Falcon-512 key or basis")]
     InvalidKey,
     /// OS entropy source failed.
     #[error("Falcon randomness unavailable")]
@@ -278,6 +278,7 @@ fn validate_secret_polynomials(bytes: &[u8]) -> Result<(), FalconError> {
     if offset != bytes.len() {
         return Err(FalconError::InvalidKey);
     }
+    validate_sampler_basis(&f, &g)?;
     let mut scratch = Zeroizing::new(vec![0u64; N]);
     // SAFETY: the exclusively borrowed initialized u64 storage is 8-byte aligned;
     // the byte view spans precisely its allocated live length and never outlives it.
@@ -290,6 +291,52 @@ fn validate_secret_polynomials(bytes: &[u8]) -> Result<(), FalconError> {
         return Err(FalconError::InvalidKey);
     }
     Ok(())
+}
+// Match the key-generation gates in falcon-rs 0.3.1, keygen.rs:4743-4782.
+// Reuse its FFT/Fpr operations and upper bound, including the strict comparison.
+fn validate_sampler_basis(f: &[i8; N], g: &[i8; N]) -> Result<(), FalconError> {
+    let squared_norm: i32 = f
+        .iter()
+        .chain(g.iter())
+        .map(|coefficient| {
+            let value = i32::from(*coefficient);
+            value * value
+        })
+        .sum();
+    if squared_norm == 0 || squared_norm >= 16_823 {
+        return Err(FalconError::InvalidKey);
+    }
+    let mut rt1 = Zeroizing::new([fpr::FPR_ZERO; N]);
+    let mut rt2 = Zeroizing::new([fpr::FPR_ZERO; N]);
+    let mut rt3 = Zeroizing::new([fpr::FPR_ZERO; N]);
+    for index in 0..N {
+        rt1[index] = fpr::fpr_of(i64::from(f[index]));
+        rt2[index] = fpr::fpr_of(i64::from(g[index]));
+    }
+    fft::fft(&mut *rt1, 9);
+    fft::fft(&mut *rt2, 9);
+    fft::poly_invnorm2_fft(&mut *rt3, &*rt1, &*rt2, 9);
+    fft::poly_adj_fft(&mut *rt1, 9);
+    fft::poly_adj_fft(&mut *rt2, 9);
+    fft::poly_mulconst(&mut *rt1, fpr::FPR_Q, 9);
+    fft::poly_mulconst(&mut *rt2, fpr::FPR_Q, 9);
+    fft::poly_mul_autoadj_fft(&mut *rt1, &*rt3, 9);
+    fft::poly_mul_autoadj_fft(&mut *rt2, &*rt3, 9);
+    fft::ifft(&mut *rt1, 9);
+    fft::ifft(&mut *rt2, 9);
+    let mut norm = Zeroizing::new(fpr::FPR_ZERO);
+    for index in 0..N {
+        *norm = fpr::fpr_add(*norm, fpr::fpr_sqr(rt1[index]));
+        *norm = fpr::fpr_add(*norm, fpr::fpr_sqr(rt2[index]));
+    }
+    if !valid_orthogonalized_norm(*norm) {
+        return Err(FalconError::InvalidKey);
+    }
+    Ok(())
+}
+fn valid_orthogonalized_norm(norm: fpr::Fpr) -> bool {
+    // Explicit positive strict range rejects zero, negative, NaN, and infinity.
+    fpr::fpr_lt(fpr::FPR_ZERO, norm) == 1 && fpr::fpr_lt(norm, fpr::FPR_BNORM_MAX) == 1
 }
 const fn square(value: i64) -> i64 {
     let v = value.rem_euclid(Q);
@@ -536,5 +583,91 @@ mod tests {
         assert!(Falcon512Signer::from_secret_key(&broken_basis).is_err());
 
         assert!(!verify_hash(hash, &sig[..60], signer.packed_public_key()));
+    }
+    // Public algebraically valid bases used only to verify sampler-quality rejection.
+    fn bad_sampler_basis(shear_terms: usize) -> [[i8; N]; 4] {
+        let mut basis = [[0i8; N]; 4];
+        basis[0][0] = 31;
+        basis[0][256] = 30;
+        basis[1][0] = 30;
+        basis[1][256] = 31;
+        basis[2][0] = -117;
+        basis[2][256] = 115;
+        basis[3][0] = 84;
+        basis[3][256] = -87;
+        // f <- f + t*g and F <- F + t*G preserve f*G - g*F = q.
+        for shift in 1..=shear_terms {
+            basis[0][shift] = 30;
+            basis[0][shift + 256] = 31;
+            basis[2][shift] = 84;
+            basis[2][shift + 256] = -87;
+        }
+        basis
+    }
+    fn nist_fixture(basis: &[[i8; N]; 4]) -> Vec<u8> {
+        let mut bytes = vec![0u8; 1281];
+        bytes[0] = 0x59;
+        let mut offset = 1;
+        for (poly, bits) in [(&basis[0], 6), (&basis[1], 6), (&basis[2], 8)] {
+            let used = codec::trim_i8_encode(Some(&mut bytes[offset..]), poly, 9, bits);
+            assert!(used > 0);
+            offset += used;
+        }
+        assert_eq!(offset, bytes.len());
+        bytes
+    }
+    fn legacy_fixture(basis: &[[i8; N]; 4]) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(3584);
+        for poly in basis {
+            let (mut accumulator, mut bits) = (0u32, 0u32);
+            for value in poly {
+                accumulator |= (i64::from(*value).rem_euclid(Q) as u32) << bits;
+                bits += 14;
+                while bits >= 8 {
+                    bytes.push(accumulator as u8);
+                    accumulator >>= 8;
+                    bits -= 8;
+                }
+            }
+            assert_eq!(bits, 0);
+        }
+        assert_eq!(bytes.len(), 3584);
+        bytes
+    }
+    fn assert_sampler_basis_rejected(basis: &[[i8; N]; 4]) {
+        assert!(valid_ntru(&basis[0], &basis[1], &basis[2], &basis[3]));
+        let nist_rejected = Falcon512Signer::from_secret_key(&nist_fixture(basis)).is_err();
+        let legacy_rejected =
+            Falcon512Signer::from_legacy_secret_key(&legacy_fixture(basis)).is_err();
+        assert!(
+            nist_rejected && legacy_rejected,
+            "unsafe sampler basis rejected: NIST={nist_rejected}, legacy={legacy_rejected}"
+        );
+    }
+    #[test]
+    fn rejects_algebraically_valid_gram_schmidt_outlier() {
+        assert_sampler_basis_rejected(&bad_sampler_basis(0));
+    }
+    #[test]
+    fn rejects_algebraically_valid_squared_norm_outlier() {
+        assert_sampler_basis_rejected(&bad_sampler_basis(8));
+    }
+    #[test]
+    fn gram_schmidt_bound_is_finite_positive_and_strict() {
+        for invalid in [
+            fpr::FPR_ZERO,
+            fpr::Fpr::new(-1.0),
+            fpr::FPR_BNORM_MAX,
+            fpr::Fpr::new(f64::NAN),
+            fpr::Fpr::new(f64::INFINITY),
+            fpr::Fpr::new(f64::NEG_INFINITY),
+        ] {
+            assert!(!valid_orthogonalized_norm(invalid));
+        }
+        assert!(valid_orthogonalized_norm(fpr::fpr_sub(
+            fpr::FPR_BNORM_MAX,
+            fpr::FPR_ONE
+        )));
+        assert!(validate_sampler_basis(&[0i8; N], &[0i8; N]).is_err());
     }
 }

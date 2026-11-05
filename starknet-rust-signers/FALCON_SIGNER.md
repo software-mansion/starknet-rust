@@ -10,6 +10,8 @@ Use `accounts::EncodedAccount` for INVOKE/DECLARE v3 transaction integration. It
 
 The implementation pins `falcon-rs` 0.3.1 (https://github.com/lattice-safe/falcon-rs), using its validated NIST keys and raw `sign_dyn` hash-point API. No Gaussian sampler, FFT arithmetic, or private-key generator is reimplemented here. S2morrow's Poseidon hash-to-point, base-12289 packing, public polynomial multiplication, and NTT ordering match Starknet.js/Cairo.
 
+Before accepting either NIST or legacy imported keys, the adapter retains exact NTRU validation and enforces the pinned backend's sampler-quality gates: the squared norm of f and g must be below 16823, and the orthogonalized squared norm must be positive and strictly below `FPR_BNORM_MAX` (16822.4121). Zero, negative, and non-finite orthogonalized norms are rejected. The FFT/Fpr sequence and upper comparisons match [backend key generation](https://github.com/lattice-safe/falcon-rs/blob/59b2e673f714f9b7865cd28a0845329ae3231432/src/keygen.rs#L4743-L4782); [the sampler documents why those bounds matter](https://github.com/lattice-safe/falcon-rs/blob/59b2e673f714f9b7865cd28a0845329ae3231432/src/sign.rs#L120-L132). Signature self-verification alone cannot validate the sampling distribution.
+
 The public salt (62 random bytes) and secret sampler seed (48 independent random bytes) come from disjoint portions of OS-generated randomness. No sampler seed is derived from public salt. Generated signatures are self-verified before release. Private-key export uses `Zeroizing`; imported polynomials, entropy buffers, and temporary scratch are wiped on drop. The backend owns additional temporary sampler state; this wrapper does not assert complete process-memory erasure.
 
 The legacy 3584-byte S2morrow key importer validates coefficient bounds and the exact integer NTRU equation, including the supplied G polynomial. Keys previously used by the old sampler that derived its seed from public salt may already have leaked information; importing them does not restore their secrecy. New accounts should use fresh keys.
@@ -19,3 +21,5 @@ This adapter is new cryptographic integration code, not an independently audited
 ## Example
 
 `cargo run --example falcon_signer --features falcon` generates a new ephemeral key and prints only its public key, message hash, and signature as JSON. It does not export the private key or make network requests.
+
+Feature-enabled CI steps run the Falcon signer tests, public signer-import compatibility test, and EncodedAccount regression in the existing Unix and Windows matrices. The positive tests retain compatibility with the published JS legacy key and signature vectors; negative tests reject algebraically valid bases outside each sampler-quality bound.
