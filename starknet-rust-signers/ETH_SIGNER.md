@@ -6,6 +6,6 @@ Pass the signer to `accounts::EncodedAccount::new(provider, signer, address, cha
 
 The account contract must verify secp256k1 and the five-felt serialization. Ordinary OpenZeppelin STARK-curve accounts cannot verify this signature. Account deployment constructors are contract-specific; custom factories can use `sign_hash` on the deployment hash. The SDK does not guess an Ethereum-account class hash or constructor layout.
 
-The private key is held by RustCrypto's zeroizing `SigningKey`. `Debug` exposes the public key only. The signer and EncodedAccount support native and wasm builds; wasm was not exercised in this change.
+The private key is held by RustCrypto's zeroizing `SigningKey`. `Debug` exposes the public key only. The signer compiles for native and wasm32-unknown-unknown targets. The dependency enables only the required ECDSA feature, avoiding an unused OS-RNG dependency in wasm builds. No browser runtime or live chain execution was performed.
 
 Run the offline example: `cargo run --example eth_signer --features eth`.
