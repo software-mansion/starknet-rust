@@ -14,7 +14,7 @@ pub trait AccountSigner {
     /// Sign the prehash without applying another message digest.
     async fn sign_account_hash(&self, hash: &Felt) -> Result<Vec<Felt>, Self::SignError>;
     /// Whether signing requires user interaction.
-    fn is_interactive(&self, context: SignerInteractivityContext<'_>) -> bool;
+    fn is_account_signer_interactive(&self, context: SignerInteractivityContext<'_>) -> bool;
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
@@ -25,7 +25,7 @@ impl<S: Signer + Sync> AccountSigner for S {
         let signature = self.sign_hash(hash).await?;
         Ok(vec![signature.r, signature.s])
     }
-    fn is_interactive(&self, context: SignerInteractivityContext<'_>) -> bool {
+    fn is_account_signer_interactive(&self, context: SignerInteractivityContext<'_>) -> bool {
         Signer::is_interactive(self, context)
     }
 }

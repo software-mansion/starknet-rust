@@ -95,7 +95,7 @@ impl AccountSigner for EthSigner {
     async fn sign_account_hash(&self, hash: &Felt) -> Result<Vec<Felt>, Self::SignError> {
         Ok(self.sign_hash(hash).to_vec())
     }
-    fn is_interactive(&self, _: SignerInteractivityContext<'_>) -> bool {
+    fn is_account_signer_interactive(&self, _: SignerInteractivityContext<'_>) -> bool {
         false
     }
 }

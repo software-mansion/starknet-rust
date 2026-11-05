@@ -45,7 +45,7 @@ where
     /// ### Parameters
     ///
     /// - `provider`: A `Provider` implementation that provides access to the Starknet network.
-    /// - `signer`: A `Signer` implementation that can generate valid signatures for this account.
+    /// - `signer`: An `AccountSigner` implementation that can generate valid signatures for this account.
     /// - `address`: Account contract address.
     /// - `chain_id`: Network chain ID.
     /// - `encoding`: How `__execute__` calldata should be encoded.
@@ -121,7 +121,7 @@ where
     }
 
     fn is_signer_interactive(&self, context: SignerInteractivityContext<'_>) -> bool {
-        self.signer.is_interactive(context)
+        self.signer.is_account_signer_interactive(context)
     }
 }
 
