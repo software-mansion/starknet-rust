@@ -396,3 +396,184 @@ mod tests {
         }
     }
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod provider_tests {
+    use super::*;
+    use async_trait::async_trait;
+    use serde::{Serialize, de::DeserializeOwned};
+    use serde_json::json;
+    use starknet_rust_core::types::StarknetError;
+    use starknet_rust_providers::ProviderRequestData;
+    use starknet_rust_providers::jsonrpc::{
+        JsonRpcClient, JsonRpcMethod, JsonRpcResponse, JsonRpcTransport,
+    };
+    use std::{
+        collections::VecDeque,
+        sync::{Arc, Mutex},
+    };
+
+    const ACCOUNT: Felt = Felt::from_hex_unchecked("0x123");
+    const BLOCK: BlockId = BlockId::Number(17);
+    struct Mock {
+        responses: Mutex<VecDeque<Value>>,
+        requests: Mutex<Vec<Value>>,
+    }
+    #[async_trait]
+    impl JsonRpcTransport for Mock {
+        type Error = serde_json::Error;
+        async fn send_request<P: Serialize + Send + Sync, R: DeserializeOwned + Send>(
+            &self,
+            method: JsonRpcMethod,
+            params: P,
+        ) -> Result<JsonRpcResponse<R>, Self::Error> {
+            assert!(matches!(method, JsonRpcMethod::Call));
+            self.requests
+                .lock()
+                .unwrap()
+                .push(serde_json::to_value(params)?);
+            serde_json::from_value(
+                self.responses
+                    .lock()
+                    .unwrap()
+                    .pop_front()
+                    .expect("unexpected RPC query"),
+            )
+        }
+        async fn send_requests<R: AsRef<[ProviderRequestData]> + Send + Sync>(
+            &self,
+            _: R,
+        ) -> Result<Vec<JsonRpcResponse<Value>>, Self::Error> {
+            unreachable!()
+        }
+    }
+    fn provider(responses: Vec<Value>) -> (JsonRpcClient<Arc<Mock>>, Arc<Mock>) {
+        let mock = Arc::new(Mock {
+            responses: Mutex::new(responses.into()),
+            requests: Mutex::new(vec![]),
+        });
+        (JsonRpcClient::new(mock.clone()), mock)
+    }
+    fn response(valid: bool) -> Value {
+        json!({"id":1,"result":[if valid { "0x1" } else { "0x0" }]})
+    }
+    fn error() -> Value {
+        json!({"id":1,"error":{"code":20,"message":"Contract not found"}})
+    }
+    fn assert_error(error: &ProviderError) {
+        assert!(matches!(
+            error,
+            ProviderError::StarknetError(StarknetError::ContractNotFound)
+        ));
+    }
+    fn assert_request(request: &Value, selector: &str, argument: Felt) {
+        assert_eq!(
+            *request,
+            json!({"request":{"contract_address":ACCOUNT,"entry_point_selector":get_selector_from_name(selector).unwrap(),"calldata":[argument]},"block_id":{"block_number":17}})
+        );
+    }
+    fn assert_nonce_requests(mock: &Mock, expected: usize) -> Vec<Felt> {
+        let requests = mock.requests.lock().unwrap();
+        assert_eq!(requests.len(), expected);
+        requests
+            .iter()
+            .map(|request| {
+                let nonce: Felt =
+                    serde_json::from_value(request["request"]["calldata"][0].clone()).unwrap();
+                assert_ne!(nonce, Felt::ZERO);
+                assert_request(request, "is_valid_outside_execution_nonce", nonce);
+                nonce
+            })
+            .collect()
+    }
+    #[tokio::test]
+    async fn discovery_prefers_v2_without_querying_v1() {
+        let (provider, mock) = provider(vec![response(true)]);
+        assert_eq!(
+            supported_version(&provider, ACCOUNT, BLOCK).await.unwrap(),
+            Some(OutsideExecutionVersion::V2)
+        );
+        let requests = mock.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_request(&requests[0], "supports_interface", V2_INTERFACE_ID);
+    }
+    #[tokio::test]
+    async fn discovery_falls_back_to_v1_or_reports_unsupported() {
+        for supported in [true, false] {
+            let (provider, mock) = provider(vec![response(false), response(supported)]);
+            assert_eq!(
+                supported_version(&provider, ACCOUNT, BLOCK).await.unwrap(),
+                supported.then_some(OutsideExecutionVersion::V1)
+            );
+            let requests = mock.requests.lock().unwrap();
+            assert_eq!(requests.len(), 2);
+            assert_request(&requests[0], "supports_interface", V2_INTERFACE_ID);
+            assert_request(&requests[1], "supports_interface", V1_INTERFACE_ID);
+        }
+    }
+    #[tokio::test]
+    async fn discovery_propagates_rpc_errors_at_either_version() {
+        for responses in [vec![error()], vec![response(false), error()]] {
+            let expected = responses.len();
+            let (provider, mock) = provider(responses);
+            assert_error(
+                &supported_version(&provider, ACCOUNT, BLOCK)
+                    .await
+                    .unwrap_err(),
+            );
+            let requests = mock.requests.lock().unwrap();
+            assert_eq!(requests.len(), expected);
+            assert_request(&requests[0], "supports_interface", V2_INTERFACE_ID);
+            if expected == 2 {
+                assert_request(&requests[1], "supports_interface", V1_INTERFACE_ID);
+            }
+        }
+    }
+    #[tokio::test]
+    async fn nonce_check_uses_dedicated_namespace_and_supplied_candidate() {
+        for valid in [true, false] {
+            let (provider, mock) = provider(vec![response(valid)]);
+            assert_eq!(
+                is_valid_nonce(&provider, ACCOUNT, Felt::THREE, BLOCK)
+                    .await
+                    .unwrap(),
+                valid
+            );
+            let requests = mock.requests.lock().unwrap();
+            assert_eq!(requests.len(), 1);
+            assert_request(
+                &requests[0],
+                "is_valid_outside_execution_nonce",
+                Felt::THREE,
+            );
+        }
+    }
+    #[tokio::test]
+    async fn fresh_nonce_respects_zero_and_exhausted_attempt_limits() {
+        for attempts in [0, 3] {
+            let (provider, mock) = provider(vec![response(false); attempts]);
+            assert_eq!(
+                fresh_nonce(&provider, ACCOUNT, BLOCK, attempts)
+                    .await
+                    .unwrap(),
+                None
+            );
+            assert_nonce_requests(&mock, attempts);
+        }
+    }
+    #[tokio::test]
+    async fn fresh_nonce_returns_the_accepted_candidate_after_rejection() {
+        let (provider, mock) = provider(vec![response(false), response(true)]);
+        let accepted = fresh_nonce(&provider, ACCOUNT, BLOCK, 5)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(accepted, assert_nonce_requests(&mock, 2)[1]);
+    }
+    #[tokio::test]
+    async fn fresh_nonce_stops_immediately_on_rpc_error() {
+        let (provider, mock) = provider(vec![error()]);
+        assert_error(&fresh_nonce(&provider, ACCOUNT, BLOCK, 5).await.unwrap_err());
+        assert_nonce_requests(&mock, 1);
+    }
+}
