@@ -163,13 +163,13 @@ mod tests {
             unreachable!()
         }
     }
-    fn mock(response: Value) -> JsonRpcClient<Mock> {
+    const fn mock(response: Value) -> JsonRpcClient<Mock> {
         JsonRpcClient::new(Mock {
             response,
             params: Mutex::new(None),
         })
     }
-    fn latest() -> BlockId {
+    const fn latest() -> BlockId {
         BlockId::Tag(starknet_rust_core::types::BlockTag::Latest)
     }
     #[tokio::test]
