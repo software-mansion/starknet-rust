@@ -41,6 +41,14 @@ pub enum PaymasterError {
     Signing(String),
 }
 /// Pluggable paymaster JSON-RPC transport, including deterministic offline mocks.
+#[cfg(not(target_arch = "wasm32"))]
+#[async_trait]
+pub trait PaymasterTransport: Sync {
+    /// Send a SNIP-29 method and return its JSON-RPC `result`.
+    async fn request(&self, method: &str, params: Value) -> Result<Value, PaymasterError>;
+}
+/// Pluggable paymaster JSON-RPC transport for browser/WASM runtimes.
+#[cfg(target_arch = "wasm32")]
 #[async_trait(?Send)]
 pub trait PaymasterTransport {
     /// Send a SNIP-29 method and return its JSON-RPC `result`.
@@ -66,7 +74,8 @@ impl HttpPaymasterTransport {
         })
     }
 }
-#[async_trait(?Send)]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl PaymasterTransport for HttpPaymasterTransport {
     async fn request(&self, method: &str, params: Value) -> Result<Value, PaymasterError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
@@ -119,12 +128,57 @@ pub enum FeeMode {
         gas_token: Felt,
     },
 }
+mod decimal_u64 {
+    use serde::{Deserialize, Deserializer, Serializer};
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    pub(super) fn serialize<S: Serializer>(value: &u64, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&value.to_string())
+    }
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u64, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        if value.is_empty()
+            || (value.len() > 1 && value.starts_with('0'))
+            || !value.bytes().all(|byte| byte.is_ascii_digit())
+        {
+            return Err(serde::de::Error::custom("expected decimal u64 string"));
+        }
+        value.parse().map_err(serde::de::Error::custom)
+    }
+}
+mod hex_u256 {
+    use super::U256;
+    use serde::{Deserialize, Deserializer, Serializer};
+    pub(super) fn serialize<S: Serializer>(value: &U256, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&format!("{value:#x}"))
+    }
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<U256, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        let digits = value
+            .strip_prefix("0x")
+            .ok_or_else(|| serde::de::Error::custom("expected hexadecimal u256"))?;
+        if digits.is_empty()
+            || (digits.len() > 1 && digits.starts_with('0'))
+            || digits.len() > 64
+            || !digits.bytes().all(|byte| byte.is_ascii_hexdigit())
+        {
+            return Err(serde::de::Error::custom("invalid hexadecimal u256"));
+        }
+        let padded = format!("{digits:0>64}");
+        let high = u128::from_str_radix(&padded[..32], 16).map_err(serde::de::Error::custom)?;
+        let low = u128::from_str_radix(&padded[32..], 16).map_err(serde::de::Error::custom)?;
+        Ok(U256::from_words(low, high))
+    }
+}
 /// Approved validity window in Unix seconds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeBounds {
     /// Earliest execution timestamp.
+    #[serde(with = "decimal_u64")]
     pub execute_after: u64,
     /// Latest execution timestamp.
+    #[serde(with = "decimal_u64")]
     pub execute_before: u64,
 }
 /// SNIP-29 execution parameters; version is fixed to the implemented protocol.
@@ -200,7 +254,8 @@ pub struct TokenData {
     /// Token decimal precision.
     pub decimals: u8,
     /// Price denominated in STRK.
-    pub price_in_strk: Felt,
+    #[serde(with = "hex_u256")]
+    pub price_in_strk: U256,
 }
 /// Untrusted paymaster-built transaction. Validate before obtaining a signable handle.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -269,7 +324,7 @@ fn felt(v: &Value) -> Result<Felt, PaymasterError> {
                 .ok_or(PaymasterError::Invalid("invalid felt in authorization"))
         },
         |s| {
-            if s.starts_with("0x") {
+            if s.starts_with("0x") || s.starts_with("0X") {
                 Felt::from_hex(s).map_err(|_| {
                     PaymasterError::Invalid("invalid hexadecimal felt in authorization")
                 })
@@ -305,7 +360,17 @@ fn calls(v: &Value, v1: bool) -> Result<Vec<Call>, PaymasterError> {
             }
             Ok(Call {
                 to: felt(&c[to])?,
-                selector: felt(&c[selector])?,
+                selector: if v1 {
+                    felt(&c[selector])?
+                } else {
+                    match c[selector].as_str() {
+                        Some(name) if !name.starts_with("0x") && !name.starts_with("0X") => {
+                            get_selector_from_name(name)
+                                .map_err(|_| PaymasterError::Invalid("invalid selector name"))?
+                        }
+                        _ => felt(&c[selector])?,
+                    }
+                },
                 calldata: data,
             })
         })
@@ -562,9 +627,13 @@ impl<T: PaymasterTransport> PaymasterClient<T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
+    fn assert_send<T: Send>(_: T) {}
+    const fn require_send<T: Send>(future: T) -> T {
+        future
+    }
     fn setup(
         mode: FeeMode,
     ) -> (
@@ -690,14 +759,14 @@ mod tests {
     #[tokio::test]
     async fn validated_transaction_signs_and_executes_through_wire_transport() {
         use starknet_rust_signers::{LocalWallet, SigningKey};
-        use std::cell::RefCell;
+        use std::sync::Mutex;
         struct Mock {
-            seen: RefCell<Vec<(String, Value)>>,
+            seen: Mutex<Vec<(String, Value)>>,
         }
-        #[async_trait(?Send)]
+        #[async_trait]
         impl PaymasterTransport for Mock {
             async fn request(&self, method: &str, params: Value) -> Result<Value, PaymasterError> {
-                self.seen.borrow_mut().push((method.into(), params));
+                self.seen.lock().unwrap().push((method.into(), params));
                 Ok(json!({"transaction_hash":"0x123"}))
             }
         }
@@ -706,11 +775,15 @@ mod tests {
         let signer = LocalWallet::from(SigningKey::from_secret_scalar(Felt::from(42u64)));
         let authorization = valid.sign(&signer).await.unwrap();
         let client = PaymasterClient::new(Mock {
-            seen: RefCell::new(vec![]),
+            seen: Mutex::new(vec![]),
         });
-        let result = client.execute(authorization).await.unwrap();
+        assert_send(client.is_available());
+        assert_send(client.supported_tokens());
+        assert_send(client.build(&request, &parameters));
+        let execution = client.execute(authorization);
+        let result = require_send(execution).await.unwrap();
         assert_eq!(result["transaction_hash"], "0x123");
-        let seen = client.transport.seen.borrow();
+        let seen = client.transport.seen.lock().unwrap();
         assert_eq!(seen[0].0, "paymaster_executeTransaction");
         assert_eq!(
             seen[0].1["transaction"]["invoke"]["signature"]
@@ -720,6 +793,115 @@ mod tests {
             2
         );
         assert_eq!(seen[0].1["parameters"]["fee_mode"]["mode"], "sponsored");
+        assert_eq!(
+            seen[0].1["parameters"]["time_bounds"],
+            json!({"execute_after":"10","execute_before":"200"})
+        );
+    }
+    struct ResponseMock {
+        response: Value,
+        seen: std::sync::Mutex<Vec<(String, Value)>>,
+    }
+    #[async_trait]
+    impl PaymasterTransport for ResponseMock {
+        async fn request(&self, method: &str, params: Value) -> Result<Value, PaymasterError> {
+            self.seen.lock().unwrap().push((method.into(), params));
+            Ok(self.response.clone())
+        }
+    }
+    #[tokio::test]
+    async fn build_sends_and_decodes_decimal_string_time_bounds() {
+        let (request, parameters, _, prepared) = setup(FeeMode::Sponsored);
+        let wire = serde_json::to_value(&prepared).unwrap();
+        assert_eq!(
+            wire["parameters"]["time_bounds"],
+            json!({"execute_after":"10","execute_before":"200"})
+        );
+        let client = PaymasterClient::new(ResponseMock {
+            response: wire,
+            seen: std::sync::Mutex::new(vec![]),
+        });
+        client.build(&request, &parameters).await.unwrap();
+        let seen = client.transport.seen.lock().unwrap();
+        assert_eq!(seen[0].0, "paymaster_buildTransaction");
+        assert_eq!(
+            seen[0].1["parameters"]["time_bounds"],
+            json!({"execute_after":"10","execute_before":"200"})
+        );
+        let maximum = TimeBounds {
+            execute_after: 0,
+            execute_before: u64::MAX,
+        };
+        assert_eq!(
+            serde_json::from_value::<TimeBounds>(serde_json::to_value(maximum).unwrap()).unwrap(),
+            maximum
+        );
+        for invalid in [
+            json!(1),
+            json!("18446744073709551616"),
+            json!("-1"),
+            json!("+1"),
+            json!("0x1"),
+            json!("01"),
+        ] {
+            assert!(
+                serde_json::from_value::<TimeBounds>(
+                    json!({"execute_after":invalid,"execute_before":"200"})
+                )
+                .is_err()
+            );
+        }
+    }
+    #[tokio::test]
+    async fn supported_tokens_preserves_full_width_hexadecimal_prices() {
+        let maximum = format!("0x{}", "f".repeat(64));
+        let wire = json!({"token_address":"0x1","decimals":18,"price_in_strk":maximum});
+        let client = PaymasterClient::new(ResponseMock {
+            response: json!([wire]),
+            seen: std::sync::Mutex::new(vec![]),
+        });
+        let tokens = client.supported_tokens().await.unwrap();
+        assert_eq!(
+            tokens[0].price_in_strk,
+            U256::from_words(u128::MAX, u128::MAX)
+        );
+        assert_eq!(
+            serde_json::to_value(&tokens[0]).unwrap()["price_in_strk"],
+            maximum
+        );
+        for invalid in [
+            format!("0x1{}", "0".repeat(64)),
+            "0x".into(),
+            "0xgg".into(),
+            "0x00".into(),
+            "12".into(),
+        ] {
+            assert!(
+                serde_json::from_value::<TokenData>(
+                    json!({"token_address":"0x1","decimals":18,"price_in_strk":invalid})
+                )
+                .is_err()
+            );
+        }
+    }
+    #[test]
+    fn selector_names_follow_revision_specific_semantics() {
+        let v1 = calls(
+            &json!([{"to":"0x1","selector":"transfer","calldata_len":"0","calldata":[]}]),
+            true,
+        )
+        .unwrap();
+        let v2 = calls(
+            &json!([{"To":"0x1","Selector":"transfer","Calldata":[]}]),
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            v1[0].selector,
+            cairo_short_string_to_felt("transfer").unwrap()
+        );
+        assert_eq!(v2[0].selector, get_selector_from_name("transfer").unwrap());
+        assert_ne!(v1[0].selector, v2[0].selector);
     }
     #[test]
     fn decimal_and_hex_felts_are_interpreted_in_their_actual_bases() {
@@ -767,7 +949,22 @@ mod tests {
         let key = SigningKey::from_secret_scalar(Felt::from(42u64));
         let public_key = key.verifying_key();
         let owner = LocalWallet::from(key);
-        for vector in fixture["vectors"].as_array().unwrap() {
+        let mut vectors = fixture["vectors"].as_array().unwrap().clone();
+        let mut named_v2 = vectors
+            .iter()
+            .find(|vector| vector["version"] == "2")
+            .unwrap()
+            .clone();
+        for (index, call) in named_v2["typed_data"]["message"]["Calls"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .enumerate()
+        {
+            call["Selector"] = fixture["calls"][index]["entrypoint"].clone();
+        }
+        vectors.push(named_v2);
+        for vector in &vectors {
             let expected: Felt = serde_json::from_value(vector["message_hash"].clone()).unwrap();
             let (_, _, _, sample) = setup(FeeMode::Sponsored);
             let PreparedTransaction::Invoke { fee, .. } = sample else {
