@@ -346,6 +346,79 @@ mod tests {
             responses: std::sync::Mutex::new(responses.into()),
         })
     }
+    #[derive(Debug)]
+    struct PendingReceiptTransport {
+        entered: Arc<std::sync::atomic::AtomicBool>,
+        dropped: Arc<std::sync::atomic::AtomicBool>,
+    }
+    #[derive(Debug)]
+    struct PendingReceiptGuard(Arc<std::sync::atomic::AtomicBool>);
+    impl Drop for PendingReceiptGuard {
+        fn drop(&mut self) {
+            self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+    #[async_trait::async_trait]
+    impl JsonRpcTransport for PendingReceiptTransport {
+        type Error = std::convert::Infallible;
+        async fn send_request<P: Serialize + Send + Sync, R: DeserializeOwned + Send>(
+            &self,
+            method: JsonRpcMethod,
+            _params: P,
+        ) -> Result<JsonRpcResponse<R>, Self::Error> {
+            assert!(matches!(method, JsonRpcMethod::GetTransactionReceipt));
+            let _guard = PendingReceiptGuard(self.dropped.clone());
+            self.entered
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            std::future::pending().await
+        }
+        async fn send_requests<R: AsRef<[ProviderRequestData]> + Send + Sync>(
+            &self,
+            _: R,
+        ) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, Self::Error> {
+            panic!("unexpected batch")
+        }
+    }
+    #[tokio::test(start_paused = true)]
+    async fn confirmation_deadline_cancels_in_flight_query_and_preserves_submitted_hash() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let entered = Arc::new(AtomicBool::new(false));
+        let dropped = Arc::new(AtomicBool::new(false));
+        let provider = JsonRpcClient::new(PendingReceiptTransport {
+            entered: entered.clone(),
+            dropped: dropped.clone(),
+        });
+        let submitted_hash = Felt::THREE;
+        let deadline = Duration::from_secs(60);
+        let started = tokio::time::Instant::now();
+        // Paused Tokio time advances directly to timers: this checks the RPC cancellation
+        // boundary without depending on wall-clock timer precision or waiting a real minute.
+        let result = tokio::time::timeout(
+            deadline * 2,
+            confirm::<_, std::convert::Infallible>(
+                &provider,
+                submitted_hash,
+                ConfirmationOptions {
+                    timeout: deadline,
+                    interval: Duration::from_secs(1),
+                },
+            ),
+        )
+        .await
+        .expect("confirmation must enforce its deadline while the receipt RPC is pending");
+        assert!(
+            matches!(result, Err(WorkflowError::Timeout { transaction_hash }) if transaction_hash == submitted_hash)
+        );
+        assert_eq!(
+            tokio::time::Instant::now().duration_since(started),
+            deadline
+        );
+        assert!(entered.load(Ordering::SeqCst));
+        assert!(
+            dropped.load(Ordering::SeqCst),
+            "the in-flight RPC future must be dropped at the deadline"
+        );
+    }
     #[tokio::test]
     async fn missing_receipt_timeout_preserves_hash() {
         let p = provider(vec![
