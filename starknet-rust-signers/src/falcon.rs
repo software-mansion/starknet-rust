@@ -93,20 +93,7 @@ impl Falcon512Signer {
                 return Err(FalconError::InvalidKey);
             }
         }
-        // Verify the integer NTRU equation, including the caller-supplied G.
-        let mut equation = Zeroizing::new([0i64; N]);
-        for i in 0..N {
-            for j in 0..N {
-                let term = i64::from(polys[0][i]) * i64::from(polys[3][j])
-                    - i64::from(polys[1][i]) * i64::from(polys[2][j]);
-                if i + j < N {
-                    equation[i + j] += term;
-                } else {
-                    equation[i + j - N] -= term;
-                }
-            }
-        }
-        if equation[0] != Q || equation[1..].iter().any(|value| *value != 0) {
+        if !valid_ntru(&polys[0], &polys[1], &polys[2], &polys[3]) {
             return Err(FalconError::InvalidKey);
         }
         let mut nist = Zeroizing::new(vec![0u8; 1281]);
@@ -125,6 +112,7 @@ impl Falcon512Signer {
         if key.logn() != 9 {
             return Err(FalconError::InvalidKey);
         }
+        validate_secret_polynomials(key.private_key())?;
         let mut h = [0u16; N];
         if codec::modq_decode(&mut h, 9, &key.public_key()[1..]) != 896 {
             return Err(FalconError::InvalidKey);
@@ -255,6 +243,53 @@ pub fn verify_hash(hash: Felt, signature: &[Felt], packed_public_key: &[Felt]) -
         })
         .sum();
     norm <= BOUND
+}
+fn valid_ntru(f: &[i8; N], g: &[i8; N], big_f: &[i8; N], big_g: &[i8; N]) -> bool {
+    let mut equation = Zeroizing::new([0i64; N]);
+    for i in 0..N {
+        for j in 0..N {
+            let term =
+                i64::from(f[i]) * i64::from(big_g[j]) - i64::from(g[i]) * i64::from(big_f[j]);
+            if i + j < N {
+                equation[i + j] += term;
+            } else {
+                equation[i + j - N] -= term;
+            }
+        }
+    }
+    equation[0] == Q && equation[1..].iter().all(|value| *value == 0)
+}
+fn validate_secret_polynomials(bytes: &[u8]) -> Result<(), FalconError> {
+    if bytes.len() != 1281 || bytes[0] != 0x59 {
+        return Err(FalconError::InvalidKey);
+    }
+    let mut f = Zeroizing::new([0i8; N]);
+    let mut g = Zeroizing::new([0i8; N]);
+    let mut big_f = Zeroizing::new([0i8; N]);
+    let mut big_g = Zeroizing::new([0i8; N]);
+    let mut offset = 1;
+    for (poly, bits) in [(&mut *f, 6), (&mut *g, 6), (&mut *big_f, 8)] {
+        let used = codec::trim_i8_decode(poly, 9, bits, &bytes[offset..]);
+        if used == 0 {
+            return Err(FalconError::InvalidKey);
+        }
+        offset += used;
+    }
+    if offset != bytes.len() {
+        return Err(FalconError::InvalidKey);
+    }
+    let mut scratch = Zeroizing::new(vec![0u64; N]);
+    // SAFETY: the exclusively borrowed initialized u64 storage is 8-byte aligned;
+    // the byte view spans precisely its allocated live length and never outlives it.
+    let scratch_bytes = unsafe {
+        std::slice::from_raw_parts_mut(scratch.as_mut_ptr().cast::<u8>(), scratch.len() * 8)
+    };
+    if !vrfy::complete_private(&mut *big_g, &*f, &*g, &*big_f, 9, scratch_bytes)
+        || !valid_ntru(&f, &g, &big_f, &big_g)
+    {
+        return Err(FalconError::InvalidKey);
+    }
+    Ok(())
 }
 const fn square(value: i64) -> i64 {
     let v = value.rem_euclid(Q);
@@ -482,6 +517,10 @@ mod tests {
         let imported = Falcon512Signer::from_secret_key(&signer.export_secret_key()).unwrap();
         assert_eq!(imported.public_key(), signer.public_key());
         assert!(Falcon512Signer::from_secret_key(&[0; 1281]).is_err());
+        let mut broken_basis = signer.export_secret_key();
+        broken_basis[769..].fill(0); // valid encoding of F=0, but invalid NTRU basis
+        assert!(Falcon512Signer::from_secret_key(&broken_basis).is_err());
+
         assert!(!verify_hash(hash, &sig[..60], signer.packed_public_key()));
     }
 }
