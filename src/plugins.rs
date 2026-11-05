@@ -81,6 +81,13 @@ impl<H> PluginHost<H> {
     pub const fn host(&self) -> &H {
         &self.host
     }
+    /// Gets mutable access to the host without dropping installed extensions.
+    ///
+    /// This permits changing an owned account's query block through `set_block_id`.
+    /// Extensions that copied host configuration during installation are not rebuilt.
+    pub const fn host_mut(&mut self) -> &mut H {
+        &mut self.host
+    }
     /// Consumes the wrapper and drops all installed extension values.
     pub fn into_host(self) -> H {
         self.host
@@ -234,5 +241,51 @@ mod tests {
             Err(InstallError::Duplicate("counter"))
         ));
         assert_eq!(host.names(), ["counter"]);
+    }
+    struct AccountMarker;
+    impl<A: crate::accounts::ConnectedAccount> Plugin<A> for AccountMarker {
+        type Extension = Vec<&'static str>;
+        type Error = std::convert::Infallible;
+        fn name(&self) -> &'static str {
+            "account-marker"
+        }
+        fn install(&self, _: &A) -> Result<Self::Extension, Self::Error> {
+            Ok(vec!["installed"])
+        }
+    }
+    #[test]
+    fn changing_owned_account_block_preserves_installed_extension_state() {
+        use crate::{
+            accounts::{ConnectedAccount, ExecutionEncoding, SingleOwnerAccount},
+            core::types::{BlockId, BlockTag, Felt},
+            providers::{
+                Url,
+                jsonrpc::{HttpTransport, JsonRpcClient},
+            },
+            signers::{LocalWallet, SigningKey},
+        };
+        let provider = JsonRpcClient::new(HttpTransport::new(
+            Url::parse("http://127.0.0.1:1").unwrap(),
+        ));
+        let signer = LocalWallet::from(SigningKey::from_random());
+        let account = SingleOwnerAccount::new(
+            provider,
+            signer,
+            Felt::ONE,
+            Felt::TWO,
+            ExecutionEncoding::New,
+        );
+        let mut sdk = PluginHost::new(account);
+        sdk.install(AccountMarker).unwrap();
+        sdk.get_mut::<AccountMarker>()
+            .unwrap()
+            .push("retained state");
+        sdk.host_mut().set_block_id(BlockId::Tag(BlockTag::Latest));
+        assert_eq!(sdk.host().block_id(), BlockId::Tag(BlockTag::Latest));
+        assert_eq!(sdk.names(), ["account-marker"]);
+        assert_eq!(
+            sdk.get::<AccountMarker>().unwrap(),
+            &["installed", "retained state"]
+        );
     }
 }
