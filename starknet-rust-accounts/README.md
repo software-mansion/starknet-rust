@@ -20,6 +20,8 @@ let balances = wallet.balances(&[token], Some(expiry_unix_seconds)).await?;
 let prepared = wallet.prepare(&actions, false).await?;
 // Review the returned call, public proof output, and transaction fee first.
 let result = prepared.execution(&sponsor)?.send().await?;
+// Or submit a prepared call/proof through the wallet:
+let result = wallet.execute_with_proof(&[prepared.call], &prepared.proof).await?;
 // Or let the wallet approve and submit the actions itself:
 let result = wallet.invoke(&actions).await?;
 ```

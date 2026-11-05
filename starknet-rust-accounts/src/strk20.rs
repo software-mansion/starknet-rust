@@ -282,6 +282,24 @@ impl<T: Strk20Transport> Strk20Client<T> {
         self.call("wallet_strk20InvokeTransaction", json!({"actions":actions}))
             .await
     }
+    /// Ask the wallet to approve and submit ordinary calls with a prepared STRK20 proof.
+    /// Review the calls and proof output before requesting approval. Simulation proofs are rejected.
+    pub async fn execute_with_proof(
+        &self,
+        calls: &[WalletCall],
+        proof: &Strk20Proof,
+    ) -> Result<Transaction, Strk20Error> {
+        if calls.is_empty() || proof.data.is_empty() || proof.proof_facts.is_empty() {
+            return Err(Strk20Error::Invalid(
+                "proof execution requires calls and a nonempty proof",
+            ));
+        }
+        self.call(
+            "wallet_addInvokeTransaction",
+            json!({"calls": calls, "proof": proof}),
+        )
+        .await
+    }
     /// Ask the wallet for a full (nonce set) or partial (nonce omitted) shadow commitment.
     pub async fn shadow_account_commitment(
         &self,
@@ -411,5 +429,38 @@ mod tests {
         );
         assert_eq!(prepared.proof.proof_facts, vec![Felt::THREE]);
         assert_eq!(c.transport.seen.borrow()[0].0, "wallet_strk20PrepareInvoke");
+    }
+    #[tokio::test]
+    async fn wallet_execution_preserves_proof_fields_and_rejects_simulation() {
+        let client = mock(json!({"transaction_hash":"0x123"}));
+        let calls = vec![WalletCall {
+            contract_address: Felt::ONE,
+            entry_point: "claim".into(),
+            calldata: vec![],
+        }];
+        let proof = Strk20Proof {
+            data: "AAA=".into(),
+            output: vec![Felt::TWO],
+            proof_facts: vec![Felt::THREE],
+        };
+        client.execute_with_proof(&calls, &proof).await.unwrap();
+        {
+            let seen = client.transport.seen.borrow();
+            assert_eq!(seen[0].0, "wallet_addInvokeTransaction");
+            assert_eq!(seen[0].1["proof"]["data"], "AAA=");
+            assert_eq!(seen[0].1["proof"]["proof_facts"], json!(["0x3"]));
+        }
+        let simulation = Strk20Proof {
+            data: String::new(),
+            output: vec![],
+            proof_facts: vec![],
+        };
+        assert!(
+            client
+                .execute_with_proof(&calls, &simulation)
+                .await
+                .is_err()
+        );
+        assert_eq!(client.transport.seen.borrow().len(), 1);
     }
 }
