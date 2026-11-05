@@ -22,6 +22,7 @@ auto_impl.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+rand = { workspace = true, features = ["std_rng", "getrandom"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tokio = { workspace = true, features = ["full"] }

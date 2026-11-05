@@ -184,6 +184,7 @@ where
 #[cfg(all(test, feature = "falcon"))]
 mod tests {
     use super::*;
+    use rand::RngCore;
     use starknet_rust_providers::{
         Url,
         jsonrpc::{HttpTransport, JsonRpcClient},
@@ -205,7 +206,7 @@ mod tests {
         );
         let prepared = account
             .execute_v3(vec![])
-            .nonce(Felt::ZERO)
+            .nonce(Felt::from(rand::rngs::OsRng.next_u64()))
             .l1_gas(1)
             .l1_gas_price(1)
             .l2_gas(1)

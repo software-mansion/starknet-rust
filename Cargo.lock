@@ -2992,6 +2992,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "coins-ledger",
+ "rand 0.8.8",
  "serde",
  "serde_json",
  "speculos-client",
