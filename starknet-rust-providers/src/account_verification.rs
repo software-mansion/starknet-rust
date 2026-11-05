@@ -2,7 +2,7 @@
 //!
 //! RPC failures and contract reverts remain errors: they are never silently treated as an invalid
 //! signature or an unsupported interface. Custom account ABIs can supply their own selector and
-//! explicit success values through [`SignatureVerificationOptions`].
+//! explicit success values through [`SignatureVerificationOptions`](crate::account_verification::SignatureVerificationOptions).
 
 use crate::{Provider, ProviderError};
 use starknet_rust_core::{
