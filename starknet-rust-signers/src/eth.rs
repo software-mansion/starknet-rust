@@ -118,6 +118,34 @@ mod tests {
         assert_eq!(signer.sign_hash(&Felt::from(42u8)), expected);
     }
     #[test]
+    fn rejects_mathematically_valid_high_s_twin() {
+        let signer = EthSigner::from_bytes(&[1; 32]).unwrap();
+        let hash = Felt::from(42u8);
+        let encoded = signer.sign_hash(&hash);
+        let (signature, recovery) = decode_signature(&encoded).unwrap();
+        let high_s =
+            Signature::from_scalars(signature.r().to_bytes(), (-signature.s()).to_bytes()).unwrap();
+        let flipped = RecoveryId::from_byte(recovery.to_byte() ^ 1).unwrap();
+        assert_ne!(high_s, signature);
+        assert_eq!(high_s.normalize_s(), signature);
+        // The twin recovers the same public key, so rejection tests canonicality.
+        assert_eq!(
+            VerifyingKey::recover_from_prehash(&hash.to_bytes_be(), &high_s, flipped).unwrap(),
+            *signer.key.verifying_key()
+        );
+        let bytes = high_s.to_bytes();
+        let twin = [
+            limb(&bytes[16..32]),
+            limb(&bytes[..16]),
+            limb(&bytes[48..]),
+            limb(&bytes[32..48]),
+            Felt::from(flipped.to_byte()),
+        ];
+        assert!(decode_signature(&twin).is_none());
+        assert!(!signer.verify_hash(&hash, &twin));
+        assert!(signer.verify_hash(&hash, &encoded));
+    }
+    #[test]
     fn validates_secret_scalar_and_full_coordinates() {
         assert!(EthSigner::from_bytes(&[0; 32]).is_err());
         assert!(EthSigner::from_bytes(&[255; 32]).is_err());
