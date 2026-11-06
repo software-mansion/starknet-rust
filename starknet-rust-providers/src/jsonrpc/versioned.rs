@@ -202,7 +202,8 @@ mod tests {
         version: &'static str,
         requests: Mutex<Vec<(String, Value)>>,
     }
-    #[async_trait]
+    #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+    #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
     impl JsonRpcTransport for Mock {
         type Error = Infallible;
         async fn send_request<P, R>(
@@ -356,7 +357,8 @@ mod tests {
         }
     }
     struct WireEnvelope(&'static str);
-    #[async_trait]
+    #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+    #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
     impl JsonRpcTransport for WireEnvelope {
         type Error = serde_json::Error;
         async fn send_request<P, R>(
