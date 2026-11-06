@@ -22,9 +22,9 @@ pub enum RpcVersion {
     V0_10_4,
 }
 impl RpcVersion {
-    /// Parses exact releases or their prereleases; unknown versions are rejected.
+    /// Parses releases with optional prerelease/build suffixes; unknown releases are rejected.
     pub fn parse(value: &str) -> Option<Self> {
-        let release = value.split_once('-').map_or(value, |(release, _)| release);
+        let release = value.split(['-', '+']).next()?;
         match release {
             "0.9.0" => Some(Self::V0_9_0),
             "0.10.2" => Some(Self::V0_10_2),
@@ -33,7 +33,7 @@ impl RpcVersion {
             _ => None,
         }
     }
-    /// The selected release version, without prerelease metadata.
+    /// The selected release version, without prerelease or build metadata.
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::V0_9_0 => "0.9.0",
@@ -45,16 +45,16 @@ impl RpcVersion {
 }
 /// Failure to negotiate or execute a versioned request.
 #[derive(Debug, thiserror::Error)]
-pub enum VersionedRpcError<E: std::error::Error> {
+pub enum VersionedRpcError<E> {
     /// Transport failure.
     #[error("RPC transport failed: {0}")]
-    Transport(E),
+    Transport(#[source] E),
     /// A successful JSON-RPC result could not be decoded into the requested type.
     #[error("RPC result decoding failed: {0}")]
     ResultDecoding(#[source] serde_json::Error),
     /// JSON-RPC error with the server's original code and optional data preserved.
     #[error("RPC failed: {0}")]
-    Rpc(JsonRpcError),
+    Rpc(#[source] JsonRpcError),
     /// The server advertises a version outside the supported adapter set.
     #[error("unsupported RPC version: {0}")]
     UnsupportedVersion(String),
@@ -229,7 +229,7 @@ mod tests {
             };
             Ok(JsonRpcResponse::Success {
                 id: Some(1),
-                result: serde_json::from_value(value).ok().unwrap(),
+                result: serde_json::from_value(value).unwrap(),
             })
         }
         async fn send_requests<R>(&self, _: R) -> Result<Vec<JsonRpcResponse<Value>>, Infallible>
@@ -247,7 +247,14 @@ mod tests {
     }
     #[tokio::test]
     async fn negotiates_exact_versions_and_preserves_wire_shapes() {
-        for version in ["0.9.0", "0.10.2", "0.10.3-rc.0", "0.10.4"] {
+        for version in [
+            "0.9.0",
+            "0.10.2",
+            "0.10.3-rc.0",
+            "0.10.4",
+            "0.10.4+commit.sha",
+            "0.10.3-rc.0+commit.sha",
+        ] {
             let channel = VersionedRpcClient::negotiate(mock(version)).await.unwrap();
             channel.transaction(Felt::ONE, false).await.unwrap();
             assert_eq!(
@@ -259,6 +266,38 @@ mod tests {
             VersionedRpcClient::negotiate(mock("0.11.0")).await,
             Err(VersionedRpcError::UnsupportedVersion(_))
         ));
+        assert!(RpcVersion::parse("0.11.0+commit.sha").is_none());
+        assert_eq!(
+            RpcVersion::parse("0.10.4+commit.sha"),
+            Some(RpcVersion::V0_10_4)
+        );
+    }
+    #[test]
+    fn transport_and_rpc_errors_remain_available_as_sources() {
+        use std::error::Error;
+        let transport = VersionedRpcError::Transport(std::io::Error::other("offline"));
+        assert_eq!(
+            transport
+                .source()
+                .unwrap()
+                .downcast_ref::<std::io::Error>()
+                .unwrap()
+                .kind(),
+            std::io::ErrorKind::Other
+        );
+        let rpc: VersionedRpcError<std::io::Error> = VersionedRpcError::Rpc(JsonRpcError {
+            code: -32001,
+            message: "denied".to_owned(),
+            data: Some(json!({"reason":"policy"})),
+        });
+        let source = rpc
+            .source()
+            .unwrap()
+            .downcast_ref::<JsonRpcError>()
+            .unwrap();
+        assert_eq!(source.code, -32001);
+        assert_eq!(source.message, "denied");
+        assert_eq!(source.data, Some(json!({"reason":"policy"})));
     }
     #[tokio::test]
     async fn flags_are_version_gated_without_network_side_effects() {
