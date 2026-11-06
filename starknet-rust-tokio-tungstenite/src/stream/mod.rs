@@ -365,8 +365,10 @@ impl TungsteniteStream {
             return Err(SubscribeError::Transport(tungstenite::Error::AlreadyClosed));
         }
 
-        // Unwrapping is safe as results are always sent.
-        let sub_result = result_rx.recv().await.unwrap();
+        // The read driver can disconnect before an acknowledgement arrives.
+        let sub_result = result_rx.recv().await.ok_or(SubscribeError::Transport(
+            tungstenite::Error::ConnectionClosed,
+        ))?;
         match sub_result {
             SubscriptionResult::Success { id } => Ok(Subscription {
                 subscription_id: id,
