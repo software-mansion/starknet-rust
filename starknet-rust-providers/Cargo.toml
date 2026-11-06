@@ -27,10 +27,13 @@ serde_json.workspace = true
 serde_with = { workspace = true, features = ["std"] }
 worker = { workspace = true, optional = true }
 
+tokio = { workspace = true, features = ["time"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }
 
 [dev-dependencies]
+rand = { workspace = true, features = ["std", "std_rng", "getrandom"] }
 starknet-rust-providers = { path = ".", features = ["no_unknown_fields"] }
 tokio = { workspace = true, features = ["full"] }
 test-common.workspace = true

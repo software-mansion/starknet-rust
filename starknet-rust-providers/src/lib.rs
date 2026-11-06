@@ -29,3 +29,6 @@ pub use any::AnyProvider;
 
 // Re-export
 pub use url::Url;
+
+/// Bounded polling helpers for Tokio applications.
+pub mod wait;
