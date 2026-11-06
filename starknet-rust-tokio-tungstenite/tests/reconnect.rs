@@ -1,8 +1,12 @@
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
-use starknet_rust_core::types::ConfirmedBlockId;
+use starknet_rust_core::types::{
+    AddressFilter, ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus,
+    SubscriptionTag,
+};
 use starknet_rust_tokio_tungstenite::{
-    NewHeadsUpdate, SubscribeError,
+    EventSubscriptionOptions, EventsUpdate, NewHeadsUpdate, NewTransactionReceiptsUpdate,
+    NewTransactionsUpdate, SubscribeError, TransactionStatusUpdate,
     reconnect::{
         ReconnectError, ReconnectOptions, ReconnectingRequest, ReconnectingSubscription,
         ReconnectingUpdate,
@@ -426,4 +430,193 @@ async fn cancelled_recv_resumes_the_same_final_acknowledgement_attempt() {
 async fn close_and_drop_cancel_the_owned_acknowledgement_attempt() {
     exercise_cancelled_acknowledgement(PendingRecoveryAction::Close).await;
     exercise_cancelled_acknowledgement(PendingRecoveryAction::Drop).await;
+}
+
+async fn next_request(ws: &mut tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>) -> Value {
+    loop {
+        if let Message::Text(text) = ws.next().await.unwrap().unwrap() {
+            return serde_json::from_str(text.as_str()).unwrap();
+        }
+    }
+}
+
+#[tokio::test]
+async fn restores_each_subscription_familys_filters_and_routes_updates() {
+    let cases = [
+        (
+            ReconnectingRequest::Events(EventSubscriptionOptions {
+                from_address: Some(AddressFilter::Multiple(vec![Felt::ONE, Felt::TWO])),
+                keys: Some(vec![vec![Felt::THREE], vec![], vec![Felt::from(4_u64)]]),
+                block_id: ConfirmedBlockId::Number(42),
+                finality_status: L2TransactionFinalityStatus::AcceptedOnL2,
+            }),
+            "starknet_subscribeEvents",
+            json!({"from_address":["0x1","0x2"],"keys":[["0x3"],[],["0x4"]],"block_id":{"block_number":42},"finality_status":"ACCEPTED_ON_L2"}),
+        ),
+        (
+            ReconnectingRequest::TransactionStatus(Felt::from(0x123_u64)),
+            "starknet_subscribeTransactionStatus",
+            json!({"transaction_hash":"0x123"}),
+        ),
+        (
+            ReconnectingRequest::NewTransactionReceipts {
+                finality_status: Some(vec![L2TransactionFinalityStatus::AcceptedOnL2]),
+                sender_address: Some(vec![Felt::from(0x456_u64)]),
+            },
+            "starknet_subscribeNewTransactionReceipts",
+            json!({"finality_status":["ACCEPTED_ON_L2"],"sender_address":["0x456"]}),
+        ),
+        (
+            ReconnectingRequest::NewTransactions {
+                finality_status: Some(vec![
+                    L2TransactionStatus::Received,
+                    L2TransactionStatus::Candidate,
+                ]),
+                sender_address: Some(vec![Felt::from(0x789_u64)]),
+                tags: Some(vec![SubscriptionTag::IncludeProofFacts]),
+            },
+            "starknet_subscribeNewTransactions",
+            json!({"finality_status":["RECEIVED","CANDIDATE"],"sender_address":["0x789"],"tags":["INCLUDE_PROOF_FACTS"]}),
+        ),
+    ];
+    for (request, method, expected_params) in cases {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            tokio::time::timeout(Duration::from_secs(10), async move {
+                for id in ["1", "9"] {
+                    let (tcp, _) = listener.accept().await.unwrap();
+                    let mut ws = tokio_tungstenite::accept_async(tcp).await.unwrap();
+                    let request = next_request(&mut ws).await;
+                    assert_eq!(request["method"], method);
+                    assert_eq!(request["params"], expected_params);
+                    ws.send(Message::text(json!({"jsonrpc":"2.0","id":request["id"],"result":id}).to_string())).await.unwrap();
+                    if id == "1" {
+                        ws.close(None).await.unwrap();
+                        continue;
+                    }
+                    // A reorg is a valid update for every subscription family. A new ID
+                    // proves routing uses the replacement subscription rather than the old one.
+                    ws.send(Message::text(json!({"jsonrpc":"2.0","method":"starknet_subscriptionReorg","params":{"subscription_id":id,"result":{"starting_block_hash":"0xa","starting_block_number":42,"ending_block_hash":"0xb","ending_block_number":43}}}).to_string())).await.unwrap();
+                    while let Some(Ok(message)) = ws.next().await {
+                        if let Message::Text(text) = message {
+                            let request: Value = serde_json::from_str(text.as_str()).unwrap();
+                            assert_eq!(request["method"], "starknet_unsubscribe");
+                            ws.send(Message::text(json!({"jsonrpc":"2.0","id":request["id"],"result":true}).to_string())).await.unwrap();
+                        }
+                    }
+                }
+            }).await.expect("family subscription server exceeded its deadline");
+        });
+        let expected_family = match request {
+            ReconnectingRequest::Events(_) => 0,
+            ReconnectingRequest::TransactionStatus(_) => 1,
+            ReconnectingRequest::NewTransactionReceipts { .. } => 2,
+            ReconnectingRequest::NewTransactions { .. } => 3,
+            ReconnectingRequest::NewHeads(_) => unreachable!(),
+        };
+        let mut subscription =
+            ReconnectingSubscription::connect(format!("ws://{address}"), request, options())
+                .await
+                .unwrap();
+        assert!(matches!(
+            tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+                .await
+                .unwrap()
+                .unwrap(),
+            ReconnectingUpdate::Reconnected { attempts: 1 }
+        ));
+        let (family, reorg) =
+            match tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+                .await
+                .unwrap()
+                .unwrap()
+            {
+                ReconnectingUpdate::Events(EventsUpdate::Reorg(data)) => (0, data),
+                ReconnectingUpdate::TransactionStatus(TransactionStatusUpdate::Reorg(data)) => {
+                    (1, data)
+                }
+                ReconnectingUpdate::NewTransactionReceipts(
+                    NewTransactionReceiptsUpdate::Reorg(data),
+                ) => (2, data),
+                ReconnectingUpdate::NewTransactions(NewTransactionsUpdate::Reorg(data)) => {
+                    (3, data)
+                }
+                update => panic!("unexpected family update: {update:?}"),
+            };
+        assert_eq!(family, expected_family);
+        assert_eq!(reorg.starting_block_hash, Felt::from(10_u64));
+        assert_eq!(reorg.starting_block_number, 42);
+        assert_eq!(reorg.ending_block_hash, Felt::from(11_u64));
+        assert_eq!(reorg.ending_block_number, 43);
+        subscription.close().await.unwrap();
+        finish_server(server).await;
+    }
+}
+
+#[tokio::test]
+async fn protocol_and_malformed_subscription_rejections_are_terminal() {
+    for malformed in [false, true] {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let (done_tx, done_rx) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            tokio::time::timeout(Duration::from_secs(10), async move {
+                for attempt in 0..2 {
+                    let (tcp, _) = listener.accept().await.unwrap();
+                    let mut ws = tokio_tungstenite::accept_async(tcp).await.unwrap();
+                    let request = next_request(&mut ws).await;
+                    let response = if attempt == 0 {
+                        json!({"jsonrpc":"2.0","id":request["id"],"result":"1"})
+                    } else if malformed {
+                        json!({"jsonrpc":"2.0","id":request["id"],"result":{"invalid_subscription_id":true}})
+                    } else {
+                        json!({"jsonrpc":"2.0","id":request["id"],"error":{"code":24,"message":"Block not found"}})
+                    };
+                    ws.send(Message::text(response.to_string())).await.unwrap();
+                    if attempt == 0 {
+                        ws.close(None).await.unwrap();
+                    } else {
+                        done_rx.await.unwrap();
+                        let mut third_connection = Box::pin(listener.accept());
+                        assert!(futures_util::poll!(&mut third_connection).is_pending(), "terminal rejection started another connection");
+                        break;
+                    }
+                }
+            }).await.expect("rejected subscription server exceeded its deadline");
+        });
+        let mut subscription = ReconnectingSubscription::connect(
+            format!("ws://{address}"),
+            ReconnectingRequest::NewHeads(ConfirmedBlockId::Latest),
+            ReconnectOptions {
+                max_attempts: 5,
+                ..options()
+            },
+        )
+        .await
+        .unwrap();
+        let error = tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+            .await
+            .unwrap()
+            .unwrap_err();
+        if malformed {
+            assert!(matches!(
+                error,
+                ReconnectError::Subscribe(SubscribeError::MalformedMessage(_))
+            ));
+        } else {
+            assert!(matches!(
+                error,
+                ReconnectError::Subscribe(SubscribeError::BlockNotFound)
+            ));
+        }
+        assert!(matches!(
+            tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+                .await
+                .unwrap(),
+            Err(ReconnectError::Closed)
+        ));
+        done_tx.send(()).unwrap();
+        finish_server(server).await;
+    }
 }
