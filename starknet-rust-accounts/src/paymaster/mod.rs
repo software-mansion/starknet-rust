@@ -438,7 +438,6 @@ impl PreparedTransaction {
         };
         let transaction = if let Some(invoke) = invoke {
             let raw = typed.ok_or(PaymasterError::Invalid("missing typed data"))?;
-            let data: TypedData = serde_json::from_value(raw.clone())?;
             if felt(&raw["domain"]["chainId"])? != policy.chain_id {
                 return Err(PaymasterError::Invalid("paymaster changed chain"));
             }
@@ -520,6 +519,19 @@ impl PreparedTransaction {
                 execute_before: before,
                 calls: approved_calls,
             };
+            // Never ask the generic typed-data encoder to traverse paymaster-supplied
+            // type graphs. Only the finite, locally defined SNIP-9 schemas are accepted,
+            // including their domain and exact field order; unused extra types are rejected.
+            let canonical_data = canonical
+                .typed_data(policy.chain_id, version)
+                .map_err(|_| PaymasterError::Invalid("invalid canonical outside authorization"))?;
+            let canonical_types = serde_json::to_value(canonical_data.encoder().types())?;
+            if raw["types"] != canonical_types || raw["primaryType"] != "OutsideExecution" {
+                return Err(PaymasterError::Invalid(
+                    "paymaster changed the canonical outside authorization schema",
+                ));
+            }
+            let data: TypedData = serde_json::from_value(raw.clone())?;
             let expected = canonical
                 .message_hash(policy.chain_id, invoke.user_address, version)
                 .map_err(|_| PaymasterError::Invalid("invalid canonical outside authorization"))?;
@@ -737,6 +749,74 @@ mod tests {
             typed_data["types"]["Call"][0]["type"] = json!("felt");
         }
         assert!(t.validate(&r, &p, &a).is_err());
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn rejects_remote_type_graphs_before_generic_hashing() {
+        const CHILD: &str = "STARKNET_PAYMASTER_SCHEMA_REGRESSION_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            // The former implementation recurses through a flat JSON type-dependency
+            // chain and aborts on stack overflow. Keep the regression in a subprocess
+            // so the vulnerable version fails this test without aborting the test suite.
+            let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "paymaster::tests::rejects_remote_type_graphs_before_generic_hashing",
+                    "--nocapture",
+                ])
+                .env(CHILD, "1")
+                .env("RUST_MIN_STACK", "524288")
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+            while child.try_wait().unwrap().is_none() {
+                if std::time::Instant::now() >= deadline {
+                    child.kill().unwrap();
+                    child.wait().unwrap();
+                    panic!("schema validation child exceeded its deadline");
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            let output = child.wait_with_output().unwrap();
+            assert!(
+                output.status.success(),
+                "schema validation child failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+        for mutation in ["deep", "cycle", "unused", "primary"] {
+            let (request, parameters, policy, mut prepared) = setup(FeeMode::Sponsored);
+            let PreparedTransaction::Invoke { typed_data, .. } = &mut prepared else {
+                unreachable!();
+            };
+            match mutation {
+                "deep" => {
+                    typed_data["types"]["Call"][0]["type"] = json!("Remote0");
+                    for index in 0..2048 {
+                        let next = if index == 2047 {
+                            "felt".to_owned()
+                        } else {
+                            format!("Remote{}", index + 1)
+                        };
+                        typed_data["types"][format!("Remote{index}")] =
+                            json!([{"name":"next","type":next}]);
+                    }
+                }
+                "cycle" => typed_data["types"]["Call"][0]["type"] = json!("Call"),
+                "unused" => typed_data["types"]["Unused"] = json!([]),
+                "primary" => typed_data["primaryType"] = json!("Call"),
+                _ => unreachable!(),
+            }
+            assert!(matches!(
+                prepared.validate(&request, &parameters, &policy),
+                Err(PaymasterError::Invalid(
+                    "paymaster changed the canonical outside authorization schema"
+                ))
+            ));
+        }
     }
     #[test]
     fn rpc_checks_ids_and_mutually_exclusive_outcomes() {

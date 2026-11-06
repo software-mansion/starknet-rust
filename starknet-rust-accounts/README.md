@@ -24,9 +24,12 @@ exact intended calls, chain, caller, validity interval, and canonical SNIP-9
 message hash. Sponsored mode permits no appended fee call. Token-paid mode
 permits exactly one appended ERC20 transfer, to the independently approved
 collector, in the approved gas token, with both amount limbs checked as u128 and
-the total bounded by a U256 user ceiling. Changed message/domain types fail the
-canonical hash comparison. Only opaque validated handles can be signed, and only
-signed handles can be passed to execute.
+the total bounded by a U256 user ceiling. Before parsing or hashing returned typed
+data, validation requires the exact locally defined SNIP-9 types and primary type.
+Extra unused type definitions are also rejected, preventing untrusted dependency
+graphs from reaching the recursive generic encoder. The returned message/domain
+must still match the canonical hash. Only opaque validated handles can be signed,
+and only signed handles can be passed to execute.
 
 Invocation and deploy-and-invoke use standard Stark signers. Standalone deployment
 is supported in sponsored mode and requires the deployment descriptor to match
