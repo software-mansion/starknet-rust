@@ -28,7 +28,10 @@ does not implement `Account`: browser wallets own transaction construction and
 fee approval rather than signing a locally constructed transaction hash.
 
 Wallet requests reject JSON numbers outside JavaScript's safe integer range, as
-well as fractional numbers, before dispatch. Use decimal or hex strings for large
+well as fractional numbers, before dispatch. Integral floating JSON values such
+as `1.0`, `1e3`, and `-0.0` are accepted in raw request parameters when JavaScript's
+`Number.isSafeInteger` accepts their values. The core typed-data parser still
+requires integer tokens or strings. Use decimal or hex strings for large
 typed-data values; strings are preserved exactly. The WASM transport repeats this
 check for callers using `WalletTransport` directly. Legacy account/network change
 events with omitted or null disconnect payloads become `WalletChange::Accounts([])`

@@ -34,6 +34,10 @@ fn validate_json_numbers(value: &Value) -> Result<(), WalletError> {
             if number
                 .as_i64()
                 .is_some_and(|n| (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&n))
+                || (number.is_f64()
+                    && number.as_f64().is_some_and(|n| {
+                        n.is_finite() && n.fract() == 0.0 && n.abs() <= 9_007_199_254_740_991.0
+                    }))
             {
                 Ok(())
             } else {
@@ -323,12 +327,15 @@ export function walletTestSpy(standard) {
 export function walletTestRequests(wallet) {
   return JSON.stringify(wallet.requests);
 }
+export function walletTestSafeInteger(text) { return Number.isSafeInteger(JSON.parse(text)); }
 "#)]
         extern "C" {
             #[wasm_bindgen(js_name = walletTestSpy)]
             fn wallet_test_spy(standard: bool) -> JsValue;
             #[wasm_bindgen(js_name = walletTestRequests)]
             fn wallet_test_requests(wallet: &JsValue) -> String;
+            #[wasm_bindgen(js_name = walletTestSafeInteger)]
+            fn wallet_test_safe_integer(text: &str) -> bool;
         }
 
         #[wasm_bindgen_test(async)]
@@ -353,6 +360,45 @@ export function walletTestRequests(wallet) {
                         "unsafe input reached the selected wallet"
                     );
                 }
+            }
+        }
+
+        #[wasm_bindgen_test(async)]
+        async fn direct_transport_accepts_safe_integer_valued_floats_like_javascript() {
+            for value in [
+                "1.0",
+                "1e3",
+                "-0.0",
+                "9007199254740991.0",
+                "-9007199254740991.0",
+            ] {
+                assert!(wallet_test_safe_integer(value));
+            }
+            let params = json!({"values":[1.0,1e3,-0.0,9_007_199_254_740_991.0,-9_007_199_254_740_991.0],"literal":"1.5"});
+            let normalized = json!({"values":[1,1000,0,9_007_199_254_740_991i64,-9_007_199_254_740_991i64],"literal":"1.5"});
+            for standard in [false, true] {
+                let object = wallet_test_spy(standard);
+                let transport = BrowserWallet::new(object.clone());
+                let response =
+                    WalletTransport::request(&transport, "wallet_test", Some(params.clone()))
+                        .await
+                        .unwrap();
+                assert_eq!(response, normalized);
+                let requests: Value = serde_json::from_str(&wallet_test_requests(&object)).unwrap();
+                assert_eq!(
+                    requests,
+                    json!([{"type":"wallet_test","params":normalized}])
+                );
+                for value in ["1.5", "1e-3", "9007199254740992.0", "-9007199254740992.0"] {
+                    assert!(!wallet_test_safe_integer(value));
+                    let input = json!({"nested":[serde_json::from_str::<Value>(value).unwrap()]});
+                    assert!(matches!(
+                        WalletTransport::request(&transport, "wallet_test", Some(input)).await,
+                        Err(WalletError::UnsafeNumber)
+                    ));
+                }
+                let after: Value = serde_json::from_str(&wallet_test_requests(&object)).unwrap();
+                assert_eq!(after, requests);
             }
         }
 
@@ -559,6 +605,36 @@ mod tests {
             client.transport.seen.lock().unwrap()[0].1.as_ref().unwrap()["message"]["amount"],
             "9007199254740993"
         );
+    }
+    #[tokio::test]
+    async fn safe_integer_valued_floats_are_accepted_only_for_raw_json_parameters() {
+        let client = WalletClient::new(Mock {
+            seen: Mutex::new(vec![]),
+            response: json!(true),
+        });
+        let params: Value = serde_json::from_str(
+            r#"{"nested":[1.0,1e3,-0.0,9007199254740991.0,-9007199254740991.0],"literal":"1.5"}"#,
+        )
+        .unwrap();
+        client.declare(params.clone()).await.unwrap();
+        assert_eq!(
+            client.transport.seen.lock().unwrap()[0].1.as_ref(),
+            Some(&params)
+        );
+        for value in ["1.5", "1e-3", "9007199254740992.0", "-9007199254740992.0"] {
+            let input = json!({"nested":[serde_json::from_str::<Value>(value).unwrap()]});
+            assert!(matches!(
+                client.declare(input).await,
+                Err(WalletError::UnsafeNumber)
+            ));
+        }
+        assert_eq!(client.transport.seen.lock().unwrap().len(), 1);
+        for value in ["1.0", "1e3"] {
+            let mut raw = serde_json::to_value(amount_typed_data(&json!(1))).unwrap();
+            raw["message"]["amount"] = serde_json::from_str(value).unwrap();
+            // Core typed-data values accept integers/strings, not floating JSON tokens.
+            assert!(serde_json::from_value::<TypedData>(raw).is_err());
+        }
     }
     #[tokio::test]
     async fn nested_unsafe_numbers_in_raw_requests_never_reach_the_wallet() {
