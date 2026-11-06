@@ -10,7 +10,8 @@ fn wildcard_import_keeps_original_interactivity_call_unambiguous() {
 }
 
 #[cfg(feature = "falcon")]
-#[tokio::test]
+#[cfg_attr(not(target_arch = "wasm32"), tokio::test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 async fn borrowed_and_shared_falcon_signers_forward_signatures() {
     let signer = Falcon512Signer::generate().unwrap();
     let hash = starknet_rust_core::types::Felt::from(42u8);
