@@ -615,4 +615,65 @@ mod tests {
             )
         );
     }
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn selectors_preserve_precomputed_felts_and_existing_names() {
+        let transfer = Felt::from_hex_unchecked(
+            "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+        );
+        for raw in [VALID_V0_DATA, VALID_V1_DATA] {
+            let data = serde_json::from_str::<TypedData>(raw).unwrap();
+            for (selector, expected) in [
+                ("transfer", transfer),
+                (
+                    "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                    transfer,
+                ),
+                ("0x2", Felt::TWO),
+                ("0X2", Felt::TWO),
+                ("0x0002", Felt::TWO),
+                (
+                    "0x800000000000011000000000000000000000000000000000000000000000000",
+                    Felt::MAX,
+                ),
+            ] {
+                assert_eq!(
+                    data.encoder()
+                        .encode_value(
+                            &InlineTypeReference::Selector,
+                            &Value::String(selector.into())
+                        )
+                        .unwrap(),
+                    expected,
+                );
+            }
+        }
+    }
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn selectors_reject_malformed_and_out_of_range_hex_without_name_fallback() {
+        for raw in [VALID_V0_DATA, VALID_V1_DATA] {
+            let data = serde_json::from_str::<TypedData>(raw).unwrap();
+            for invalid in [
+                "0x",
+                "0X",
+                "0xgg",
+                "0x-1",
+                "0x2g",
+                "0x800000000000011000000000000000000000000000000000000000000000001",
+                "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            ] {
+                assert!(
+                    matches!(
+                        data.encoder().encode_value(
+                            &InlineTypeReference::Selector,
+                            &Value::String(invalid.into())
+                        ),
+                        Err(TypedDataError::InvalidSelector(_))
+                    ),
+                    "accepted invalid selector {invalid}"
+                );
+            }
+        }
+    }
 }
