@@ -8,6 +8,8 @@ Use `accounts::EncodedAccount` for INVOKE/DECLARE v3 transaction integration. It
 
 The local signer is noninteractive. Fee estimation includes a real Falcon signature and account validation, so the estimate accounts for the verifier's gas costs before transaction bounds are derived.
 
+Use `AccountSignerAdapter::new(&signer)` to borrow a signer or `AccountSignerAdapter::new(shared.clone())` with `Arc<Falcon512Signer>` to share it across accounts. The explicit adapter forwards account signing without overlapping the existing STARK-curve `Signer` blanket implementation. When moving the signer into an `EncodedAccount`, `account.signer()` retains access to its `sign_message` and public-key methods.
+
 ## Backend and randomness
 
 The implementation pins `falcon-rs` 0.3.1 (https://github.com/lattice-safe/falcon-rs), using its validated NIST keys and raw `sign_dyn` hash-point API. No Gaussian sampler, FFT arithmetic, or private-key generator is reimplemented here. S2morrow's Poseidon hash-to-point, base-12289 packing, public polynomial multiplication, and NTT ordering match Starknet.js/Cairo.

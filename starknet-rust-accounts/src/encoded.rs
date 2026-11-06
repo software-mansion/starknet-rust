@@ -66,6 +66,11 @@ where
         }
     }
 
+    /// Borrows the signer, including its algorithm-specific message-signing methods.
+    pub const fn signer(&self) -> &S {
+        &self.signer
+    }
+
     /// Sets a new block ID to run queries against.
     pub const fn set_block_id(&mut self, block_id: BlockId) -> &Self {
         self.block_id = block_id;
@@ -272,6 +277,140 @@ mod tests {
         ));
         assert!(!account.is_signer_interactive(SignerInteractivityContext::Other));
     }
+    #[tokio::test]
+    async fn signs_declare_domains_and_estimates_with_validation() {
+        use starknet_rust_core::types::{EntryPointsByType, FlattenedSierraClass};
+        let signer = Falcon512Signer::generate().unwrap();
+        let key = signer.packed_public_key().to_vec();
+        let captured = Arc::new(Mutex::new(None));
+        let account = EncodedAccount::new(
+            JsonRpcClient::new(FeeCapture(captured.clone())),
+            signer,
+            Felt::ONE,
+            Felt::TWO,
+            ExecutionEncoding::New,
+        );
+        // A small, offline hashable class: no declaration is submitted to a node.
+        let class = Arc::new(FlattenedSierraClass {
+            sierra_program: vec![Felt::ONE],
+            contract_class_version: "0.1.0".to_owned(),
+            entry_points_by_type: EntryPointsByType {
+                constructor: vec![],
+                external: vec![],
+                l1_handler: vec![],
+            },
+            abi: "[]".to_owned(),
+        });
+        let nonce = Felt::from(rand::rngs::OsRng.next_u64());
+        let prepared = account
+            .declare_v3(class.clone(), Felt::ONE)
+            .nonce(nonce)
+            .l1_gas(0)
+            .l1_gas_price(0)
+            .l2_gas(0)
+            .l2_gas_price(0)
+            .l1_data_gas(0)
+            .l1_data_gas_price(0)
+            .tip(0)
+            .prepared()
+            .unwrap();
+        for query in [false, true] {
+            let request = prepared.get_declare_request(query, false).await.unwrap();
+            assert_eq!(request.signature.len(), 61);
+            assert!(verify_hash(
+                prepared.transaction_hash(query),
+                &request.signature,
+                &key
+            ));
+            assert!(!verify_hash(
+                prepared.transaction_hash(!query),
+                &request.signature,
+                &key
+            ));
+        }
+        assert!(
+            account
+                .declare_v3(class, Felt::ONE)
+                .nonce(nonce)
+                .estimate_fee()
+                .await
+                .is_err()
+        );
+        let params = captured.lock().unwrap().take().unwrap();
+        assert_eq!(params["simulation_flags"], serde_json::json!([]));
+        let signature: Vec<Felt> =
+            serde_json::from_value(params["request"][0]["signature"].clone()).unwrap();
+        assert_eq!(signature.len(), 61);
+        assert!(verify_hash(
+            prepared.transaction_hash(true),
+            &signature,
+            &key
+        ));
+        assert!(!verify_hash(
+            prepared.transaction_hash(false),
+            &signature,
+            &key
+        ));
+    }
+
+    #[tokio::test]
+    async fn account_signer_is_available_after_move_and_can_be_shared() {
+        use starknet_rust_core::types::TypedData;
+        use starknet_rust_signers::AccountSignerAdapter;
+        let signer = Falcon512Signer::generate().unwrap();
+        let provider = || JsonRpcClient::new(FeeCapture(Arc::new(Mutex::new(None))));
+        let borrowed = EncodedAccount::new(
+            provider(),
+            AccountSignerAdapter::new(&signer),
+            Felt::ONE,
+            Felt::TWO,
+            ExecutionEncoding::New,
+        );
+        assert!(!borrowed.is_signer_interactive(SignerInteractivityContext::Other));
+        let shared = Arc::new(signer);
+        let account_a = EncodedAccount::new(
+            provider(),
+            AccountSignerAdapter::new(shared.clone()),
+            Felt::ONE,
+            Felt::TWO,
+            ExecutionEncoding::New,
+        );
+        let account_b = EncodedAccount::new(
+            provider(),
+            AccountSignerAdapter::new(shared),
+            Felt::TWO,
+            Felt::TWO,
+            ExecutionEncoding::New,
+        );
+        assert!(!account_a.is_signer_interactive(SignerInteractivityContext::Other));
+        assert!(!account_b.is_signer_interactive(SignerInteractivityContext::Other));
+        let owned = EncodedAccount::new(
+            provider(),
+            Falcon512Signer::generate().unwrap(),
+            Felt::ONE,
+            Felt::TWO,
+            ExecutionEncoding::New,
+        );
+        let message: TypedData = serde_json::from_value(serde_json::json!({
+            "types":{"StarkNetDomain":[{"name":"name","type":"felt"},{"name":"version","type":"felt"},{"name":"chainId","type":"felt"}],"Message":[{"name":"value","type":"felt"}]},
+            "primaryType":"Message","domain":{"name":"test","version":"1","chainId":"SN_SEPOLIA"},"message":{"value":"42"}
+        })).unwrap();
+        let signature = owned
+            .signer()
+            .sign_message(&message, owned.address())
+            .unwrap();
+        assert!(verify_hash(
+            message.message_hash(owned.address()).unwrap(),
+            &signature,
+            owned.signer().packed_public_key()
+        ));
+        assert!(!verify_hash(
+            message.message_hash(Felt::TWO).unwrap(),
+            &signature,
+            owned.signer().packed_public_key()
+        ));
+    }
+
     #[tokio::test]
     async fn signs_invoke_and_query_with_falcon() {
         let signer = Falcon512Signer::generate().unwrap();
