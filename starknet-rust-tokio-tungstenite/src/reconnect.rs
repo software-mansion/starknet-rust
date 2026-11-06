@@ -15,7 +15,7 @@ use crate::{
 use starknet_rust_core::types::{
     ConfirmedBlockId, Felt, L2TransactionFinalityStatus, L2TransactionStatus, SubscriptionTag,
 };
-use std::{fmt, time::Duration};
+use std::{fmt, future::Future, pin::Pin, sync::Mutex, time::Duration};
 
 /// A subscription request retained for reconnection.
 #[derive(Debug, Clone)]
@@ -84,9 +84,16 @@ impl ReconnectOptions {
             .all(|duration| tokio::time::Instant::now().checked_add(duration).is_some())
     }
     fn delay(self, attempt: u32) -> Duration {
-        self.initial_delay
-            .saturating_mul(1u32.checked_shl(attempt).unwrap_or(u32::MAX))
-            .min(self.max_delay)
+        let mut delay = self.initial_delay.min(self.max_delay);
+        // Every nonzero Duration reaches Duration::MAX in at most 94 doublings,
+        // so even u32::MAX attempts cannot make this loop unbounded.
+        for _ in 0..attempt {
+            if delay >= self.max_delay {
+                break;
+            }
+            delay = delay.saturating_mul(2).min(self.max_delay);
+        }
+        delay
     }
 }
 /// Updates and explicit discontinuity notifications.
@@ -155,6 +162,24 @@ impl Active {
         }
     }
 }
+type OpenFuture =
+    Pin<Box<dyn Future<Output = Result<(Active, TungsteniteStream), ReconnectError>> + Send>>;
+// The future is Send but need not be Sync. Exclusive handle access polls it without
+// locking; the mutex preserves the handle's Sync guarantee for native callers.
+#[derive(Default)]
+struct PendingOpen(Mutex<Option<OpenFuture>>);
+impl PendingOpen {
+    fn get_mut(&mut self) -> &mut Option<OpenFuture> {
+        self.0
+            .get_mut()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+impl fmt::Debug for PendingOpen {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PendingOpen").finish_non_exhaustive()
+    }
+}
 /// A subscription that restores its original filters on a new socket after disconnection.
 /// Each handle owns a socket; use the ordinary stream API when multiplexing is required.
 #[derive(Debug)]
@@ -168,6 +193,7 @@ pub struct ReconnectingSubscription {
     closed: bool,
     attempts: u32,
     retry_at: Option<tokio::time::Instant>,
+    opening: PendingOpen,
     last_error: Option<String>,
 }
 impl ReconnectingSubscription {
@@ -189,20 +215,28 @@ impl ReconnectingSubscription {
             closed: false,
             attempts: 0,
             retry_at: None,
+            opening: PendingOpen::default(),
             last_error: None,
         };
-        result.open().await?;
+        let (active, stream) =
+            Self::open(result.url.clone(), result.request.clone(), options).await?;
+        result.stream = Some(stream);
+        result.active = Some(active);
         Ok(result)
     }
-    async fn open(&mut self) -> Result<(), ReconnectError> {
+    async fn open(
+        url: String,
+        request: ReconnectingRequest,
+        options: ReconnectOptions,
+    ) -> Result<(Active, TungsteniteStream), ReconnectError> {
         let stream = TungsteniteStreamBuilder::new()
-            .timeout(self.options.request_timeout)
-            .keepalive_interval(self.options.keepalive_interval)
-            .connect(self.url.as_str())
+            .timeout(options.request_timeout)
+            .keepalive_interval(options.keepalive_interval)
+            .connect(url.as_str())
             .await
             .map_err(ReconnectError::Connect)?;
-        let active = tokio::time::timeout(self.options.request_timeout, async {
-            Ok::<_, ReconnectError>(match &self.request {
+        let active = tokio::time::timeout(options.request_timeout, async {
+            Ok::<_, ReconnectError>(match &request {
                 ReconnectingRequest::NewHeads(block) => Active::Heads(
                     stream
                         .subscribe_new_heads(*block)
@@ -251,12 +285,10 @@ impl ReconnectingSubscription {
         })
         .await
         .map_err(|_| ReconnectError::Subscribe(SubscribeError::Timeout))??;
-        self.stream = Some(stream);
-        self.active = Some(active);
-        Ok(())
+        Ok((active, stream))
     }
     /// Receives updates, automatically reconnecting after stream closure with bounded backoff.
-    /// Cancelling a `recv()` future does not reset the outage's attempt budget.
+    /// Cancelling a `recv()` future preserves its backoff deadline and in-flight connection/acknowledgement attempt.
     pub async fn recv(&mut self) -> Result<ReconnectingUpdate, ReconnectError> {
         if self.closed {
             return Err(ReconnectError::Closed);
@@ -276,18 +308,34 @@ impl ReconnectingSubscription {
                 Err(error) => return Err(ReconnectError::Receive(error)),
             }
         }
-        while self.attempts < self.options.max_attempts {
-            let delay = self.options.delay(self.attempts);
-            // Retain the deadline across cancelled recv futures. Only an actual connection
-            // attempt consumes the budget, so select!/timeouts during backoff cannot exhaust it.
-            let retry_at = *self
-                .retry_at
-                .get_or_insert_with(|| tokio::time::Instant::now() + delay);
-            tokio::time::sleep_until(retry_at).await;
-            self.retry_at = None;
-            self.attempts += 1;
-            match self.open().await {
-                Ok(()) => {
+        while self.opening.get_mut().is_some() || self.attempts < self.options.max_attempts {
+            if self.opening.get_mut().is_none() {
+                let delay = self.options.delay(self.attempts);
+                // Both the deadline and owned connection future survive recv cancellation.
+                let retry_at = *self
+                    .retry_at
+                    .get_or_insert_with(|| tokio::time::Instant::now() + delay);
+                tokio::time::sleep_until(retry_at).await;
+                self.retry_at = None;
+                self.attempts += 1;
+                *self.opening.get_mut() = Some(Box::pin(Self::open(
+                    self.url.clone(),
+                    self.request.clone(),
+                    self.options,
+                )));
+            }
+            let outcome = self
+                .opening
+                .get_mut()
+                .as_mut()
+                .expect("recovery attempt exists")
+                .as_mut()
+                .await;
+            self.opening.get_mut().take();
+            match outcome {
+                Ok((active, stream)) => {
+                    self.active = Some(active);
+                    self.stream = Some(stream);
                     let attempts = self.attempts;
                     self.attempts = 0;
                     self.last_error = None;
@@ -314,6 +362,7 @@ impl ReconnectingSubscription {
     /// Stops recovery and closes the underlying connection. Dropping the handle also stops it.
     pub async fn close(mut self) -> Result<(), crate::CloseError> {
         self.closed = true;
+        self.opening.get_mut().take();
         self.active = None;
         if let Some(stream) = self.stream.take() {
             stream.close().await
@@ -326,6 +375,21 @@ impl ReconnectingSubscription {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn backoff_reaches_cap_after_u32_multiplier_boundary() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<ReconnectingSubscription>();
+        let options = ReconnectOptions {
+            initial_delay: Duration::from_nanos(1),
+            max_delay: Duration::from_secs(10),
+            ..Default::default()
+        };
+        assert_eq!(options.delay(31), Duration::from_nanos(1_u64 << 31));
+        assert_eq!(options.delay(32), Duration::from_nanos(1_u64 << 32));
+        assert_eq!(options.delay(33), Duration::from_nanos(1_u64 << 33));
+        assert_eq!(options.delay(34), Duration::from_secs(10));
+        assert_eq!(options.delay(u32::MAX), Duration::from_secs(10));
+    }
     #[tokio::test]
     async fn cancelled_backoff_preserves_deadline_and_attempt_budget() {
         // Construct an observed-disconnected handle. Long backoff ensures this test never
@@ -345,6 +409,7 @@ mod tests {
             closed: false,
             attempts: 0,
             retry_at: None,
+            opening: PendingOpen::default(),
             last_error: None,
         };
         let mut original_deadline = None;

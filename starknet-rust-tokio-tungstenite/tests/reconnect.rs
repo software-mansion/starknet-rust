@@ -306,3 +306,124 @@ async fn invalid_options_do_not_connect() {
         assert!(matches!(result, Err(ReconnectError::InvalidOptions)));
     }
 }
+
+#[derive(Clone, Copy)]
+enum PendingRecoveryAction {
+    Resume,
+    Close,
+    Drop,
+}
+
+async fn exercise_cancelled_acknowledgement(action: PendingRecoveryAction) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let (seen_tx, seen_rx) = tokio::sync::oneshot::channel();
+    let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        let mut seen_tx = Some(seen_tx);
+        let mut release_rx = Some(release_rx);
+        for attempt in 0..2 {
+            let (tcp, _) = listener.accept().await.unwrap();
+            let mut ws = tokio_tungstenite::accept_async(tcp).await.unwrap();
+            let request = loop {
+                if let Message::Text(text) = ws.next().await.unwrap().unwrap() {
+                    break serde_json::from_str::<Value>(text.as_str()).unwrap();
+                }
+            };
+            assert_eq!(request["method"], "starknet_subscribeNewHeads");
+            if attempt == 1 {
+                seen_tx.take().unwrap().send(()).unwrap();
+                let release = release_rx.take().unwrap();
+                if matches!(action, PendingRecoveryAction::Resume) {
+                    tokio::select! {
+                        signal = release => signal.unwrap(),
+                        _ = listener.accept() => panic!("cancelled recv started a duplicate connection"),
+                        _ = ws.next() => panic!("cancelled recv closed the in-flight connection"),
+                    }
+                } else {
+                    tokio::select! {
+                        _ = release => panic!("stopped recovery was released"),
+                        _ = listener.accept() => panic!("stopped recovery opened another connection"),
+                        message = ws.next() => assert!(!matches!(message, Some(Ok(Message::Text(_))))),
+                    }
+                    return;
+                }
+            }
+            ws.send(Message::text(
+                json!({"jsonrpc":"2.0","id":request["id"],"result":"1"}).to_string(),
+            ))
+            .await
+            .unwrap();
+            if attempt == 0 {
+                ws.close(None).await.unwrap();
+            } else {
+                while let Some(Ok(message)) = ws.next().await {
+                    if let Message::Text(text) = message {
+                        let request: Value = serde_json::from_str(text.as_str()).unwrap();
+                        assert_eq!(request["method"], "starknet_unsubscribe");
+                        ws.send(Message::text(
+                            json!({"jsonrpc":"2.0","id":request["id"],"result":true}).to_string(),
+                        ))
+                        .await
+                        .unwrap();
+                    }
+                }
+            }
+        }
+    });
+    let mut subscription = ReconnectingSubscription::connect(
+        format!("ws://{address}"),
+        ReconnectingRequest::NewHeads(ConfirmedBlockId::Latest),
+        ReconnectOptions {
+            max_attempts: 1,
+            request_timeout: Duration::from_secs(30),
+            ..options()
+        },
+    )
+    .await
+    .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let mut receive = Box::pin(subscription.recv());
+        tokio::select! {
+            result = &mut receive => panic!("recovery finished before acknowledgement: {result:?}"),
+            seen = seen_rx => seen.unwrap(),
+        }
+    })
+    .await
+    .expect("replacement request reached acknowledgement barrier");
+    // Poll then drop instead of using short timer races. The acknowledgement is held by
+    // the server throughout, so each cancellation must retain the same final attempt.
+    for _ in 0..5 {
+        let mut receive = Box::pin(subscription.recv());
+        assert!(futures_util::poll!(&mut receive).is_pending());
+    }
+    let mut held_release = Some(release_tx);
+    match action {
+        PendingRecoveryAction::Resume => {
+            held_release.take().unwrap().send(()).unwrap();
+            assert!(matches!(
+                tokio::time::timeout(Duration::from_secs(10), subscription.recv())
+                    .await
+                    .unwrap()
+                    .unwrap(),
+                ReconnectingUpdate::Reconnected { attempts: 1 }
+            ));
+            subscription.close().await.unwrap();
+        }
+        PendingRecoveryAction::Close => subscription.close().await.unwrap(),
+        PendingRecoveryAction::Drop => drop(subscription),
+    }
+    finish_server(server).await;
+    drop(held_release);
+}
+
+#[tokio::test]
+async fn cancelled_recv_resumes_the_same_final_acknowledgement_attempt() {
+    exercise_cancelled_acknowledgement(PendingRecoveryAction::Resume).await;
+}
+
+#[tokio::test]
+async fn close_and_drop_cancel_the_owned_acknowledgement_attempt() {
+    exercise_cancelled_acknowledgement(PendingRecoveryAction::Close).await;
+    exercise_cancelled_acknowledgement(PendingRecoveryAction::Drop).await;
+}
