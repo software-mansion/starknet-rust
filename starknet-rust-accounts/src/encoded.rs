@@ -66,6 +66,11 @@ where
         }
     }
 
+    /// Borrows the signer, including its algorithm-specific message-signing methods.
+    pub const fn signer(&self) -> &S {
+        &self.signer
+    }
+
     /// Sets a new block ID to run queries against.
     pub const fn set_block_id(&mut self, block_id: BlockId) -> &Self {
         self.block_id = block_id;

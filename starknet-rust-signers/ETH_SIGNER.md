@@ -4,6 +4,8 @@ Enable `eth` on `starknet-rust` (or `starknet-rust-signers`). `EthSigner::from_b
 
 Pass the signer to `accounts::EncodedAccount::new(provider, signer, address, chain_id, ExecutionEncoding::New)` to sign and submit INVOKE/DECLARE v3 transactions through the existing account builders. `EncodedAccount` is additive: `SingleOwnerAccount` and the original STARK-curve `Signer` remain unchanged. Existing STARK-curve signers also implement the new `AccountSigner` trait via a blanket implementation.
 
+Wrap `&signer` or `Arc<EthSigner>` in `AccountSignerAdapter::new(...)` to borrow or share an account signer. A moved signer remains accessible through `account.signer()`, including its typed-message signing methods.
+
 The account contract must verify secp256k1 and the five-felt serialization. Ordinary OpenZeppelin STARK-curve accounts cannot verify this signature. Account deployment constructors are contract-specific; custom factories can use `sign_hash` on the deployment hash. The SDK does not guess an Ethereum-account class hash or constructor layout.
 
 The private key is held by RustCrypto's zeroizing `SigningKey`. `Debug` exposes the public key only. The signer compiles for native and wasm32-unknown-unknown targets. The dependency enables only the required ECDSA feature, avoiding an unused OS-RNG dependency in wasm builds. No browser runtime or live chain execution was performed.

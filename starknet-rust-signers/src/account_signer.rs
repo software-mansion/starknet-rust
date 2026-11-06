@@ -29,3 +29,35 @@ impl<S: Signer + Sync> AccountSigner for S {
         Signer::is_interactive(self, context)
     }
 }
+
+/// Explicit forwarding adapter for a borrowed or shared account signer.
+///
+/// Wrap `&signer`, `Arc<Signer>`, or `Box<Signer>` without requiring the signer to
+/// implement the STARK-curve [`Signer`] trait.
+#[derive(Debug, Clone)]
+pub struct AccountSignerAdapter<T>(T);
+
+impl<T> AccountSignerAdapter<T> {
+    /// Wraps a pointer to an account signer.
+    pub const fn new(signer: T) -> Self {
+        Self(signer)
+    }
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+impl<T> AccountSigner for AccountSignerAdapter<T>
+where
+    T: std::ops::Deref + Send + Sync,
+    T::Target: AccountSigner + Sync,
+{
+    type SignError = <T::Target as AccountSigner>::SignError;
+
+    async fn sign_account_hash(&self, hash: &Felt) -> Result<Vec<Felt>, Self::SignError> {
+        self.0.sign_account_hash(hash).await
+    }
+
+    fn is_account_signer_interactive(&self, context: SignerInteractivityContext<'_>) -> bool {
+        self.0.is_account_signer_interactive(context)
+    }
+}

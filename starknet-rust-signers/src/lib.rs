@@ -31,7 +31,7 @@ pub use ledger::{DerivationPath, LedgerError, LedgerSigner};
 pub enum Infallible {}
 
 mod account_signer;
-pub use account_signer::AccountSigner;
+pub use account_signer::{AccountSigner, AccountSignerAdapter};
 
 /// Ethereum secp256k1 signer for compatible Starknet accounts.
 #[cfg(feature = "eth")]
