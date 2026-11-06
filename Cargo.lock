@@ -2997,6 +2997,10 @@ dependencies = [
 name = "starknet-rust-contract"
 version = "0.20.1"
 dependencies = [
+ "async-trait",
+ "num-bigint 0.5.1",
+ "num-traits",
+ "serde",
  "serde_json",
  "starknet-rust-accounts",
  "starknet-rust-core",
