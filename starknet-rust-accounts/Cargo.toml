@@ -13,6 +13,10 @@ keywords.workspace = true
 exclude = ["test-data/**"]
 
 [dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+reqwest.workspace = true
+url.workspace = true
 starknet-rust-core = { workspace = true, features = ["std"] }
 starknet-rust-crypto = { workspace = true, features = ["std"] }
 starknet-rust-providers = { workspace = true, features = ["std"] }
