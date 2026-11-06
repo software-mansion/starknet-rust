@@ -171,42 +171,42 @@ async fn websocket_malformed_message_does_not_affect_other_subscriptions() {
 
 #[tokio::test]
 async fn websocket_subscribe_receives_malformed_response_error() {
-    let url = spawn_mock_node(vec![(SUBSCRIBE_NEW_HEADS, malformed_result())], vec![]).await;
-    let stream = connect(url).await;
+    for invalid in [malformed_result(), Value::Bool(true), Value::Bool(false)] {
+        let url = spawn_mock_node(vec![(SUBSCRIBE_NEW_HEADS, invalid)], vec![]).await;
+        let stream = connect(url).await;
 
-    let result = tokio::time::timeout(
-        Duration::from_secs(5),
-        stream.subscribe_new_heads(ConfirmedBlockId::Latest),
-    )
-    .await
-    .expect("timed out waiting for subscribe response");
+        let result = tokio::time::timeout(
+            Duration::from_secs(5),
+            stream.subscribe_new_heads(ConfirmedBlockId::Latest),
+        )
+        .await
+        .expect("timed out waiting for subscribe response");
 
-    assert!(
-        matches!(result, Err(SubscribeError::MalformedMessage(_))),
-        "expected MalformedMessage, got {result:?}"
-    );
+        assert!(
+            matches!(result, Err(SubscribeError::MalformedMessage(_))),
+            "expected MalformedMessage, got {result:?}"
+        );
+    }
 }
 
 #[tokio::test]
 async fn websocket_unsubscribe_receives_malformed_response_error() {
-    let url = spawn_mock_node(
-        vec![subscribed("1"), (UNSUBSCRIBE, malformed_result())],
-        vec![],
-    )
-    .await;
-    let stream = connect(url).await;
+    for invalid in [malformed_result(), Value::from("9")] {
+        let url = spawn_mock_node(vec![subscribed("1"), (UNSUBSCRIBE, invalid)], vec![]).await;
+        let stream = connect(url).await;
 
-    let subscription = stream
-        .subscribe_new_heads(ConfirmedBlockId::Latest)
-        .await
-        .unwrap();
+        let subscription = stream
+            .subscribe_new_heads(ConfirmedBlockId::Latest)
+            .await
+            .unwrap();
 
-    let result = tokio::time::timeout(Duration::from_secs(5), subscription.unsubscribe())
-        .await
-        .expect("timed out waiting for unsubscribe response");
+        let result = tokio::time::timeout(Duration::from_secs(5), subscription.unsubscribe())
+            .await
+            .expect("timed out waiting for unsubscribe response");
 
-    assert!(
-        matches!(result, Err(UnsubscribeError::MalformedMessage(_))),
-        "expected MalformedMessage, got {result:?}"
-    );
+        assert!(
+            matches!(result, Err(UnsubscribeError::MalformedMessage(_))),
+            "expected MalformedMessage, got {result:?}"
+        );
+    }
 }

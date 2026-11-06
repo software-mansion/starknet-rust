@@ -556,7 +556,13 @@ async fn restores_each_subscription_familys_filters_and_routes_updates() {
 
 #[tokio::test]
 async fn protocol_and_malformed_subscription_rejections_are_terminal() {
-    for malformed in [false, true] {
+    for invalid_result in [
+        None,
+        Some(json!({"invalid_subscription_id": true})),
+        Some(json!(true)),
+        Some(json!(false)),
+    ] {
+        let malformed = invalid_result.is_some();
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let (done_tx, done_rx) = tokio::sync::oneshot::channel();
@@ -568,8 +574,8 @@ async fn protocol_and_malformed_subscription_rejections_are_terminal() {
                     let request = next_request(&mut ws).await;
                     let response = if attempt == 0 {
                         json!({"jsonrpc":"2.0","id":request["id"],"result":"1"})
-                    } else if malformed {
-                        json!({"jsonrpc":"2.0","id":request["id"],"result":{"invalid_subscription_id":true}})
+                    } else if let Some(result) = &invalid_result {
+                        json!({"jsonrpc":"2.0","id":request["id"],"result":result})
                     } else {
                         json!({"jsonrpc":"2.0","id":request["id"],"error":{"code":24,"message":"Block not found"}})
                     };
