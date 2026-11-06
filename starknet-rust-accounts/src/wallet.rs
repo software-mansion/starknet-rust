@@ -532,7 +532,7 @@ mod tests {
                 expected_domain.as_object_mut().unwrap().remove("revision");
             }
             assert_eq!(wire["domain"], expected_domain);
-            let received: TypedData = serde_json::from_value(wire.clone()).unwrap();
+            let received: TypedData = serde_json::from_value(wire).unwrap();
             assert_eq!(received.message_hash(account).unwrap(), expected);
         }
     }
