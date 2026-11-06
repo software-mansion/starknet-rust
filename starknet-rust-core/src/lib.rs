@@ -22,4 +22,7 @@ pub mod chain_id;
 /// Types for serializing high-level Cairo types into field elements and vice versa.
 pub mod codec;
 
+/// Sorted-pair Merkle trees and membership proofs.
+pub mod merkle;
+
 extern crate alloc;
