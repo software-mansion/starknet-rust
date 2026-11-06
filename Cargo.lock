@@ -937,6 +937,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "falcon-rs"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97afa6b3e692aa0c332b883f18e3f999e99df06331ac93196b60805950b0f65f"
+dependencies = [
+ "getrandom 0.2.17",
+ "libm",
+ "zeroize",
+]
+
+[[package]]
 name = "ff"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2981,6 +2992,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "coins-ledger",
+ "rand 0.8.8",
  "serde",
  "serde_json",
  "speculos-client",
@@ -3125,9 +3137,11 @@ dependencies = [
  "coins-ledger",
  "crypto-bigint",
  "eth-keystore",
+ "falcon-rs",
  "getrandom 0.2.17",
  "rand 0.8.8",
  "semver",
+ "serde_json",
  "speculos-client",
  "starknet-rust-core",
  "starknet-rust-crypto",
