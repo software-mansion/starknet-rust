@@ -32,6 +32,8 @@ pub enum PaymasterError {
         code: i64,
         /// Server error message.
         message: String,
+        /// Optional structured server diagnostics, preserved without interpretation.
+        data: Option<Value>,
     },
     /// Invalid request/response or rejected authorization.
     #[error("{0}")]
@@ -110,6 +112,7 @@ fn decode_response(response: &Value, id: u64) -> Result<Value, PaymasterError> {
                 .as_str()
                 .ok_or(PaymasterError::Invalid("malformed RPC error"))?
                 .into(),
+            data: error.get("data").cloned(),
         }),
         _ => Err(PaymasterError::Invalid(
             "RPC response requires exactly one of result or error",
@@ -629,7 +632,11 @@ impl<T: PaymasterTransport> PaymasterClient<T> {
     }
     /// Submit only a transaction obtained through validation and signing.
     /// The returned JSON contains the protocol's transaction/result metadata.
-    pub async fn execute(&self, transaction: SignedTransaction) -> Result<Value, PaymasterError> {
+    ///
+    /// The immutable authorization remains available after errors or cancellation. No request is
+    /// retried automatically: an ambiguous response may follow a successful submission. Reconcile
+    /// that outcome before explicitly resubmitting or approving a fresh authorization/nonce.
+    pub async fn execute(&self, transaction: &SignedTransaction) -> Result<Value, PaymasterError> {
         self.transport
             .request(
                 "paymaster_executeTransaction",
@@ -836,6 +843,30 @@ mod tests {
             Err(PaymasterError::Rpc { code: -1, .. })
         ));
     }
+    #[test]
+    fn rpc_errors_preserve_absent_null_and_structured_data() {
+        for data in [
+            None,
+            Some(Value::Null),
+            Some(json!({"reason":"validation failed","details":[{"call":2,"code":"reverted"}]})),
+        ] {
+            let mut error = json!({"code":-32001,"message":"execution rejected"});
+            if let Some(data) = &data {
+                error["data"] = data.clone();
+            }
+            let Err(PaymasterError::Rpc {
+                code,
+                message,
+                data: returned,
+            }) = decode_response(&json!({"jsonrpc":"2.0","id":1,"error":error}), 1)
+            else {
+                panic!("expected the original structured RPC error");
+            };
+            assert_eq!(code, -32001);
+            assert_eq!(message, "execution rejected");
+            assert_eq!(returned, data);
+        }
+    }
     #[tokio::test]
     async fn validated_transaction_signs_and_executes_through_wire_transport() {
         use starknet_rust_signers::{LocalWallet, SigningKey};
@@ -860,7 +891,7 @@ mod tests {
         assert_send(client.is_available());
         assert_send(client.supported_tokens());
         assert_send(client.build(&request, &parameters));
-        let execution = client.execute(authorization);
+        let execution = client.execute(&authorization);
         let result = require_send(execution).await.unwrap();
         assert_eq!(result["transaction_hash"], "0x123");
         let seen = client.transport.seen.lock().unwrap();
@@ -952,6 +983,86 @@ mod tests {
             false
         }
     }
+    async fn retains_authorization_for_explicit_resubmission(cancel_first: bool) {
+        use std::{future::Future, sync::Mutex, task::Poll, time::Duration};
+        struct FirstRequestFails {
+            cancel_first: bool,
+            seen: Mutex<Vec<(String, Value)>>,
+        }
+        #[async_trait]
+        impl PaymasterTransport for FirstRequestFails {
+            async fn request(&self, method: &str, params: Value) -> Result<Value, PaymasterError> {
+                let first = {
+                    let mut seen = self.seen.lock().unwrap();
+                    seen.push((method.into(), params));
+                    seen.len() == 1
+                };
+                if first {
+                    if self.cancel_first {
+                        return std::future::pending().await;
+                    }
+                    return Err(PaymasterError::Invalid("scripted transport failure"));
+                }
+                Ok(json!({"transaction_hash":"0x123"}))
+            }
+        }
+        let (request, parameters, policy, prepared) = setup(FeeMode::Sponsored);
+        let signer = CountingSigner {
+            wallet: starknet_rust_signers::LocalWallet::from(
+                starknet_rust_signers::SigningKey::from_random(),
+            ),
+            calls: std::sync::atomic::AtomicUsize::new(0),
+        };
+        let authorization = prepared
+            .validate(&request, &parameters, &policy)
+            .unwrap()
+            .sign(&signer)
+            .await
+            .unwrap();
+        let client = PaymasterClient::new(FirstRequestFails {
+            cancel_first,
+            seen: Mutex::new(vec![]),
+        });
+        if cancel_first {
+            let mut execution = Box::pin(client.execute(&authorization));
+            std::future::poll_fn(|cx| {
+                assert!(execution.as_mut().poll(cx).is_pending());
+                Poll::Ready(())
+            })
+            .await;
+            drop(execution);
+        } else {
+            assert!(matches!(
+                tokio::time::timeout(Duration::from_secs(5), client.execute(&authorization))
+                    .await
+                    .unwrap(),
+                Err(PaymasterError::Invalid("scripted transport failure"))
+            ));
+        }
+        // Neither cancellation nor a transport error triggers any automatic resubmission.
+        assert_eq!(client.transport.seen.lock().unwrap().len(), 1);
+        assert_eq!(signer.calls.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            tokio::time::timeout(Duration::from_secs(5), client.execute(&authorization))
+                .await
+                .unwrap()
+                .unwrap(),
+            json!({"transaction_hash":"0x123"})
+        );
+        let seen = client.transport.seen.lock().unwrap();
+        assert_eq!(seen.len(), 2);
+        assert_eq!(seen[0], seen[1]);
+        assert_eq!(seen[0].0, "paymaster_executeTransaction");
+        assert_eq!(signer.calls.load(Ordering::SeqCst), 1);
+    }
+    #[tokio::test]
+    async fn transport_failure_retains_the_exact_signed_authorization() {
+        retains_authorization_for_explicit_resubmission(false).await;
+    }
+    #[tokio::test]
+    async fn cancellation_retains_the_exact_signed_authorization() {
+        retains_authorization_for_explicit_resubmission(true).await;
+    }
     struct ScriptedTransport {
         responses: std::sync::Mutex<std::collections::VecDeque<Value>>,
         seen: std::sync::Mutex<Vec<(String, Value)>>,
@@ -1016,7 +1127,7 @@ mod tests {
                 usize::from(with_invoke)
             );
             assert_eq!(
-                client.execute(authorization).await.unwrap(),
+                client.execute(&authorization).await.unwrap(),
                 json!({"transaction_hash":"0x123"})
             );
             let seen = client.transport.seen.lock().unwrap();

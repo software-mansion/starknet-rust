@@ -14,7 +14,7 @@ let quote = client.build(&intended_transaction, &parameters).await?;
 // Inspect quote.fee (match its variant) and obtain user approval.
 let checked = quote.validate(&intended_transaction, &parameters, &approval_policy)?;
 let signed = checked.sign(&owner_signer).await?;
-let result = client.execute(signed).await?;
+let result = client.execute(&signed).await?;
 ```
 
 Approval policy must come from the application's intended transaction and
@@ -30,6 +30,14 @@ Extra unused type definitions are also rejected, preventing untrusted dependency
 graphs from reaching the recursive generic encoder. The returned message/domain
 must still match the canonical hash. Only opaque validated handles can be signed,
 and only signed handles can be passed to execute.
+
+Execution borrows the immutable signed authorization, retaining it after an error
+or cancellation. Requests are never retried automatically. An ambiguous response
+may follow successful submission: reconcile that outcome before explicitly
+resubmitting the same authorization or approving a fresh authorization/nonce.
+Retaining the payload does not guarantee that a paymaster processes retries
+idempotently. JSON-RPC failures retain optional structured `data` for application
+diagnostics, including the distinction between an absent field and explicit null.
 
 Invocation and deploy-and-invoke use standard Stark signers. Standalone deployment
 is supported in sponsored mode and requires the deployment descriptor to match
