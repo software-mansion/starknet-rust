@@ -40,10 +40,11 @@ fn prepared_invoke() -> PreparedInvoke {
 async fn prepared_execution_preserves_the_converted_call_proof_and_facts() {
     let account = account();
     let prepared = prepared_invoke();
+    let nonce = SigningKey::from_random().secret_scalar();
     let request = prepared
         .execution(&account)
         .unwrap()
-        .nonce(Felt::from(7_u64))
+        .nonce(nonce)
         .l1_gas(1)
         .l1_gas_price(2)
         .l2_gas(3)
@@ -60,7 +61,7 @@ async fn prepared_execution_preserves_the_converted_call_proof_and_facts() {
     assert_eq!(request.proof.as_deref(), Some("AQIDBA=="));
     let invoke = request.broadcasted_invoke_txn_v3;
     assert_eq!(invoke.sender_address, Felt::from(0x456_u64));
-    assert_eq!(invoke.nonce, Felt::from(7_u64));
+    assert_eq!(invoke.nonce, nonce);
     assert_eq!(
         invoke.calldata,
         vec![
