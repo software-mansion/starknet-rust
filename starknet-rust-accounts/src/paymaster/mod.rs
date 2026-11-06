@@ -817,8 +817,7 @@ mod tests {
         else {
             unreachable!()
         };
-        let deployment =
-            json!({"address":"0x8","class_hash":"0x123","salt":"0x456","calldata":["0x789"]});
+        let deployment = json!({"address":"0x8","class_hash":"0x123","salt":"0x456","calldata":["0x789"],"version":1});
         if with_invoke {
             (
                 UserTransaction::DeployAndInvoke {
@@ -880,6 +879,21 @@ mod tests {
     #[async_trait]
     impl PaymasterTransport for ScriptedTransport {
         async fn request(&self, method: &str, params: Value) -> Result<Value, PaymasterError> {
+            if let Some(deployment) = params["transaction"].get("deployment") {
+                // SNIP-29 ACCOUNT_DEPLOYMENT_DATA requires integer version 1. Enforce
+                // this at both mock wire boundaries rather than accepting an invalid echo.
+                assert_eq!(
+                    deployment["version"],
+                    json!(1),
+                    "invalid Cairo deployment version"
+                );
+                for field in ["address", "class_hash", "salt", "calldata"] {
+                    assert!(
+                        deployment.get(field).is_some(),
+                        "missing required deployment field: {field}"
+                    );
+                }
+            }
             self.seen.lock().unwrap().push((method.into(), params));
             Ok(self
                 .responses
