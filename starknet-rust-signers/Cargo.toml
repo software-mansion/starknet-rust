@@ -12,6 +12,7 @@ Starknet signer implementations
 keywords.workspace = true
 
 [dependencies]
+k256 = { version = "0.14.0", default-features = false, features = ["ecdsa"], optional = true }
 starknet-rust-core = { workspace = true, features = ["std"] }
 starknet-rust-crypto = { workspace = true, features = ["std"] }
 starknet-rust-curve = { workspace = true }
@@ -41,6 +42,7 @@ tokio = { workspace = true, features = ["full"] }
 wasm-bindgen-test.workspace = true
 
 [features]
+eth = ["dep:k256"]
 default = ["std", "keystore"]
 std = ["starknet-rust-core/std", "starknet-rust-crypto/std", "rand/std"]
 

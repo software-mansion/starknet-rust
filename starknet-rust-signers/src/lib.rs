@@ -29,3 +29,12 @@ pub use ledger::{DerivationPath, LedgerError, LedgerSigner};
 #[allow(clippy::empty_enums)]
 #[derive(Debug, thiserror::Error)]
 pub enum Infallible {}
+
+mod account_signer;
+pub use account_signer::{AccountSigner, AccountSignerAdapter};
+
+/// Ethereum secp256k1 signer for compatible Starknet accounts.
+#[cfg(feature = "eth")]
+pub mod eth;
+#[cfg(feature = "eth")]
+pub use eth::EthSigner;
