@@ -486,3 +486,88 @@ mod tests {
         assert_eq!(client.transport.seen.lock().unwrap().len(), 1);
     }
 }
+
+#[cfg(all(test, target_arch = "wasm32"))]
+mod browser_tests {
+    use super::*;
+    use wasm_bindgen::prelude::*;
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[wasm_bindgen(inline_js = r#"
+export function strk20TestWallet(response, failure) {
+  const requests = [];
+  return {
+    requests,
+    request() { throw new Error('wrong legacy API'); },
+    features: {
+      'starknet:other': { request() { throw new Error('wrong feature'); } },
+      'starknet:walletApi': {
+        request(value) {
+          requests.push(value);
+          if (failure === 1) throw new Error('synchronous wallet rejection');
+          if (failure === 2) return Promise.reject(new Error('asynchronous wallet rejection'));
+          return Promise.resolve(JSON.parse(response));
+        }
+      }
+    }
+  };
+}
+export function strk20TestRequests(wallet) { return JSON.stringify(wallet.requests); }
+"#)]
+    extern "C" {
+        #[wasm_bindgen(js_name = strk20TestWallet)]
+        fn test_wallet(response: &str, failure: u8) -> JsValue;
+        #[wasm_bindgen(js_name = strk20TestRequests)]
+        fn test_requests(wallet: &JsValue) -> String;
+    }
+    #[wasm_bindgen_test(async)]
+    async fn selected_wallet_feature_receives_exact_balance_request_and_decodes_response() {
+        let object = test_wallet(r#"[{"token":"0x1","balance":"0x123"}]"#, 0);
+        let client = Strk20Client::new(BrowserStrk20Wallet::new(object.clone()));
+        let balances = client.balances(&[Felt::ONE], Some(42)).await.unwrap();
+        assert_eq!(balances.len(), 1);
+        assert_eq!(balances[0].token, Felt::ONE);
+        assert_eq!(balances[0].balance, Felt::from(0x123u64));
+        let requests: Value = serde_json::from_str(&test_requests(&object)).unwrap();
+        assert_eq!(
+            requests,
+            json!([{"type":"wallet_strk20Balances","params":{"tokens":["0x1"],"valid_until":42}}])
+        );
+    }
+    #[wasm_bindgen_test(async)]
+    async fn browser_prepare_preserves_call_and_all_proof_fields() {
+        let response = json!({"call":{"contract_address":"0xabc","entry_point":"apply_actions","calldata":["0x2","0x3"]},"proof":{"data":"AAA=","output":["0x4"],"proof_facts":["0x5","0x6"]}});
+        let object = test_wallet(&response.to_string(), 0);
+        let client = Strk20Client::new(BrowserStrk20Wallet::new(object.clone()));
+        let actions = [Strk20Action::Deposit {
+            token: Felt::ONE,
+            amount: Felt::TWO,
+        }];
+        let prepared = client.prepare(&actions, false).await.unwrap();
+        assert_eq!(serde_json::to_value(prepared).unwrap(), response);
+        let requests: Value = serde_json::from_str(&test_requests(&object)).unwrap();
+        assert_eq!(
+            requests,
+            json!([{"type":"wallet_strk20PrepareInvoke","params":{"actions":actions,"simulate":false}}])
+        );
+    }
+    #[wasm_bindgen_test(async)]
+    async fn browser_sync_throws_and_rejected_promises_return_wallet_errors() {
+        for (failure, expected) in [
+            (1, "synchronous wallet rejection"),
+            (2, "asynchronous wallet rejection"),
+        ] {
+            let object = test_wallet("null", failure);
+            let client = Strk20Client::new(BrowserStrk20Wallet::new(object.clone()));
+            let error = client.balances(&[], None).await.unwrap_err();
+            assert!(
+                matches!(error, Strk20Error::Wallet(ref message) if message.contains(expected))
+            );
+            let requests: Value = serde_json::from_str(&test_requests(&object)).unwrap();
+            assert_eq!(
+                requests,
+                json!([{"type":"wallet_strk20Balances","params":{"tokens":[]}}])
+            );
+        }
+    }
+}

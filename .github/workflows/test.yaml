@@ -137,6 +137,10 @@ jobs:
         run: |
           (cd ./starknet-rust-macros && wasm-pack test --release --node)
 
+      - name: Run STRK20 browser transport tests
+        run: |
+          (cd ./starknet-rust-accounts && wasm-pack test --node --lib)
+
   no-std-build:
     name: no-std build
     runs-on: ubuntu-latest

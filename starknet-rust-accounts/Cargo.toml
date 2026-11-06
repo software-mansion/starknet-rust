@@ -26,10 +26,10 @@ thiserror.workspace = true
 [dev-dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-tokio = { workspace = true, features = ["full"] }
-test-common.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+test-common.workspace = true
 coins-ledger.workspace = true
 speculos-client.workspace = true
 starknet-rust-signers = { workspace = true, features = ["ledger"] }
@@ -49,3 +49,6 @@ workspace = true
 wasm-bindgen.workspace = true
 js-sys = "0.3.106"
 wasm-bindgen-futures = "0.4.79"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test.workspace = true

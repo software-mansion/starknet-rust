@@ -44,3 +44,10 @@ not log private balances or identifying commitments. Shadow-account holdings are
 public: the protocol provides unlinkability rather than shielded public holdings.
 Open-note count/settlement rules are checked by the wallet, which owns private
 state. No live wallet, pool, or prover is exercised by the offline tests.
+
+The native `strk20_prepared` integration tests construct and sign invoke requests
+without contacting an RPC node, checking exact call/proof/fact attachment and each
+empty-proof guard separately. The existing WASM CI job executes the browser bridge
+suite with `wasm-pack test --node --lib` from the accounts crate, covering the
+selected feature, exact request envelopes, decoded balances/prepared proofs, and
+synchronous/asynchronous wallet errors.
