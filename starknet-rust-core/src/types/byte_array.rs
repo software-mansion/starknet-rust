@@ -243,6 +243,9 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn test_decode_oversized_length() {
-        assert!(ByteArray::decode(&[Felt::from(u64::MAX), Felt::ZERO, Felt::ZERO]).is_err());
+        // `u32::MAX` fits in `usize` on 32-bit targets, so it reaches the capped preallocation there.
+        for len in [u64::from(u32::MAX), u64::MAX] {
+            assert!(ByteArray::decode(&[Felt::from(len), Felt::ZERO, Felt::ZERO]).is_err());
+        }
     }
 }
