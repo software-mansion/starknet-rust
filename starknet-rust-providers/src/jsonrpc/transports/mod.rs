@@ -36,6 +36,10 @@ pub trait JsonRpcTransport {
         R: DeserializeOwned + Send;
 
     /// Sends multiple JSON-RPC requests in parallel.
+    ///
+    /// Implementations must return exactly one response per request, in the same order as the
+    /// requests. [`JsonRpcClient`](crate::JsonRpcClient) matches responses to requests by
+    /// position and can only verify the count, not the order.
     async fn send_requests<R>(
         &self,
         requests: R,
@@ -44,7 +48,8 @@ pub trait JsonRpcTransport {
         R: AsRef<[ProviderRequestData]> + Send + Sync;
 }
 
-/// Outcome of parsing a JSON-RPC batch response body that is not an array of responses.
+/// Reasons a JSON-RPC batch response cannot be turned into one response per request: the body
+/// is not an array of responses, or the responses do not match the requests one-to-one.
 pub(crate) enum BatchParseError {
     /// The server rejected the batch as a whole and returned a single JSON-RPC error object.
     BatchRejected(JsonRpcError),
@@ -88,8 +93,7 @@ pub(crate) fn order_batch_responses(
     parsed: Vec<JsonRpcResponse<serde_json::Value>>,
     request_count: usize,
 ) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, BatchParseError> {
-    let mut responses: Vec<Option<JsonRpcResponse<serde_json::Value>>> = vec![];
-    responses.resize(request_count, None);
+    let mut responses: Vec<Option<JsonRpcResponse<serde_json::Value>>> = vec![None; request_count];
 
     for response_item in parsed {
         // This client assigns a numeric id to every batched request, so a response
