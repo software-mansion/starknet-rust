@@ -6,7 +6,7 @@ use alloc::{
 use num_traits::ToPrimitive;
 
 use crate::{
-    codec::{Decode, Encode, Error as CodecError, FeltWriter},
+    codec::{Decode, Encode, Error as CodecError, FeltWriter, MAX_PREALLOCATED_ITEMS},
     types::Felt,
 };
 
@@ -81,7 +81,10 @@ impl<'a> Decode<'a> for ByteArray {
             .to_usize()
             .ok_or_else(|| CodecError::value_out_of_range(length, "usize"))?;
 
-        let mut result = Vec::<u8>::with_capacity(length * BYTES_PER_SLOT + BYTES_PER_SLOT - 1);
+        // The length is untrusted, so cap the preallocation and let the buffer grow on demand.
+        let mut result = Vec::<u8>::with_capacity(
+            length.min(MAX_PREALLOCATED_ITEMS) * BYTES_PER_SLOT + BYTES_PER_SLOT - 1,
+        );
 
         for _ in 0..length {
             let full_slot = iter.next().ok_or_else(CodecError::input_exhausted)?;
@@ -93,6 +96,12 @@ impl<'a> Decode<'a> for ByteArray {
         let pending_word_len = pending_word_len
             .to_usize()
             .ok_or_else(|| CodecError::value_out_of_range(pending_word_len, "usize"))?;
+        if pending_word_len >= BYTES_PER_SLOT {
+            return Err(CodecError::value_out_of_range(
+                pending_word_len,
+                "pending word length",
+            ));
+        }
         result
             .extend_from_slice(&pending_word.to_bytes_be()[(FELT_BYTE_SIZE - pending_word_len)..]);
 
@@ -220,5 +229,20 @@ mod tests {
             let decoded = ByteArray::decode(&expected).unwrap();
             assert_eq!(String::try_from(decoded).unwrap(), string);
         }
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_decode_invalid_pending_word_len() {
+        for len in [31u64, 32, 100, u64::MAX] {
+            assert!(ByteArray::decode(&[Felt::ZERO, Felt::ZERO, Felt::from(len)]).is_err());
+        }
+        assert!(ByteArray::decode(&[Felt::ZERO, Felt::ZERO, Felt::from(30u64)]).is_ok());
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_decode_oversized_length() {
+        assert!(ByteArray::decode(&[Felt::from(u64::MAX), Felt::ZERO, Felt::ZERO]).is_err());
     }
 }

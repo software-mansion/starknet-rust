@@ -8,6 +8,9 @@ use crate::types::{Felt, U256};
 
 pub use starknet_rust_core_derive::{Decode, Encode};
 
+/// Upper bound on the number of items preallocated from an untrusted length prefix.
+pub(crate) const MAX_PREALLOCATED_ITEMS: usize = 1024;
+
 const I128_MIN: Felt =
     Felt::from_hex_unchecked("0x0800000000000010ffffffffffffffff80000000000000000000000000000001");
 const I128_MAX: Felt =
@@ -433,7 +436,8 @@ where
             .to_usize()
             .ok_or_else(|| Error::value_out_of_range(length, "usize"))?;
 
-        let mut result = Self::with_capacity(length);
+        // The length is untrusted, so cap the preallocation and let the vector grow on demand.
+        let mut result = Self::with_capacity(length.min(MAX_PREALLOCATED_ITEMS));
 
         for _ in 0..length {
             result.push(T::decode_iter(iter)?);
@@ -1356,5 +1360,11 @@ mod tests {
             CairoType::decode(&[Felt::from_str("1").unwrap(), Felt::from_str("1").unwrap(),])
                 .unwrap()
         );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_decode_vec_oversized_length() {
+        assert!(Vec::<Felt>::decode(&[Felt::from(u64::MAX)]).is_err());
     }
 }
