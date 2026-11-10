@@ -357,6 +357,11 @@ where
             .await
             .map_err(JsonRpcClientError::TransportError)?;
 
+        // Responses are matched to requests by position, so the counts must agree.
+        if responses.len() != requests.as_ref().len() {
+            return Err(ProviderError::ArrayLengthMismatch);
+        }
+
         for (request, response) in requests.as_ref().iter().zip(responses) {
             match response {
                 JsonRpcResponse::Success { result, .. } => {
@@ -1771,6 +1776,127 @@ mod tests {
             rendered.contains("array exceeds maximum length"),
             "server error was not surfaced: {rendered}"
         );
+    }
+
+    /// Sends a `[GetNonce, ChainId]` batch to a one-shot HTTP server replying with `body`.
+    async fn batch_against_mock_server(
+        body: &'static str,
+    ) -> Result<Vec<crate::ProviderResponseData>, crate::ProviderError> {
+        use crate::{JsonRpcClient, Provider, ProviderRequestData, Url, jsonrpc::HttpTransport};
+        use starknet_rust_core::types::requests::{ChainIdRequest, GetNonceRequest};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut buf = [0u8; 8192];
+            let _ = socket.read(&mut buf).await;
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len(),
+            );
+            let _ = socket.write_all(response.as_bytes()).await;
+        });
+
+        let url = Url::parse(&format!("http://{addr}/")).unwrap();
+        JsonRpcClient::new(HttpTransport::new(url))
+            .batch_requests(&[
+                ProviderRequestData::GetNonce(GetNonceRequest {
+                    block_id: BlockId::Tag(BlockTag::Latest),
+                    contract_address: FeltPrimitive::ONE,
+                }),
+                ProviderRequestData::ChainId(ChainIdRequest),
+            ])
+            .await
+    }
+
+    #[tokio::test]
+    async fn batch_with_missing_response_is_rejected() {
+        // Only the `starknet_chainId` request (id 1) is answered. The result must not be
+        // returned as the answer to `starknet_getNonce`.
+        let result =
+            batch_against_mock_server(r#"[{"jsonrpc":"2.0","id":1,"result":"0x534e5f4d41494e"}]"#)
+                .await;
+        let rendered = format!(
+            "{:?}",
+            result.expect_err("a missing response must be an error")
+        );
+        assert!(rendered.contains("MissingResponse(0)"), "{rendered}");
+    }
+
+    #[tokio::test]
+    async fn batch_with_duplicate_response_id_is_rejected() {
+        let result = batch_against_mock_server(
+            r#"[{"jsonrpc":"2.0","id":1,"result":"0x1"},{"jsonrpc":"2.0","id":1,"result":"0x2"}]"#,
+        )
+        .await;
+        let rendered = format!("{:?}", result.expect_err("a duplicate id must be an error"));
+        assert!(rendered.contains("UnexpectedResponseId(1)"), "{rendered}");
+    }
+
+    #[tokio::test]
+    async fn batch_with_reordered_responses_is_accepted() {
+        let result = batch_against_mock_server(
+            r#"[{"jsonrpc":"2.0","id":1,"result":"0x534e5f4d41494e"},{"jsonrpc":"2.0","id":0,"result":"0x7"}]"#,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(
+            result.as_slice(),
+            [
+                crate::ProviderResponseData::GetNonce(nonce),
+                crate::ProviderResponseData::ChainId(_),
+            ] if *nonce == FeltPrimitive::from(7u8)
+        ));
+    }
+
+    #[tokio::test]
+    async fn batch_with_wrong_response_count_is_rejected() {
+        use crate::{JsonRpcClient, Provider, ProviderError, ProviderRequestData};
+        use starknet_rust_core::types::requests::ChainIdRequest;
+
+        /// A transport that returns one response regardless of the number of requests.
+        struct ShortTransport;
+
+        #[async_trait]
+        impl JsonRpcTransport for ShortTransport {
+            type Error = std::io::Error;
+
+            async fn send_request<P, R>(
+                &self,
+                _method: JsonRpcMethod,
+                _params: P,
+            ) -> Result<JsonRpcResponse<R>, Self::Error>
+            where
+                P: Serialize + Send + Sync,
+                R: DeserializeOwned + Send,
+            {
+                unimplemented!()
+            }
+
+            async fn send_requests<R>(
+                &self,
+                _requests: R,
+            ) -> Result<Vec<JsonRpcResponse<Value>>, Self::Error>
+            where
+                R: AsRef<[ProviderRequestData]> + Send + Sync,
+            {
+                Ok(vec![JsonRpcResponse::Success {
+                    id: Some(0),
+                    result: Value::String("0x1".into()),
+                }])
+            }
+        }
+
+        let result = JsonRpcClient::new(ShortTransport)
+            .batch_requests([
+                ProviderRequestData::ChainId(ChainIdRequest),
+                ProviderRequestData::ChainId(ChainIdRequest),
+            ])
+            .await;
+        assert!(matches!(result, Err(ProviderError::ArrayLengthMismatch)));
     }
 
     #[test]

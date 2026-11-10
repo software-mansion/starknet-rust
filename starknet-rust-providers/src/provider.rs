@@ -416,7 +416,8 @@ pub enum ProviderError {
     #[error("Request rate limited")]
     RateLimited,
     /// When estimating fees for or simulating a single transaction, the server unexpectedly returns
-    /// data for zero or more than one transactions.
+    /// data for zero or more than one transactions. Also returned when the number of responses to
+    /// a batch differs from the number of requests.
     #[error("Array length mismatch")]
     ArrayLengthMismatch,
     /// Boxed implementation-specific errors.
