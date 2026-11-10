@@ -1,4 +1,5 @@
 use alloc::{
+    format,
     string::{FromUtf8Error, String},
     vec::Vec,
 };
@@ -97,10 +98,10 @@ impl<'a> Decode<'a> for ByteArray {
             .to_usize()
             .ok_or_else(|| CodecError::value_out_of_range(pending_word_len, "usize"))?;
         if pending_word_len >= BYTES_PER_SLOT {
-            return Err(CodecError::value_out_of_range(
-                pending_word_len,
-                "pending word length",
-            ));
+            return Err(CodecError::custom(format!(
+                "pending word length `{pending_word_len}` exceeds the maximum of `{}`",
+                BYTES_PER_SLOT - 1
+            )));
         }
         result
             .extend_from_slice(&pending_word.to_bytes_be()[(FELT_BYTE_SIZE - pending_word_len)..]);
