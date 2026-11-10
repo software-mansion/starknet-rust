@@ -243,6 +243,7 @@ where
             self.l1_data_gas,
             self.l1_data_gas_price,
         ) {
+            // Nothing to resolve. This arm only exists to avoid a network call.
             (
                 Some(l1_gas),
                 Some(l1_gas_price),

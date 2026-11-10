@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `ExecutionV3`, `DeclarationV3` and `AccountDeploymentV3` now always use gas amounts and gas prices that were set explicitly. Previously they were replaced by block-derived or estimated values unless all six values, or exactly the three gas amounts, were set ([#208]).
+- `ExecutionV3`, `DeclarationV3`, `AccountDeploymentV3` and `DeploymentV3` now always use gas amounts and gas prices that were set explicitly. Previously, with all three gas amounts set, explicit prices were replaced by block-derived ones unless all three prices were also set; otherwise every explicit value was replaced by an estimate ([#208]).
 
 ## [0.20.1] - 2026-10-22
 
