@@ -36,3 +36,22 @@ async fn main() {
 ```
 
 The `TungsteniteStream` supports all Starknet JSON-RPC subscription types. See the [WebSocket example](../examples/websocket.rs) for a fully functional subscription flow.
+
+### Reconnecting subscriptions
+
+`reconnect::ReconnectingSubscription::connect(url, request, options).await` is an
+opt-in resilient handle supporting new heads, events, transaction status,
+transaction receipts and new transactions. Each handle owns its own socket. On
+stream closure, `recv()` reconnects with configurable bounded exponential backoff,
+restores the original filter, and returns `ReconnectingUpdate::Reconnected` before
+new data. Connection establishment and subscription acknowledgement each obey
+`request_timeout`; an unacknowledged subscription times out and permits recovery.
+Heartbeat settings remain configurable. Dropping the
+handle stops all recovery; `close().await` explicitly closes the connection.
+
+A reconnection is a discontinuity, not a guarantee of complete event delivery.
+Historical filters may replay data, and live filters may miss data during an
+outage. Applications must reconcile and deduplicate when they see `Reconnected`.
+Non-transport subscription errors are terminal. Recovery never resubmits writes,
+and runs only while `recv()` is polled. Existing multiplexed `TungsteniteStream`
+behavior remains opt-in separate from these per-subscription connections.
