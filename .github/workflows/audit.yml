@@ -11,9 +11,9 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Run audit check
-        uses: actions-rs/audit-check@v1
+        uses: actions-rs/audit-check@v1.2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
