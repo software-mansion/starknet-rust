@@ -243,6 +243,7 @@ where
             self.l1_data_gas,
             self.l1_data_gas_price,
         ) {
+            // Nothing to resolve. This arm only exists to avoid a network call.
             (
                 Some(l1_gas),
                 Some(l1_gas_price),
@@ -342,6 +343,14 @@ where
                 )
             }
         };
+
+        // Values set explicitly always take precedence over the ones resolved above.
+        let l1_gas = self.l1_gas.unwrap_or(l1_gas);
+        let l1_gas_price = self.l1_gas_price.unwrap_or(l1_gas_price);
+        let l2_gas = self.l2_gas.unwrap_or(l2_gas);
+        let l2_gas_price = self.l2_gas_price.unwrap_or(l2_gas_price);
+        let l1_data_gas = self.l1_data_gas.unwrap_or(l1_data_gas);
+        let l1_data_gas_price = self.l1_data_gas_price.unwrap_or(l1_data_gas_price);
 
         let tip = if let Some(tip) = self.tip {
             tip

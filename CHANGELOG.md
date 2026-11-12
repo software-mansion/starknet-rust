@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** Ledger APDU status errors now surface through `LedgerError::TransportError`; the `UnknownResponseCode` and `UnsuccessfulRequest` variants were removed ([#184]).
 - Building with the `ledger` feature on Linux now requires the `libudev` development package, such as `libudev-dev` on Debian and Ubuntu ([#184]).
 
+### Fixed
+
+- `ExecutionV3`, `DeclarationV3`, `AccountDeploymentV3` and `DeploymentV3` now always use gas amounts and gas prices that were set explicitly. Previously, with all three gas amounts set, explicit prices were replaced by block-derived ones unless all three prices were also set; otherwise every explicit value was replaced by an estimate ([#208]).
+
 ## [0.20.1] - 2026-10-22
 
 ### Added
@@ -119,3 +123,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#170]: https://github.com/software-mansion/starknet-rust/pull/170
 [#176]: https://github.com/software-mansion/starknet-rust/pull/176
 [#184]: https://github.com/software-mansion/starknet-rust/pull/184
+[#208]: https://github.com/software-mansion/starknet-rust/pull/208
