@@ -4,9 +4,9 @@ use crypto_bigint::{ArrayEncoding, CheckedAdd, CheckedSub};
 
 use crate::types::Felt;
 
-/// 256-bit unsiged integer.
+/// 256-bit unsigned integer.
 ///
-/// In Cairo, this type is interally represented as two 128-bit words.
+/// In Cairo, this type is internally represented as two 128-bit words.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct U256(crypto_bigint::U256);
 
