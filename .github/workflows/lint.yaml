@@ -12,10 +12,10 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: "Checkout source code"
-        uses: "actions/checkout@v7"
+        uses: "actions/checkout@v7.0.1"
 
       - name: "Use Rust cache"
-        uses: "Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0" # v2.9.3
+        uses: "Swatinem/rust-cache@v2.9.3"
         with:
           cache-on-failure: true
 
@@ -69,7 +69,7 @@ jobs:
           - "nightly"
     steps:
       - name: "Checkout source code"
-        uses: "actions/checkout@v7"
+        uses: "actions/checkout@v7.0.1"
 
       - name: "Install hidapi dependencies"
         run: |
@@ -77,14 +77,14 @@ jobs:
           sudo apt-get install --yes libudev-dev
 
       - name: "Setup toolchain"
-        uses: "actions-rs/toolchain@v1"
+        uses: "actions-rs/toolchain@v1.0.7"
         with:
           toolchain: "${{ matrix.toolchain }}"
           components: "clippy"
           override: true
 
       - name: "Use Rust cache"
-        uses: "Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0" # v2.9.3
+        uses: "Swatinem/rust-cache@v2.9.3"
         with:
           cache-on-failure: true
 
