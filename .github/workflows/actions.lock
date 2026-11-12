@@ -19,6 +19,7 @@ workflows:
     '.github/workflows/lint.yaml':
         - 'actions-rs/toolchain@v1.0.7'
         - 'actions/checkout@v7.0.1'
+        - 'crate-ci/typos@00f422f3b19c57bc6338715ebfe3316d38768461'
         - 'swatinem/rust-cache@v2.9.3'
     '.github/workflows/release.yml':
         - 'actions/checkout@v7.0.1'
@@ -53,6 +54,11 @@ dependencies:
         commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'
         owner_id: 44036562
         repo_id: 197814629
+    'crate-ci/typos@00f422f3b19c57bc6338715ebfe3316d38768461':
+        ref: 'v1.50.3'
+        commit: 'sha1-00f422f3b19c57bc6338715ebfe3316d38768461'
+        owner_id: 36412122
+        repo_id: 181782286
     'dtolnay/rust-toolchain@v1':
         ref: 'v1'
         commit: 'sha1-683b588c487a69d01f6c6ddf40f036ff682cc2c8'
