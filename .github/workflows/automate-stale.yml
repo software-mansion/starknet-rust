@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "0 7 * * 1-5"
 
+env:
+  DAYS_BEFORE_STALE: 30
+  DAYS_BEFORE_CLOSE: 14
+
 jobs:
   stale:
     runs-on: ubuntu-latest
@@ -13,11 +17,15 @@ jobs:
       - name: "Run stale bot"
         uses: actions/stale@v11
         with:
-          days-before-issue-stale: -1
-          days-before-issue-close: -1
-          days-before-pr-stale: 30
-          days-before-pr-close: 14
+          days-before-stale: ${{ env.DAYS_BEFORE_STALE }}
+          days-before-close: ${{ env.DAYS_BEFORE_CLOSE }}
+          remove-stale-when-updated: true
           stale-pr-label: stale
           stale-pr-message: |
-            This pull request has been inactive for 30 days, so it has been marked as stale.
-            It will be closed in 14 days unless there is new activity.
+            Hi! This pull request hasn't had any activity for a while, so I am
+            marking it as stale. It will close in ${{ env.DAYS_BEFORE_CLOSE }}
+            days if it is not updated. Thanks for contributing!
+          close-pr-message: |
+            This pull request has been automatically closed due to inactivity.  
+            Feel free to reopen it or create a new one if needed.
+            Thanks for contributing!
