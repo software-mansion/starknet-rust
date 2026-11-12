@@ -7,6 +7,16 @@ on:
 name: "Linting"
 
 jobs:
+  typos:
+    name: "Check typos"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Checkout source code"
+        uses: "actions/checkout@v7"
+
+      - name: "Check typos"
+        uses: "crate-ci/typos@v1.50.3"
+
   format:
     name: "Check code format"
     runs-on: "ubuntu-latest"
