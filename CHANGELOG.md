@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `CodecError::byte_array_pending_word_length_exceeded` for rejecting an oversized `ByteArray` pending word length ([#204]).
+
 ### Changed
 
 - **Breaking:** Ledger integration is now compatible with `coins-ledger` 0.17. `LedgerSigner::new` is synchronous, and custom transports must implement `LedgerTransport` instead of the removed `LedgerAsync` ([#184]).
 - **Breaking:** Ledger APDU status errors now surface through `LedgerError::TransportError`; the `UnknownResponseCode` and `UnsuccessfulRequest` variants were removed ([#184]).
 - Building with the `ledger` feature on Linux now requires the `libudev` development package, such as `libudev-dev` on Debian and Ubuntu ([#184]).
+- `ByteArray` decoding now rejects a `pending_word_len` above 30. Values of 31 and 32 were previously accepted ([#204]).
+
+### Fixed
+
+- Decoding a malformed `ByteArray` or `Vec` with `starknet_rust_core::codec::Decode` now returns an error instead of panicking ([#204]).
 
 ## [0.20.1] - 2026-10-22
 
@@ -119,3 +128,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#170]: https://github.com/software-mansion/starknet-rust/pull/170
 [#176]: https://github.com/software-mansion/starknet-rust/pull/176
 [#184]: https://github.com/software-mansion/starknet-rust/pull/184
+[#204]: https://github.com/software-mansion/starknet-rust/pull/204
