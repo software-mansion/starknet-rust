@@ -3,7 +3,6 @@ name: "Automation - Stale PRs"
 on:
   schedule:
     - cron: "0 7 * * 1-5"
-  workflow_dispatch:
 
 jobs:
   stale:
@@ -11,7 +10,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: "Mark and close inactive PRs"
+      - name: "Run stale bot"
         uses: actions/stale@v11
         with:
           days-before-issue-stale: -1
@@ -19,13 +18,6 @@ jobs:
           days-before-pr-stale: 30
           days-before-pr-close: 14
           stale-pr-label: stale
-          exempt-pr-labels: keep-open
-          exempt-draft-pr: true
-          remove-stale-when-updated: true
           stale-pr-message: |
             This pull request has been inactive for 30 days, so it has been marked as stale.
-            It will be closed in 14 days unless there is new activity. Add the
-            `keep-open` label if this PR should remain open without activity.
-          close-pr-message: |
-            This pull request has been closed due to inactivity. Feel free to
-            reopen it when work resumes.
+            It will be closed in 14 days unless there is new activity.
