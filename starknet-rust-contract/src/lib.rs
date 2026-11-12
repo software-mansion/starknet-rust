@@ -10,3 +10,6 @@
 
 mod factory;
 pub use factory::{ContractFactory, DeploymentV3, UdcSelector};
+
+/// Idempotent declaration and confirmed deployment orchestration.
+pub mod workflow;
