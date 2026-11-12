@@ -1,0 +1,319 @@
+{
+  "source": {
+    "package": "starknet@11.5.1",
+    "npm_integrity": "sha512-z7xZnCVIWsn3OS04yvYEvqVKaA6zn0RQxpRV51N5HX7ram05LTtwxcH8WZQG45e3J7UefSJ+5sh80BEeXO0npA==",
+    "api": "typedData.getMessageHash",
+    "provenance": "Independent published JavaScript implementation; no Rust hashes used."
+  },
+  "account": "0x1",
+  "vectors": [
+    {
+      "revision": 0,
+      "numeric": true,
+      "original": {
+        "types": {
+          "StarkNetDomain": [
+            {
+              "name": "name",
+              "type": "felt"
+            },
+            {
+              "name": "version",
+              "type": "felt"
+            },
+            {
+              "name": "chainId",
+              "type": "felt"
+            }
+          ],
+          "Amount": [
+            {
+              "name": "amount",
+              "type": "felt"
+            }
+          ]
+        },
+        "primaryType": "Amount",
+        "domain": {
+          "name": "49",
+          "version": "50",
+          "chainId": "51",
+          "revision": "0"
+        },
+        "message": {
+          "amount": "0x1"
+        }
+      },
+      "wire": {
+        "types": {
+          "StarkNetDomain": [
+            {
+              "name": "name",
+              "type": "felt"
+            },
+            {
+              "name": "version",
+              "type": "felt"
+            },
+            {
+              "name": "chainId",
+              "type": "felt"
+            }
+          ],
+          "Amount": [
+            {
+              "name": "amount",
+              "type": "felt"
+            }
+          ]
+        },
+        "primaryType": "Amount",
+        "domain": {
+          "name": "0x31",
+          "version": "0x32",
+          "chainId": "0x33",
+          "revision": "0"
+        },
+        "message": {
+          "amount": "0x1"
+        }
+      },
+      "message_hash": "0x1d993bde63fb27065d253cd9341cc598b9f4ad59b2614d96eb976f07fddca69"
+    },
+    {
+      "revision": 0,
+      "numeric": false,
+      "original": {
+        "types": {
+          "StarkNetDomain": [
+            {
+              "name": "name",
+              "type": "felt"
+            },
+            {
+              "name": "version",
+              "type": "felt"
+            },
+            {
+              "name": "chainId",
+              "type": "felt"
+            }
+          ],
+          "Amount": [
+            {
+              "name": "amount",
+              "type": "felt"
+            }
+          ]
+        },
+        "primaryType": "Amount",
+        "domain": {
+          "name": "Wallet",
+          "version": "1",
+          "chainId": "SN_MAIN",
+          "revision": "0"
+        },
+        "message": {
+          "amount": "0x1"
+        }
+      },
+      "wire": {
+        "types": {
+          "StarkNetDomain": [
+            {
+              "name": "name",
+              "type": "felt"
+            },
+            {
+              "name": "version",
+              "type": "felt"
+            },
+            {
+              "name": "chainId",
+              "type": "felt"
+            }
+          ],
+          "Amount": [
+            {
+              "name": "amount",
+              "type": "felt"
+            }
+          ]
+        },
+        "primaryType": "Amount",
+        "domain": {
+          "name": "0x57616c6c6574",
+          "version": "0x1",
+          "chainId": "0x534e5f4d41494e",
+          "revision": "0"
+        },
+        "message": {
+          "amount": "0x1"
+        }
+      },
+      "message_hash": "0x7491ad844e637d504451980d1eec6ed4bf55d05b3df8e5f9c812e28c593bf13"
+    },
+    {
+      "revision": 1,
+      "numeric": true,
+      "original": {
+        "types": {
+          "StarknetDomain": [
+            {
+              "name": "name",
+              "type": "shortstring"
+            },
+            {
+              "name": "version",
+              "type": "shortstring"
+            },
+            {
+              "name": "chainId",
+              "type": "shortstring"
+            },
+            {
+              "name": "revision",
+              "type": "shortstring"
+            }
+          ],
+          "Amount": [
+            {
+              "name": "amount",
+              "type": "felt"
+            }
+          ]
+        },
+        "primaryType": "Amount",
+        "domain": {
+          "name": "49",
+          "version": "50",
+          "chainId": "51",
+          "revision": "1"
+        },
+        "message": {
+          "amount": "0x1"
+        }
+      },
+      "wire": {
+        "types": {
+          "StarknetDomain": [
+            {
+              "name": "name",
+              "type": "shortstring"
+            },
+            {
+              "name": "version",
+              "type": "shortstring"
+            },
+            {
+              "name": "chainId",
+              "type": "shortstring"
+            },
+            {
+              "name": "revision",
+              "type": "shortstring"
+            }
+          ],
+          "Amount": [
+            {
+              "name": "amount",
+              "type": "felt"
+            }
+          ]
+        },
+        "primaryType": "Amount",
+        "domain": {
+          "name": "0x31",
+          "version": "0x32",
+          "chainId": "0x33",
+          "revision": "1"
+        },
+        "message": {
+          "amount": "0x1"
+        }
+      },
+      "message_hash": "0x6c7171d6772dfa54f0bec6da588a829fd7aa33aeec0fc3021339c696511e11d"
+    },
+    {
+      "revision": 1,
+      "numeric": false,
+      "original": {
+        "types": {
+          "StarknetDomain": [
+            {
+              "name": "name",
+              "type": "shortstring"
+            },
+            {
+              "name": "version",
+              "type": "shortstring"
+            },
+            {
+              "name": "chainId",
+              "type": "shortstring"
+            },
+            {
+              "name": "revision",
+              "type": "shortstring"
+            }
+          ],
+          "Amount": [
+            {
+              "name": "amount",
+              "type": "felt"
+            }
+          ]
+        },
+        "primaryType": "Amount",
+        "domain": {
+          "name": "Wallet",
+          "version": "1",
+          "chainId": "SN_MAIN",
+          "revision": "1"
+        },
+        "message": {
+          "amount": "0x1"
+        }
+      },
+      "wire": {
+        "types": {
+          "StarknetDomain": [
+            {
+              "name": "name",
+              "type": "shortstring"
+            },
+            {
+              "name": "version",
+              "type": "shortstring"
+            },
+            {
+              "name": "chainId",
+              "type": "shortstring"
+            },
+            {
+              "name": "revision",
+              "type": "shortstring"
+            }
+          ],
+          "Amount": [
+            {
+              "name": "amount",
+              "type": "felt"
+            }
+          ]
+        },
+        "primaryType": "Amount",
+        "domain": {
+          "name": "0x57616c6c6574",
+          "version": "0x1",
+          "chainId": "0x534e5f4d41494e",
+          "revision": "1"
+        },
+        "message": {
+          "amount": "0x1"
+        }
+      },
+      "message_hash": "0x14633693213b0f7ead2663d698526ddffe144cb7cae483eac3db75a435baf6c"
+    }
+  ]
+}

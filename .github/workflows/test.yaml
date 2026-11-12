@@ -22,6 +22,10 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v7.0.1
 
+      - name: Test browser wallet JavaScript bridge
+        if: matrix.os == 'ubuntu-latest' && matrix.toolchain == 'stable'
+        run: node --test starknet-rust-accounts/tests/browser_wallet_bridge.mjs
+
       - name: Install hidapi dependencies
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install --yes libudev-dev
@@ -136,6 +140,10 @@ jobs:
       - name: Run starknet-rust-macros tests
         run: |
           (cd ./starknet-rust-macros && wasm-pack test --release --node)
+
+      - name: Run browser wallet WASM transport regressions
+        run: |
+          (cd ./starknet-rust-accounts && wasm-pack test --node --lib)
 
   no-std-build:
     name: no-std build
