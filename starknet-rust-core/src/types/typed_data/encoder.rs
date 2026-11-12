@@ -1,5 +1,6 @@
 use alloc::{borrow::ToOwned, vec::Vec};
 use core::str::FromStr;
+use crypto_bigint::U256 as RawU256;
 use starknet_rust_crypto::{PedersenHasher, PoseidonHasher};
 
 use crate::codec::Encode;
@@ -342,8 +343,24 @@ impl Encoder {
                     }
                 };
 
-                get_selector_from_name(str_value)
-                    .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?
+                // SNIP-9 supplies already computed selectors as hexadecimal strings.
+                // A prefixed value must parse as a field element; malformed or out-of-range
+                // inputs must not fall back to being hashed as entrypoint names.
+                if let Some(hexadecimal) = str_value
+                    .strip_prefix("0x")
+                    .or_else(|| str_value.strip_prefix("0X"))
+                {
+                    let raw = RawU256::from_str_radix_vartime(hexadecimal, 16)
+                        .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?;
+                    if raw > RawU256::from_be_slice(&Felt::MAX.to_bytes_be()) {
+                        return Err(TypedDataError::InvalidSelector(str_value.to_owned()));
+                    }
+                    Felt::from_hex(hexadecimal)
+                        .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?
+                } else {
+                    get_selector_from_name(str_value)
+                        .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?
+                }
             }
             CommonTypeReference::MerkleTree(leaf) => {
                 let arr_value = match value {

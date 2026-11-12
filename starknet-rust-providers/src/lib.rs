@@ -29,3 +29,6 @@ pub use any::AnyProvider;
 
 // Re-export
 pub use url::Url;
+
+/// Account signature verification and SRC-5 interface discovery.
+pub mod account_verification;
