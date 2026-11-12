@@ -46,6 +46,15 @@ jobs:
         run: |
           cargo test --all
 
+      - name: Run falcon signer tests
+        run: cargo test -p starknet-rust-signers --features falcon --lib falcon::tests
+
+      - name: Run account signer compatibility test
+        run: cargo test -p starknet-rust-signers --features falcon --test account_signer_compatibility
+
+      - name: Run falcon account tests
+        run: cargo test -p starknet-rust-accounts --features falcon --lib encoded::tests
+
       - name: Test free RPC provider (zan)
         env:
           TEST_NODE_URL: "https://api.zan.top/public/starknet-sepolia/rpc/v0_10"
@@ -84,6 +93,15 @@ jobs:
       - name: Run cargo tests
         run: |
           cargo test --all --target ${{ matrix.target }} --exclude starknet-rust-cxx
+
+      - name: Run falcon signer tests
+        run: cargo test -p starknet-rust-signers --features falcon --target ${{ matrix.target }} --lib falcon::tests
+
+      - name: Run account signer compatibility test
+        run: cargo test -p starknet-rust-signers --features falcon --target ${{ matrix.target }} --test account_signer_compatibility
+
+      - name: Run falcon account tests
+        run: cargo test -p starknet-rust-accounts --features falcon --target ${{ matrix.target }} --lib encoded::tests
 
   wasm-test:
     name: WASM tests
