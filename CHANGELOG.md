@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `CodecError::byte_array_pending_word_length_exceeded` for rejecting an oversized `ByteArray` pending word length ([#204]).
+
 ### Changed
 
 - **Breaking:** Ledger integration is now compatible with `coins-ledger` 0.17. `LedgerSigner::new` is synchronous, and custom transports must implement `LedgerTransport` instead of the removed `LedgerAsync` ([#184]).

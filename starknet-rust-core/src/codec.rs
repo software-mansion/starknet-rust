@@ -513,6 +513,15 @@ impl Error {
         }
     }
 
+    /// Creates an [`Error`] which indicates that a `ByteArray` pending word length exceeds the
+    /// maximum allowed.
+    pub fn byte_array_pending_word_length_exceeded(length: usize, max: usize) -> Self {
+        Self {
+            repr: format!("pending word length `{length}` exceeds the maximum of `{max}`")
+                .into_boxed_str(),
+        }
+    }
+
     /// Creates an [`Error`] using a custom error string.
     pub fn custom<T>(content: T) -> Self
     where
