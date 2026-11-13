@@ -2981,6 +2981,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "coins-ledger",
+ "rand 0.8.8",
  "serde",
  "serde_json",
  "speculos-client",
@@ -2991,6 +2992,7 @@ dependencies = [
  "test-common",
  "thiserror 2.0.21",
  "tokio",
+ "url",
 ]
 
 [[package]]
@@ -3126,6 +3128,7 @@ dependencies = [
  "crypto-bigint",
  "eth-keystore",
  "getrandom 0.2.17",
+ "k256",
  "rand 0.8.8",
  "semver",
  "speculos-client",
