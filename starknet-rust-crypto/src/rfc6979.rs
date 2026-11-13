@@ -46,7 +46,7 @@ pub fn generate_k(message_hash: &Felt, private_key: &Felt, seed: Option<&Felt>) 
 
 // Modified from upstream `rfc6979::generate_k` with a hard-coded right bit shift. The more
 // idiomatic way of doing this seems to be to implement `U252` which handles bit truncation
-// interally.
+// internally.
 // TODO: change to use upstream `generate_k` directly.
 #[inline]
 fn generate_k_shifted<D, I>(x: &I, n: &I, h: &ByteArray<I>, data: &[u8]) -> Zeroizing<I>
@@ -78,7 +78,7 @@ mod tests {
     use serde::Deserialize;
 
     #[derive(Deserialize)]
-    struct Rfc6979TestVecotr<'a> {
+    struct Rfc6979TestVector<'a> {
         msg_hash: &'a str,
         priv_key: &'a str,
         seed: &'a str,
@@ -100,7 +100,7 @@ mod tests {
     }
 
     fn test_generate_k_from_json_str(json_str: &'static str) {
-        let test_vectors: Vec<Rfc6979TestVecotr<'_>> = serde_json::from_str(json_str).unwrap();
+        let test_vectors: Vec<Rfc6979TestVector<'_>> = serde_json::from_str(json_str).unwrap();
 
         for test_vector in &test_vectors {
             let msg_hash = Felt::from_hex_unchecked(test_vector.msg_hash);
