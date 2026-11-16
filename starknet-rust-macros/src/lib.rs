@@ -4,51 +4,76 @@
 #![deny(missing_docs)]
 
 use proc_macro::TokenStream;
+use quote::quote;
 use starknet_rust_core::{
     types::Felt,
     utils::{cairo_short_string_to_felt, get_selector_from_name},
 };
-use syn::{LitStr, parse_macro_input};
+use syn::{LitStr, Path, Token, parse::Parse, parse::ParseStream, parse_macro_input};
 
-/// Defines a compile-time constant for a entrypoint selector of a Starknet contract.
+/// Defines a compile-time constant for an entrypoint selector of a Starknet contract.
+///
+/// An optional second argument specifies the `Felt` type path for this invocation. This allows
+/// direct users of the core crate to write `selector!("transfer", Felt)` without changing the
+/// default expansion for other callers.
 #[proc_macro]
 pub fn selector(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as LitStr);
+    let input = parse_macro_input!(input as LiteralWithType);
 
-    let str_value = input.value();
+    let str_value = input.literal.value();
 
     let selector_value = get_selector_from_name(&str_value).expect("invalid selector name");
     let selector_raw = selector_value.to_raw();
 
-    format!(
-        "{}::from_raw([{}, {}, {}, {}])",
-        field_element_path(),
-        selector_raw[0],
-        selector_raw[1],
-        selector_raw[2],
-        selector_raw[3],
-    )
-    .parse()
-    .unwrap()
+    felt_expansion(input.felt_type, selector_raw)
 }
 
 /// Defines a compile-time constant for a Cairo short string encoding from a human-readable string.
+///
+/// An optional second argument specifies the `Felt` type path for this invocation, for example
+/// `short_string!("SN_SEPOLIA", Felt)`. Literal-only invocations retain their default expansion.
 #[proc_macro]
 pub fn short_string(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as LitStr);
+    let input = parse_macro_input!(input as LiteralWithType);
 
-    let str_value = input.value();
+    let str_value = input.literal.value();
 
     let felt_value = cairo_short_string_to_felt(&str_value).expect("invalid Cairo short string");
     let felt_raw = felt_value.to_raw();
 
+    felt_expansion(input.felt_type, felt_raw)
+}
+
+struct LiteralWithType {
+    literal: LitStr,
+    felt_type: Option<Path>,
+}
+
+impl Parse for LiteralWithType {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let literal = input.parse()?;
+        let felt_type = if input.is_empty() {
+            None
+        } else {
+            input.parse::<Token![,]>()?;
+            Some(input.parse()?)
+        };
+        Ok(Self { literal, felt_type })
+    }
+}
+
+fn felt_expansion(felt_type: Option<Path>, raw: [u64; 4]) -> TokenStream {
+    if let Some(felt_type) = felt_type {
+        return quote! { <#felt_type>::from_raw([#(#raw),*]) }.into();
+    }
+
     format!(
         "{}::from_raw([{}, {}, {}, {}])",
         field_element_path(),
-        felt_raw[0],
-        felt_raw[1],
-        felt_raw[2],
-        felt_raw[3],
+        raw[0],
+        raw[1],
+        raw[2],
+        raw[3],
     )
     .parse()
     .unwrap()

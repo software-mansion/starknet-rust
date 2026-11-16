@@ -649,6 +649,31 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn selector_modulus_cannot_alias_zero_through_the_felt_parser() {
+        let modulus = "0x800000000000011000000000000000000000000000000000000000000000001";
+        // Demonstrates why Felt::from_hex alone cannot enforce this wire range.
+        assert_eq!(Felt::from_hex(modulus).unwrap(), Felt::ZERO);
+        for raw in [VALID_V0_DATA, VALID_V1_DATA] {
+            let data = serde_json::from_str::<TypedData>(raw).unwrap();
+            assert!(matches!(
+                data.encoder().encode_value(
+                    &InlineTypeReference::Selector,
+                    &Value::String(modulus.into())
+                ),
+                Err(TypedDataError::InvalidSelector(_))
+            ));
+            assert_eq!(
+                data.encoder()
+                    .encode_value(&InlineTypeReference::Selector, &Value::String("0x0".into()))
+                    .unwrap(),
+                Felt::ZERO,
+            );
+        }
+    }
+
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn selectors_reject_malformed_and_out_of_range_hex_without_name_fallback() {

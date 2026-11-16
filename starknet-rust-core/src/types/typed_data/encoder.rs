@@ -352,6 +352,8 @@ impl Encoder {
                 {
                     let raw = RawU256::from_str_radix_vartime(hexadecimal, 16)
                         .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?;
+                    // The pinned Felt parser accepts the modulus itself as zero.
+                    // Check the unreduced value so that boundary cannot alias a selector.
                     if raw > RawU256::from_be_slice(&Felt::MAX.to_bytes_be()) {
                         return Err(TypedDataError::InvalidSelector(str_value.to_owned()));
                     }

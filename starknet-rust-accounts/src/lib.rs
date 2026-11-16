@@ -24,5 +24,4 @@ pub use single_owner::{ExecutionEncoding, SingleOwnerAccount};
 #[error("Not all fields are prepared")]
 pub struct NotPreparedError;
 
-/// SNIP-9 outside-execution authorization and encoding.
 pub mod outside_execution;
