@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Browser wallet integration in `starknet-rust-accounts`: a Wallet API client and WASM adapter for legacy and wallet-standard wallets, with API version selection, typed-data signing, wallet-submitted transactions, and account/network change subscriptions ([#186]).
+
 ### Changed
 
 - **Breaking:** Ledger integration is now compatible with `coins-ledger` 0.17. `LedgerSigner::new` is synchronous, and custom transports must implement `LedgerTransport` instead of the removed `LedgerAsync` ([#184]).
@@ -119,3 +123,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#170]: https://github.com/software-mansion/starknet-rust/pull/170
 [#176]: https://github.com/software-mansion/starknet-rust/pull/176
 [#184]: https://github.com/software-mansion/starknet-rust/pull/184
+[#186]: https://github.com/software-mansion/starknet-rust/pull/186

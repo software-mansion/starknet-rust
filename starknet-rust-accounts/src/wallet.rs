@@ -15,8 +15,16 @@ use starknet_rust_core::types::{Felt, TypedData};
 #[derive(Debug, thiserror::Error)]
 pub enum WalletError {
     /// The wallet rejected or failed the request.
-    #[error("wallet: {0}")]
-    Rejected(String),
+    #[error("wallet: {message}")]
+    Rejected {
+        /// Numeric error code supplied by the wallet, when available.
+        code: Option<i64>,
+        /// Human-readable wallet error message.
+        message: String,
+    },
+    /// Versioned Wallet API parameters must be a JSON object.
+    #[error("wallet request parameters must be an object to select an API version")]
+    InvalidParameters,
     /// The wallet returned an incompatible response.
     #[error(transparent)]
     InvalidResponse(#[from] serde_json::Error),
@@ -101,18 +109,52 @@ pub enum WalletChange {
 #[derive(Debug)]
 pub struct WalletClient<T> {
     transport: T,
+    api_version: Option<String>,
 }
 
 impl<T: WalletTransport> WalletClient<T> {
     /// Wrap an existing wallet transport.
     pub const fn new(transport: T) -> Self {
-        Self { transport }
+        Self {
+            transport,
+            api_version: None,
+        }
     }
+    /// Select the Wallet API version sent as `params.api_version` on subsequent requests.
+    ///
+    /// Version discovery requests remain unversioned. The wallet validates support for the
+    /// selected version; use [`Self::supported_versions`] to discover its capabilities.
+    /// This selection overrides an `api_version` supplied in raw parameter objects.
+    #[must_use]
+    pub fn with_api_version(mut self, version: impl Into<String>) -> Self {
+        self.api_version = Some(version.into());
+        self
+    }
+
+    /// Returns the explicitly selected Wallet API version, if any.
+    pub fn api_version(&self) -> Option<&str> {
+        self.api_version.as_deref()
+    }
+
     /// Access the selected wallet transport.
     pub const fn transport(&self) -> &T {
         &self.transport
     }
     async fn request(&self, method: &str, params: Option<Value>) -> Result<Value, WalletError> {
+        let mut params = params;
+        if let Some(version) = &self.api_version {
+            // The discovery methods have no parameters in the Wallet API schema.
+            if !matches!(
+                method,
+                "wallet_supportedWalletApi" | "wallet_supportedSpecs"
+            ) {
+                params
+                    .get_or_insert_with(|| json!({}))
+                    .as_object_mut()
+                    .ok_or(WalletError::InvalidParameters)?
+                    .insert("api_version".into(), json!(version));
+            }
+        }
         if let Some(params) = &params {
             validate_json_numbers(params)?;
         }
@@ -172,14 +214,18 @@ impl<T: WalletTransport> WalletClient<T> {
         wire["domain"]["name"] = json!(format!("{:#x}", domain.name));
         wire["domain"]["version"] = json!(format!("{:#x}", domain.version));
         wire["domain"]["chainId"] = json!(format!("{:#x}", domain.chain_id));
-        self.call("wallet_signTypedData", Some(wire)).await
+        self.call("wallet_signTypedData", Some(json!({"typed_data": wire})))
+            .await
     }
     /// Submit an atomic list of calls through the wallet.
     pub async fn execute(&self, calls: &[WalletCall]) -> Result<WalletTransaction, WalletError> {
-        self.call("wallet_addInvokeTransaction", Some(json!({"calls":calls})))
-            .await
+        self.call(
+            "wallet_addInvokeTransaction",
+            Some(json!({"invoke_transaction":calls})),
+        )
+        .await
     }
-    /// Submit a declaration described using Wallet API parameters.
+    /// Submit complete Wallet API parameters, including the `declare_transaction` field.
     pub async fn declare(&self, parameters: Value) -> Result<Value, WalletError> {
         self.request("wallet_addDeclareTransaction", Some(parameters))
             .await
@@ -200,7 +246,9 @@ impl<T: WalletTransport> WalletClient<T> {
 
 #[cfg(target_arch = "wasm32")]
 mod browser {
-    use super::*;
+    use super::{WalletChange, WalletError, WalletTransport, validate_json_numbers};
+    use async_trait::async_trait;
+    use serde_json::{Value, json};
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::JsFuture;
     #[wasm_bindgen(inline_js = r#"
@@ -209,14 +257,34 @@ export function walletRequest(wallet, request) {
   return Promise.resolve(api ? api.request(request) : wallet.request(request));
 }
 export function walletSubscribe(wallet, callback) {
+  // Clear the Rust callback before touching wallet code: a throwing remover may
+  // leave handlers registered, but those handlers must never call a dropped closure.
+  const emit = value => callback?.(JSON.stringify(value));
+  const stop = unsubscribe => () => {
+    if (callback === null) return;
+    callback = null;
+    unsubscribe();
+  };
   const events = wallet.features?.['standard:events'];
-  if (events) return events.on('change', value => callback(JSON.stringify({Standard:value})));
-  const accounts = value => callback(JSON.stringify({Accounts:value ?? []}));
-  const chain = value => callback(JSON.stringify(value == null ? {Accounts:[]} : {Chain:value}));
-  wallet.on('accountsChanged', accounts);
-  try { wallet.on('networkChanged', chain); }
-  catch (error) { wallet.off('accountsChanged', accounts); throw error; }
-  return () => { wallet.off('accountsChanged', accounts); wallet.off('networkChanged', chain); };
+  if (events) {
+    try { return stop(events.on('change', value => emit({Standard:value}))); }
+    catch (error) { callback = null; throw error; }
+  }
+  const accounts = value => emit({Accounts:value ?? []});
+  const chain = value => emit(value == null ? {Accounts:[]} : {Chain:value});
+  const remove = () => {
+    try { wallet.off('accountsChanged', accounts); }
+    finally { wallet.off('networkChanged', chain); }
+  };
+  try {
+    wallet.on('accountsChanged', accounts);
+    wallet.on('networkChanged', chain);
+  } catch (error) {
+    callback = null;
+    try { remove(); } catch (_) { /* Preserve the registration error. */ }
+    throw error;
+  }
+  return stop(remove);
 }
 export function walletConnect(wallet, silent) {
   const connect = wallet.features?.['standard:connect'];
@@ -234,8 +302,19 @@ export function walletConnect(wallet, silent) {
         #[wasm_bindgen(catch, js_name = walletConnect)]
         fn connect_js(wallet: &JsValue, silent: bool) -> Result<js_sys::Promise, JsValue>;
     }
-    fn error(value: JsValue) -> WalletError {
-        WalletError::Rejected(format!("{value:?}"))
+    fn error(value: &JsValue) -> WalletError {
+        let code = js_sys::Reflect::get(value, &JsValue::from_str("code"))
+            .ok()
+            .filter(js_sys::Number::is_safe_integer)
+            .and_then(|code| js_sys::JSON::stringify(&code).ok())
+            .and_then(|code| code.as_string())
+            .and_then(|code| code.parse().ok());
+        let message = js_sys::Reflect::get(value, &JsValue::from_str("message"))
+            .ok()
+            .and_then(|message| message.as_string())
+            .or_else(|| value.as_string())
+            .unwrap_or_else(|| format!("{value:?}"));
+        WalletError::Rejected { code, message }
     }
     /// Adapter over an application-selected browser wallet JS object.
     #[derive(Debug, Clone)]
@@ -250,9 +329,9 @@ export function walletConnect(wallet, silent) {
         /// Prime wallet-standard connection state so change events are delivered.
         /// Legacy wallets simply proceed to `request_accounts`.
         pub async fn connect(&self, silent: bool) -> Result<(), WalletError> {
-            JsFuture::from(connect_js(&self.object, silent).map_err(error)?)
+            JsFuture::from(connect_js(&self.object, silent).map_err(|value| error(&value))?)
                 .await
-                .map_err(error)?;
+                .map_err(|value| error(&value))?;
             Ok(())
         }
         /// Register changes. Keep the returned subscription alive until no longer needed.
@@ -262,17 +341,17 @@ export function walletConnect(wallet, silent) {
             mut callback: impl FnMut(Result<WalletChange, WalletError>) + 'static,
         ) -> Result<WalletSubscription, WalletError> {
             let closure = Closure::wrap(Box::new(move |text: String| {
-                callback(serde_json::from_str(&text).map_err(WalletError::from))
+                callback(serde_json::from_str(&text).map_err(WalletError::from));
             }) as Box<dyn FnMut(String)>);
-            let unsubscribe =
-                subscribe_js(&self.object, closure.as_ref().unchecked_ref()).map_err(error)?;
+            let unsubscribe = subscribe_js(&self.object, closure.as_ref().unchecked_ref())
+                .map_err(|value| error(&value))?;
             Ok(WalletSubscription {
                 unsubscribe,
                 _callback: closure,
             })
         }
     }
-    /// RAII subscription. Dropping it unregisters the JavaScript event handlers.
+    /// RAII subscription. Dropping it disables callbacks and attempts to unregister handlers.
     pub struct WalletSubscription {
         unsubscribe: js_sys::Function,
         _callback: Closure<dyn FnMut(String)>,
@@ -296,14 +375,19 @@ export function walletConnect(wallet, silent) {
             }
             // Also protect direct WalletTransport calls that bypass WalletClient.
             validate_json_numbers(&request)?;
-            let request = js_sys::JSON::parse(&request.to_string()).map_err(error)?;
-            let response = JsFuture::from(request_js(&self.object, &request).map_err(error)?)
-                .await
-                .map_err(error)?;
+            let request =
+                js_sys::JSON::parse(&request.to_string()).map_err(|value| error(&value))?;
+            let response =
+                JsFuture::from(request_js(&self.object, &request).map_err(|value| error(&value))?)
+                    .await
+                    .map_err(|value| error(&value))?;
             let text = js_sys::JSON::stringify(&response)
-                .map_err(error)?
+                .map_err(|value| error(&value))?
                 .as_string()
-                .ok_or_else(|| WalletError::Rejected("wallet returned undefined".into()))?;
+                .ok_or_else(|| WalletError::Rejected {
+                    code: None,
+                    message: "wallet returned undefined".into(),
+                })?;
             Ok(serde_json::from_str(&text)?)
         }
     }
@@ -311,6 +395,8 @@ export function walletConnect(wallet, silent) {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crate::wallet::{WalletCall, WalletClient};
+        use starknet_rust_core::types::Felt;
         use wasm_bindgen_test::wasm_bindgen_test;
 
         #[wasm_bindgen(inline_js = r#"
@@ -328,6 +414,34 @@ export function walletTestRequests(wallet) {
   return JSON.stringify(wallet.requests);
 }
 export function walletTestSafeInteger(text) { return Number.isSafeInteger(JSON.parse(text)); }
+export function walletTestRejecting(standard, synchronous, kind) {
+  const request = () => {
+    let failure;
+    if (kind === 'string') failure = 'wallet locked';
+    else {
+      failure = new Error('User refused');
+      if (kind === 'coded') failure.code = 113;
+      if (kind === 'negative') failure.code = -32601;
+      if (kind === 'fractional') failure.code = 1.5;
+      if (kind === 'unsafe') failure.code = 9007199254740992;
+      if (kind === 'accessor') Object.defineProperty(failure, 'code', {get() {throw new Error('inaccessible');}});
+    }
+    if (synchronous) throw failure;
+    return Promise.reject(failure);
+  };
+  return standard ? {features:{'starknet:walletApi':{request}}} : {request};
+}
+export function walletTestRetainedEvents(standard) {
+  const retained = [];
+  if (standard) return { retained, features: {'standard:events': {on(_name, callback) {
+    retained.push(callback); return () => {throw new Error('unsubscribe failed');};
+  }}}};
+  return { retained, on(_name, callback) {retained.push(callback);}, off() {throw new Error('off failed');} };
+}
+export function walletTestEmitRetained(wallet) {
+  for (const callback of wallet.retained) callback('0x1');
+}
+
 "#)]
         extern "C" {
             #[wasm_bindgen(js_name = walletTestSpy)]
@@ -336,6 +450,88 @@ export function walletTestSafeInteger(text) { return Number.isSafeInteger(JSON.p
             fn wallet_test_requests(wallet: &JsValue) -> String;
             #[wasm_bindgen(js_name = walletTestSafeInteger)]
             fn wallet_test_safe_integer(text: &str) -> bool;
+            #[wasm_bindgen(js_name = walletTestRejecting)]
+            fn wallet_test_rejecting(standard: bool, synchronous: bool, kind: &str) -> JsValue;
+            #[wasm_bindgen(js_name = walletTestRetainedEvents)]
+            fn wallet_test_retained_events(standard: bool) -> JsValue;
+            #[wasm_bindgen(catch, js_name = walletTestEmitRetained)]
+            fn wallet_test_emit_retained(wallet: &JsValue) -> Result<(), JsValue>;
+
+        }
+
+        #[wasm_bindgen_test(async)]
+        async fn selected_version_and_invoke_envelope_reach_both_browser_interfaces() {
+            for standard in [false, true] {
+                let object = wallet_test_spy(standard);
+                let client = WalletClient::new(BrowserWallet::new(object.clone()))
+                    .with_api_version("0.10.4");
+                let params = json!({"invoke_transaction":[{"contract_address":"0x1","entry_point":"transfer","calldata":["0x2"]}],"api_version":"0.10.4"});
+                // Spy echoes params, so the response intentionally lacks a transaction hash.
+                assert!(matches!(
+                    client
+                        .execute(&[WalletCall {
+                            contract_address: Felt::ONE,
+                            entry_point: "transfer".into(),
+                            calldata: vec![Felt::TWO]
+                        }])
+                        .await,
+                    Err(WalletError::InvalidResponse(_))
+                ));
+                let seen: Value = serde_json::from_str(&wallet_test_requests(&object)).unwrap();
+                assert_eq!(
+                    seen,
+                    json!([{"type":"wallet_addInvokeTransaction","params":params}])
+                );
+            }
+        }
+
+        #[wasm_bindgen_test(async)]
+        async fn browser_rejections_preserve_codes_and_messages() {
+            for standard in [false, true] {
+                for synchronous in [false, true] {
+                    for (kind, expected_code, expected_message) in [
+                        ("coded", Some(113), "User refused"),
+                        ("negative", Some(-32601), "User refused"),
+                        ("fractional", None, "User refused"),
+                        ("unsafe", None, "User refused"),
+                        ("accessor", None, "User refused"),
+                        ("uncoded", None, "User refused"),
+                        ("string", None, "wallet locked"),
+                    ] {
+                        let wallet =
+                            BrowserWallet::new(wallet_test_rejecting(standard, synchronous, kind));
+                        let error = wallet.request("wallet_test", None).await.unwrap_err();
+                        match error {
+                            WalletError::Rejected { code, message } => {
+                                assert_eq!(code, expected_code);
+                                assert_eq!(message, expected_message);
+                            }
+                            error => panic!("unexpected error: {error}"),
+                        }
+                    }
+                }
+            }
+        }
+
+        #[wasm_bindgen_test]
+        fn retained_handlers_cannot_call_the_rust_closure_after_drop() {
+            use std::{cell::Cell, rc::Rc};
+            for standard in [false, true] {
+                let object = wallet_test_retained_events(standard);
+                let wallet = BrowserWallet::new(object.clone());
+                let calls = Rc::new(Cell::new(0));
+                let counter = Rc::clone(&calls);
+                let subscription = wallet
+                    .subscribe(move |_| counter.set(counter.get() + 1))
+                    .unwrap();
+                wallet_test_emit_retained(&object).unwrap();
+                let before = calls.get();
+                assert!(before > 0);
+                drop(subscription);
+                wallet_test_emit_retained(&object)
+                    .expect("stale JS handlers must not invoke a dropped WASM closure");
+                assert_eq!(calls.get(), before);
+            }
         }
 
         #[wasm_bindgen_test(async)]
@@ -516,8 +712,10 @@ mod tests {
         let seen = client.transport.seen.lock().unwrap();
         assert_eq!(seen[0].0, "wallet_addInvokeTransaction");
         assert_eq!(
-            seen[0].1.as_ref().unwrap()["calls"][0]["entry_point"],
-            "transfer"
+            seen[0].1,
+            Some(json!({"invoke_transaction":[{
+                "contract_address":"0x1", "entry_point":"transfer", "calldata":["0x2"]
+            }]}))
         );
     }
     #[tokio::test]
@@ -567,11 +765,13 @@ mod tests {
             let client = WalletClient::new(Mock {
                 seen: Mutex::new(vec![]),
                 response: json!(["0x1", "0x2"]),
-            });
+            })
+            .with_api_version("0.10.4");
             client.sign_typed_data(&data).await.unwrap();
             let seen = client.transport.seen.lock().unwrap();
             assert_eq!(seen[0].0, "wallet_signTypedData");
-            let wire = seen[0].1.as_ref().unwrap().clone();
+            assert_eq!(seen[0].1.as_ref().unwrap()["api_version"], "0.10.4");
+            let wire = seen[0].1.as_ref().unwrap()["typed_data"].clone();
             drop(seen);
             let mut expected_domain = vector["wire"]["domain"].clone();
             if vector["revision"] == 0 {
@@ -602,7 +802,7 @@ mod tests {
         );
         client.sign_typed_data(&quoted).await.unwrap();
         assert_eq!(
-            client.transport.seen.lock().unwrap()[0].1.as_ref().unwrap()["message"]["amount"],
+            client.transport.seen.lock().unwrap()[0].1.as_ref().unwrap()["typed_data"]["message"]["amount"],
             "9007199254740993"
         );
     }
@@ -661,6 +861,57 @@ mod tests {
         client.add_chain(json!({"bounds":[-9_007_199_254_740_991i64,9_007_199_254_740_991u64],"literal":"9007199254740993"})).await.unwrap();
         assert_eq!(client.transport.seen.lock().unwrap().len(), 1);
     }
+    #[tokio::test]
+    async fn selected_api_version_preserves_payloads_and_keeps_discovery_unversioned() {
+        let client = WalletClient::new(Mock {
+            seen: Mutex::new(vec![]),
+            response: json!(true),
+        })
+        .with_api_version("0.10.4");
+        assert_eq!(client.api_version(), Some("0.10.4"));
+        client.request_accounts(true).await.unwrap_err(); // bool is not an account list
+        client.permissions().await.unwrap_err();
+        client.chain_id().await.unwrap_err();
+        client.deployment_data().await.unwrap();
+        client
+            .declare(json!({"declare_transaction":{"class_hash":"0x1"},"api_version":"older"}))
+            .await
+            .unwrap();
+        client.supported_versions().await.unwrap_err();
+        client.supported_specs().await.unwrap_err();
+        let seen = client.transport.seen.lock().unwrap();
+        assert_eq!(
+            seen[0].1,
+            Some(json!({"silent_mode":true,"api_version":"0.10.4"}))
+        );
+        for index in [1, 2, 3] {
+            assert_eq!(seen[index].1, Some(json!({"api_version":"0.10.4"})));
+        }
+        assert_eq!(
+            seen[4].1,
+            Some(json!({"declare_transaction":{"class_hash":"0x1"},"api_version":"0.10.4"}))
+        );
+        assert_eq!(seen[5].1, None);
+        assert_eq!(seen[6].1, None);
+    }
+
+    #[tokio::test]
+    async fn default_version_preserves_parameterless_requests() {
+        let client = WalletClient::new(Mock {
+            seen: Mutex::new(vec![]),
+            response: json!({}),
+        });
+        assert_eq!(client.api_version(), None);
+        client.deployment_data().await.unwrap();
+        assert_eq!(client.transport.seen.lock().unwrap()[0].1, None);
+        let client = client.with_api_version("0.10.4");
+        assert!(matches!(
+            client.declare(json!([])).await,
+            Err(WalletError::InvalidParameters)
+        ));
+        assert_eq!(client.transport.seen.lock().unwrap().len(), 1);
+    }
+
     #[test]
     fn normalized_disconnect_clears_the_selected_account() {
         let mut selected_account = Some(Felt::ONE);

@@ -82,3 +82,149 @@ test("failed second legacy registration removes the first handler", () => {
   wallet.handlers.get("accountsChanged")?.(["0x123"]);
   assert.equal(calls, 0);
 });
+
+for (const failingRemovals of [
+  ["accountsChanged"],
+  ["networkChanged"],
+  ["accountsChanged", "networkChanged"],
+]) {
+  test(`legacy cleanup attempts both removals when ${failingRemovals.join(" and ")} throws`, () => {
+    const wallet = legacyWallet();
+    const removed = [];
+    const failure = new Error("removal rejected");
+    const remove = wallet.off;
+    wallet.off = (name, callback) => {
+      removed.push(name);
+      if (failingRemovals.includes(name)) throw failure;
+      remove(name, callback);
+    };
+    let calls = 0;
+    const unsubscribe = walletSubscribe(wallet, () => {
+      calls += 1;
+    });
+    const accounts = wallet.handlers.get("accountsChanged");
+    const chain = wallet.handlers.get("networkChanged");
+    accounts(["0x123"]);
+    assert.equal(calls, 1);
+    assert.throws(unsubscribe, (error) => error === failure);
+    assert.deepEqual(removed, ["accountsChanged", "networkChanged"]);
+    accounts(["0x456"]);
+    chain("0x534e5f4d41494e");
+    assert.equal(calls, 1, "retained handlers cannot call the Rust closure");
+    unsubscribe();
+    assert.equal(removed.length, 2, "cleanup is idempotent after an error");
+  });
+}
+
+for (const failingRegistration of ["accountsChanged", "networkChanged"]) {
+  test(`failed ${failingRegistration} registration deactivates handlers even if rollback throws`, () => {
+    const wallet = legacyWallet();
+    const registrationFailure = new Error("registration rejected");
+    const cleanupFailure = new Error("cleanup rejected");
+    const register = wallet.on;
+    const removed = [];
+    wallet.on = (name, callback) => {
+      register(name, callback);
+      if (name === failingRegistration) throw registrationFailure;
+    };
+    wallet.off = (name) => {
+      removed.push(name);
+      throw cleanupFailure;
+    };
+    let calls = 0;
+    assert.throws(
+      () =>
+        walletSubscribe(wallet, () => {
+          calls += 1;
+        }),
+      (error) => error === registrationFailure,
+    );
+    assert.deepEqual(removed, ["accountsChanged", "networkChanged"]);
+    wallet.handlers.get("accountsChanged")?.(["0x123"]);
+    wallet.handlers.get("networkChanged")?.("0x534e5f4d41494e");
+    assert.equal(calls, 0);
+  });
+}
+
+function standardWallet({ registrationError, removalError } = {}) {
+  const handlers = new Set();
+  let removals = 0;
+  return {
+    handlers,
+    get removals() {
+      return removals;
+    },
+    features: {
+      "standard:events": {
+        on(name, callback) {
+          assert.equal(name, "change");
+          handlers.add(callback);
+          if (registrationError) throw registrationError;
+          return () => {
+            removals += 1;
+            if (removalError) throw removalError;
+            handlers.delete(callback);
+          };
+        },
+      },
+    },
+    on() {
+      assert.fail("standard wallets must not register legacy handlers");
+    },
+  };
+}
+
+test("wallet-standard changes retain their shape and unsubscribe stops callbacks", () => {
+  const wallet = standardWallet();
+  const changes = [];
+  const unsubscribe = walletSubscribe(wallet, (text) =>
+    changes.push(JSON.parse(text)),
+  );
+  const [handler] = wallet.handlers;
+  const change = {
+    accounts: [{ address: "0x123" }],
+    chains: ["starknet:SN_SEPOLIA"],
+  };
+  handler(change);
+  assert.deepEqual(changes, [{ Standard: change }]);
+  unsubscribe();
+  assert.equal(wallet.handlers.size, 0);
+  handler({ accounts: [] });
+  assert.equal(changes.length, 1, "even an already queued handler is inactive");
+  unsubscribe();
+  assert.equal(wallet.removals, 1);
+});
+
+test("wallet-standard throwing unsubscribe deactivates retained callbacks", () => {
+  const failure = new Error("standard cleanup rejected");
+  const wallet = standardWallet({ removalError: failure });
+  let calls = 0;
+  const unsubscribe = walletSubscribe(wallet, () => {
+    calls += 1;
+  });
+  const [handler] = wallet.handlers;
+  handler({ accounts: [] });
+  assert.equal(calls, 1);
+  assert.throws(unsubscribe, (error) => error === failure);
+  assert.equal(wallet.handlers.size, 1);
+  handler({ accounts: [] });
+  assert.equal(calls, 1);
+  unsubscribe();
+  assert.equal(wallet.removals, 1);
+});
+
+test("wallet-standard failed registration deactivates a retained callback", () => {
+  const failure = new Error("standard registration rejected");
+  const wallet = standardWallet({ registrationError: failure });
+  let calls = 0;
+  assert.throws(
+    () =>
+      walletSubscribe(wallet, () => {
+        calls += 1;
+      }),
+    (error) => error === failure,
+  );
+  const [handler] = wallet.handlers;
+  handler({ accounts: [] });
+  assert.equal(calls, 0);
+});
