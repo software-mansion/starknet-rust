@@ -3101,6 +3101,7 @@ dependencies = [
  "flate2",
  "getrandom 0.2.17",
  "log",
+ "rand 0.8.8",
  "reqwest",
  "semver",
  "serde",
