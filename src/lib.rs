@@ -73,3 +73,6 @@ pub mod accounts {
 pub mod macros {
     pub use starknet_rust_macros::*;
 }
+
+/// Typed runtime extensions for providers and accounts.
+pub mod plugins;
