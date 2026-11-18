@@ -8,6 +8,8 @@ workflows:
     '.github/workflows/audit.yml':
         - 'actions-rs/audit-check@v1.2.0'
         - 'actions/checkout@v7.0.1'
+    '.github/workflows/automate-stale.yml':
+        - 'actions/stale@v11.0.0'
     '.github/workflows/build.yml':
         - 'actions-rs/toolchain@v1.0.7'
         - 'actions/checkout@v7.0.1'
@@ -54,6 +56,11 @@ dependencies:
         commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'
         owner_id: 44036562
         repo_id: 197814629
+    'actions/stale@v11.0.0':
+        ref: 'v11.0.0'
+        commit: 'sha1-4391f3da665fdf50b6810c1a66712fb9ba21aa93'
+        owner_id: 44036562
+        repo_id: 200437066
     'crate-ci/typos@00f422f3b19c57bc6338715ebfe3316d38768461':
         ref: 'v1.50.3'
         commit: 'sha1-00f422f3b19c57bc6338715ebfe3316d38768461'
