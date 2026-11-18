@@ -1,4 +1,7 @@
-use crate::{Account, ConnectedAccount, ExecutionEncoder, RawDeclarationV3, RawExecutionV3};
+use crate::{
+    Account, ConnectedAccount, ExecutionEncoder, ExecutionEncoding, RawDeclarationV3,
+    RawExecutionV3,
+};
 
 use async_trait::async_trait;
 use starknet_rust_core::types::{BlockId, BlockTag, Call, Felt, contract::ComputeClassHashError};
@@ -32,8 +35,6 @@ pub enum EncodedSignError<S> {
     #[error(transparent)]
     ClassHash(ComputeClassHashError),
 }
-
-use crate::ExecutionEncoding;
 
 impl<P, S> EncodedAccount<P, S>
 where
@@ -189,30 +190,34 @@ where
 #[cfg(all(test, feature = "eth"))]
 mod tests {
     use super::*;
-    use rand::RngCore;
     use starknet_rust_providers::jsonrpc::{HttpTransport, JsonRpcClient};
     use starknet_rust_signers::EthSigner;
-    #[tokio::test]
-    async fn invoke_uses_five_felt_signature_and_query_domain() {
+
+    fn account() -> EncodedAccount<JsonRpcClient<HttpTransport>, EthSigner> {
         let signer = EthSigner::from_bytes(&[1; 32]).unwrap();
-        let verifier = signer.clone();
         let provider = JsonRpcClient::new(HttpTransport::new(
             "http://127.0.0.1:1".parse::<url::Url>().unwrap(),
         ));
-        let account = EncodedAccount::new(
+        EncodedAccount::new(
             provider,
             signer,
             Felt::from(123u32),
             Felt::from(456u32),
             ExecutionEncoding::New,
-        );
+        )
+    }
+
+    #[tokio::test]
+    async fn invoke_uses_five_felt_signature_and_query_domain() {
+        let account = account();
+        let verifier = account.signer();
         let prepared = account
             .execute_v3(vec![Call {
                 to: Felt::ONE,
                 selector: Felt::TWO,
                 calldata: vec![Felt::THREE],
             }])
-            .nonce(Felt::from(rand::rngs::OsRng.next_u64()))
+            .nonce(Felt::ONE)
             .l1_gas(1)
             .l1_gas_price(1)
             .l2_gas(1)
@@ -232,5 +237,48 @@ mod tests {
             &prepared.transaction_hash(true),
             &query.broadcasted_invoke_txn_v3.signature
         ));
+    }
+
+    #[tokio::test]
+    async fn declare_signs_the_broadcast_and_query_hashes() {
+        use starknet_rust_core::types::contract::SierraClass;
+
+        let account = account();
+        let class: SierraClass = serde_json::from_str(include_str!(
+            "../test-data/cairo2.6/artifacts/trivial_sierra.txt"
+        ))
+        .unwrap();
+        let compiled_hash =
+            Felt::from_hex("0x6ee46561691e785d643a8296b9bf08008e432df405a1a4beb6ed784541b571c")
+                .unwrap();
+        let prepared = account
+            .declare_v3(class.flatten().unwrap().into(), compiled_hash)
+            .nonce(Felt::ONE)
+            .l1_gas(1)
+            .l1_gas_price(1)
+            .l2_gas(1)
+            .l2_gas_price(1)
+            .l1_data_gas(1)
+            .l1_data_gas_price(1)
+            .tip(0)
+            .prepared()
+            .unwrap();
+        for query_only in [false, true] {
+            let request = prepared
+                .get_declare_request(query_only, false)
+                .await
+                .unwrap();
+            assert_eq!(request.signature.len(), 5);
+            assert!(
+                account
+                    .signer()
+                    .verify_hash(&prepared.transaction_hash(query_only), &request.signature)
+            );
+            assert!(
+                !account
+                    .signer()
+                    .verify_hash(&prepared.transaction_hash(!query_only), &request.signature)
+            );
+        }
     }
 }

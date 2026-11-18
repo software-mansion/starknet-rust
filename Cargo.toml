@@ -127,7 +127,6 @@ tokio = { workspace = true, features = ["full"] }
 url.workspace = true
 
 [features]
-eth = ["starknet-rust-signers/eth", "starknet-rust-accounts/eth"]
 default = []
 ledger = ["starknet-rust-signers/ledger"]
 no_unknown_fields = [
@@ -136,6 +135,7 @@ no_unknown_fields = [
 ]
 # Cloudflare Workers provider support
 worker = ["starknet-rust-providers/worker"]
+eth = ["starknet-rust-signers/eth", "starknet-rust-accounts/eth"]
 
 [workspace.lints]
 rustdoc.all = "warn"

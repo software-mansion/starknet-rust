@@ -42,6 +42,19 @@ jobs:
         run: |
           cargo test -p starknet-rust-crypto --features pedersen_no_lookup
 
+      - name: Test EthSigner with a deployed secp256k1 account
+        if: matrix.os == 'ubuntu-latest' && matrix.toolchain == 'stable'
+        env:
+          ETH_ACCOUNT_SIERRA: ${{ runner.temp }}/eth-account.sierra.json
+        run: |
+          curl --fail --silent --show-error --location --output "$ETH_ACCOUNT_SIERRA" \
+            https://raw.githubusercontent.com/starknet-io/starknet.js/e5be57628d80b65e4499d58130d6112f1b606cb0/__mocks__/cairo/ethSigner/account_eth_oz_090.sierra.json
+          docker run --detach --rm --name eth-account-devnet -p 127.0.0.1:5190:5050 \
+            starknetfoundation/starknet-devnet-rs:0.7.2 --host 0.0.0.0 --accounts 1 --seed 190
+          trap 'docker stop eth-account-devnet' EXIT
+          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:5190/is_alive
+          cargo test --locked --features eth --test eth_account_devnet -- --ignored
+
       - name: Run cargo tests
         run: |
           cargo test --all

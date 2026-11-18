@@ -1,4 +1,5 @@
 //! secp256k1 signatures serialized as Cairo `EthSignature` values.
+
 use crate::{AccountSigner, Infallible, SignerInteractivityContext};
 use async_trait::async_trait;
 use k256::ecdsa::{RecoveryId, Signature, SigningKey, VerifyingKey};
@@ -19,6 +20,7 @@ impl std::fmt::Debug for EthSigner {
             .finish_non_exhaustive()
     }
 }
+
 impl EthSigner {
     /// Imports a nonzero secp256k1 secret scalar, strictly less than the curve order.
     pub fn from_bytes(bytes: &[u8; 32]) -> Result<Self, k256::ecdsa::Error> {
@@ -26,6 +28,7 @@ impl EthSigner {
             key: SigningKey::from_slice(bytes)?,
         })
     }
+
     /// Full affine X/Y coordinates, 32 bytes each, without the SEC1 prefix.
     pub fn public_key(&self) -> [u8; 64] {
         let point = self.key.verifying_key().to_sec1_point(false);
@@ -33,6 +36,7 @@ impl EthSigner {
         output.copy_from_slice(&point.as_bytes()[1..]);
         output
     }
+
     /// Signs a Starknet prehash directly, with low-S normalization and recovery ID.
     pub fn sign_hash(&self, hash: &Felt) -> [Felt; 5] {
         let (signature, recovery) = self.key.sign_prehash_recoverable(&hash.to_bytes_be());
@@ -45,6 +49,7 @@ impl EthSigner {
             Felt::from(recovery.to_byte()),
         ]
     }
+
     /// Signs a SNIP-12 typed message, bound to the account address.
     pub fn sign_message(
         &self,
@@ -53,6 +58,7 @@ impl EthSigner {
     ) -> Result<[Felt; 5], starknet_rust_core::types::typed_data::TypedDataError> {
         Ok(self.sign_hash(&data.message_hash(address)?))
     }
+
     /// Verifies a canonical low-S signature against this signer's full public key.
     pub fn verify_hash(&self, hash: &Felt, encoded: &[Felt]) -> bool {
         let Some((signature, recovery)) = decode_signature(encoded) else {
@@ -62,11 +68,13 @@ impl EthSigner {
             .is_ok_and(|key| key == *self.key.verifying_key())
     }
 }
+
 fn limb(bytes: &[u8]) -> Felt {
     let mut value = [0; 16];
     value.copy_from_slice(bytes);
     Felt::from(u128::from_be_bytes(value))
 }
+
 fn decode_signature(values: &[Felt]) -> Option<(Signature, RecoveryId)> {
     if values.len() != 5 {
         return None;
@@ -88,20 +96,25 @@ fn decode_signature(values: &[Felt]) -> Option<(Signature, RecoveryId)> {
         .and_then(RecoveryId::from_byte)?;
     Some((signature, recovery))
 }
+
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl AccountSigner for EthSigner {
     type SignError = Infallible;
+
     async fn sign_account_hash(&self, hash: &Felt) -> Result<Vec<Felt>, Self::SignError> {
         Ok(self.sign_hash(hash).to_vec())
     }
+
     fn is_account_signer_interactive(&self, _: SignerInteractivityContext<'_>) -> bool {
         false
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn matches_starknet_js_noble_prehash_vector() {
         // Cross-checked against the @noble/curves backend shipped with starknet.js 11.5.1.
@@ -117,6 +130,30 @@ mod tests {
         .map(|value| Felt::from_hex(value).unwrap());
         assert_eq!(signer.sign_hash(&Felt::from(42u8)), expected);
     }
+
+    #[test]
+    fn signs_snip12_mail_for_the_account_address() {
+        // Mail fixture and expected signature from starknet.js ethSigner.test.ts.
+        let signer = EthSigner::from_bytes(&hex_literal::hex!(
+            "525bc68475c0955fae83869beec0996114d4bb27b28b781ed2a20ef23121b8de"
+        ))
+        .unwrap();
+        let data = serde_json::from_str(include_str!("../test-data/eth-signer-mail.json")).unwrap();
+        let address =
+            Felt::from_hex("0x65a822fbee1ae79e898688b5a4282dc79e0042cbed12f6169937fddb4c26641")
+                .unwrap();
+        let expected = [
+            "0xff887f391242bb244e9e10d5da01cb8a",
+            "0x665e69338d4e0772039d4a032b01b07b",
+            "0xf84a88e94cabba842ab4accf8adc0200",
+            "0x61c82a3a2f1a9340620e634bebecb20b",
+            "0x1",
+        ]
+        .map(|value| Felt::from_hex(value).unwrap());
+        assert_eq!(signer.sign_message(&data, address).unwrap(), expected);
+        assert!(!signer.verify_hash(&data.message_hash(address + Felt::ONE).unwrap(), &expected));
+    }
+
     #[test]
     fn rejects_mathematically_valid_high_s_twin() {
         let signer = EthSigner::from_bytes(&[1; 32]).unwrap();
@@ -145,6 +182,7 @@ mod tests {
         assert!(!signer.verify_hash(&hash, &twin));
         assert!(signer.verify_hash(&hash, &encoded));
     }
+
     #[test]
     fn validates_secret_scalar_and_full_coordinates() {
         assert!(EthSigner::from_bytes(&[0; 32]).is_err());
