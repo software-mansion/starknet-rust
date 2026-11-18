@@ -16,7 +16,6 @@ proc-macro = true
 
 [dependencies]
 starknet-rust-core.workspace = true
-quote.workspace = true
 syn.workspace = true
 
 [features]

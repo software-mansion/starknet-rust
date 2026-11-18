@@ -2986,7 +2986,6 @@ dependencies = [
  "speculos-client",
  "starknet-rust-core",
  "starknet-rust-crypto",
- "starknet-rust-macros",
  "starknet-rust-providers",
  "starknet-rust-signers",
  "test-common",
@@ -3088,7 +3087,6 @@ dependencies = [
 name = "starknet-rust-macros"
 version = "0.20.1"
 dependencies = [
- "quote",
  "starknet-rust-core",
  "syn 2.0.119",
 ]

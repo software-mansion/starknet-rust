@@ -15,7 +15,6 @@ exclude = ["test-data/**"]
 [dependencies]
 starknet-rust-core = { workspace = true, features = ["std"] }
 starknet-rust-crypto = { workspace = true, features = ["std"] }
-starknet-rust-macros.workspace = true
 starknet-rust-providers = { workspace = true, features = ["std"] }
 starknet-rust-signers = { workspace = true, features = ["std"] }
 async-trait.workspace = true
