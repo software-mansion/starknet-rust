@@ -23,3 +23,6 @@ pub use single_owner::{ExecutionEncoding, SingleOwnerAccount};
 #[derive(Debug, thiserror::Error)]
 #[error("Not all fields are prepared")]
 pub struct NotPreparedError;
+
+/// Browser wallet API clients and transports.
+pub mod wallet;

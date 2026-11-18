@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 use starknet_rust_accounts::{
     Account, AccountError, ConnectedAccount, ExecutionEncoding, SingleOwnerAccount,
 };

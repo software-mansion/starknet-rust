@@ -2981,6 +2981,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "coins-ledger",
+ "js-sys",
  "serde",
  "serde_json",
  "speculos-client",
@@ -2991,6 +2992,9 @@ dependencies = [
  "test-common",
  "thiserror 2.0.21",
  "tokio",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
