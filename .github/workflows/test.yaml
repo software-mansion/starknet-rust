@@ -52,7 +52,7 @@ jobs:
           docker run --detach --rm --name eth-account-devnet -p 127.0.0.1:5190:5050 \
             starknetfoundation/starknet-devnet-rs:0.7.2 --host 0.0.0.0 --accounts 1 --seed 190
           trap 'docker stop eth-account-devnet' EXIT
-          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:5190/is_alive
+          curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 1 http://127.0.0.1:5190/is_alive
           cargo test --locked --features eth --test eth_account_devnet -- --ignored
 
       - name: Run cargo tests
