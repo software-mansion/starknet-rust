@@ -2,7 +2,10 @@ use serde::Deserialize;
 use serde_with::serde_as;
 
 use starknet_rust_core::{
-    serde::unsigned_field_element::{UfeHex, UfePendingBlockHash},
+    serde::{
+        collection::VecAs,
+        unsigned_field_element::{UfeHex, UfePendingBlockHash},
+    },
     types::{ExecutionResources, Felt},
 };
 
@@ -142,7 +145,7 @@ pub struct L1ToL2Message {
     pub to_address: Felt,
     #[serde_as(deserialize_as = "UfeHex")]
     pub selector: Felt,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub payload: Vec<Felt>,
     #[serde_as(deserialize_as = "Option<UfeHex>")]
     pub nonce: Option<Felt>,
@@ -155,7 +158,7 @@ pub struct L2ToL1Message {
     #[serde_as(as = "UfeHex")]
     pub from_address: Felt,
     pub to_address: L1Address,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub payload: Vec<Felt>,
 }
 
@@ -165,8 +168,8 @@ pub struct L2ToL1Message {
 pub struct Event {
     #[serde_as(as = "UfeHex")]
     pub from_address: Felt,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub keys: Vec<Felt>,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub data: Vec<Felt>,
 }

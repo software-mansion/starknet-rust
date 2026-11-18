@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize, de::Visitor};
 use serde_with::serde_as;
 use starknet_rust_core::{
-    serde::unsigned_field_element::{UfeHex, UfePendingBlockHash},
+    serde::{
+        collection::VecAs,
+        unsigned_field_element::{UfeHex, UfePendingBlockHash},
+    },
     types::Felt,
 };
 
@@ -101,16 +104,16 @@ pub struct DeclareTransaction {
     pub version: Felt,
     #[serde_as(as = "UfeHex")]
     pub transaction_hash: Felt,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub signature: Vec<Felt>,
     pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
     pub fee_data_availability_mode: Option<DataAvailabilityMode>,
     pub resource_bounds: Option<ResourceBoundsMapping>,
     #[serde(default, with = "u64_hex_opt")]
     pub tip: Option<u64>,
-    #[serde_as(as = "Option<Vec<UfeHex>>")]
+    #[serde_as(as = "Option<VecAs<UfeHex>>")]
     pub paymaster_data: Option<Vec<Felt>>,
-    #[serde_as(deserialize_as = "Option<Vec<UfeHex>>")]
+    #[serde_as(deserialize_as = "Option<VecAs<UfeHex>>")]
     pub account_deployment_data: Option<Vec<Felt>>,
 }
 
@@ -118,7 +121,7 @@ pub struct DeclareTransaction {
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct DeployTransaction {
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub constructor_calldata: Vec<Felt>,
     #[serde_as(as = "UfeHex")]
     pub contract_address: Felt,
@@ -136,7 +139,7 @@ pub struct DeployTransaction {
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct DeployAccountTransaction {
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub constructor_calldata: Vec<Felt>,
     #[serde(default)]
     #[serde_as(as = "Option<UfeHex>")]
@@ -151,7 +154,7 @@ pub struct DeployAccountTransaction {
     pub nonce: Felt,
     #[serde_as(as = "UfeHex")]
     pub version: Felt,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub signature: Vec<Felt>,
     #[serde(default)]
     #[serde_as(as = "Option<UfeHex>")]
@@ -161,7 +164,7 @@ pub struct DeployAccountTransaction {
     pub resource_bounds: Option<ResourceBoundsMapping>,
     #[serde(default, with = "u64_hex_opt")]
     pub tip: Option<u64>,
-    #[serde_as(as = "Option<Vec<UfeHex>>")]
+    #[serde_as(as = "Option<VecAs<UfeHex>>")]
     pub paymaster_data: Option<Vec<Felt>>,
     #[serde(default)]
     #[serde_as(as = "Option<UfeHex>")]
@@ -178,9 +181,9 @@ pub struct InvokeFunctionTransaction {
     pub sender_address: Felt,
     #[serde_as(as = "Option<UfeHex>")]
     pub entry_point_selector: Option<Felt>,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub calldata: Vec<Felt>,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub signature: Vec<Felt>,
     #[serde_as(as = "UfeHex")]
     pub transaction_hash: Felt,
@@ -194,9 +197,9 @@ pub struct InvokeFunctionTransaction {
     pub resource_bounds: Option<ResourceBoundsMapping>,
     #[serde(default, with = "u64_hex_opt")]
     pub tip: Option<u64>,
-    #[serde_as(as = "Option<Vec<UfeHex>>")]
+    #[serde_as(as = "Option<VecAs<UfeHex>>")]
     pub paymaster_data: Option<Vec<Felt>>,
-    #[serde_as(deserialize_as = "Option<Vec<UfeHex>>")]
+    #[serde_as(deserialize_as = "Option<VecAs<UfeHex>>")]
     pub account_deployment_data: Option<Vec<Felt>>,
     #[serde_as(as = "UfeHex")]
     pub version: Felt,
@@ -210,7 +213,7 @@ pub struct L1HandlerTransaction {
     pub contract_address: Felt,
     #[serde_as(as = "UfeHex")]
     pub entry_point_selector: Felt,
-    #[serde_as(deserialize_as = "Vec<UfeHex>")]
+    #[serde_as(deserialize_as = "VecAs<UfeHex>")]
     pub calldata: Vec<Felt>,
     #[serde_as(as = "UfeHex")]
     pub transaction_hash: Felt,

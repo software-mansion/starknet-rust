@@ -6,26 +6,27 @@ use crate::{
     ProviderRequestData,
     jsonrpc::{
         JsonRpcError, JsonRpcMethod, JsonRpcResponse,
-        transports::{BatchParseError, JsonRpcTransport},
+        transports::{HttpTransportError, JsonRpcTransport},
     },
 };
 
 /// A [`JsonRpcTransport`] implementation for the Cloudflare Workers environment.
 #[derive(Debug, Clone)]
 pub struct WorkersTransport {
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
-    url: Url,
+    #[cfg(target_arch = "wasm32")]
+    http: super::HttpTransport,
+    #[cfg(not(target_arch = "wasm32"))]
+    _url: Url,
 }
 
 /// Errors using [`WorkersTransport`].
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
 pub enum WorkersTransportError {
     /// JSON serialization/deserialization errors.
     Json(serde_json::Error),
-    /// Workers SDK error.
-    Workers(worker::Error),
+    /// HTTP request or response body error.
+    Workers(reqwest::Error),
     /// Unexpected response ID.
     #[error("unexpected response ID: {0}")]
     UnexpectedResponseId(u64),
@@ -37,24 +38,19 @@ pub enum WorkersTransportError {
     BatchError(JsonRpcError),
 }
 
-#[cfg(target_arch = "wasm32")]
-#[derive(Debug, Serialize)]
-struct JsonRpcRequest<T> {
-    id: u64,
-    jsonrpc: &'static str,
-    method: JsonRpcMethod,
-    params: T,
-}
-
 impl WorkersTransport {
     /// Constructs [`WorkersTransport`] from a JSON-RPC server URL.
     pub fn new(url: impl Into<Url>) -> Self {
-        Self { url: url.into() }
+        Self {
+            #[cfg(target_arch = "wasm32")]
+            http: super::HttpTransport::new(url),
+            #[cfg(not(target_arch = "wasm32"))]
+            _url: url.into(),
+        }
     }
 }
 
-// Stub implementation to make allow compiling outside Workers environment. This makes development
-// easier.
+// Allow development builds outside the Workers environment.
 #[cfg(not(target_arch = "wasm32"))]
 #[async_trait]
 impl JsonRpcTransport for WorkersTransport {
@@ -66,8 +62,8 @@ impl JsonRpcTransport for WorkersTransport {
         _params: P,
     ) -> Result<JsonRpcResponse<R>, Self::Error>
     where
-        P: Serialize + Send,
-        R: DeserializeOwned,
+        P: Serialize + Send + Sync,
+        R: DeserializeOwned + Send,
     {
         panic!("Cloudflare Workers transport is only supported in WASM")
     }
@@ -94,35 +90,13 @@ impl JsonRpcTransport for WorkersTransport {
         params: P,
     ) -> Result<JsonRpcResponse<R>, Self::Error>
     where
-        P: Serialize + Send,
-        R: DeserializeOwned,
+        P: Serialize + Send + Sync,
+        R: DeserializeOwned + Send,
     {
-        use worker::*;
-
-        let request_body = JsonRpcRequest {
-            id: 1,
-            jsonrpc: "2.0",
-            method,
-            params,
-        };
-
-        let request_body = serde_json::to_string(&request_body)?;
-
-        let mut headers = Headers::new();
-        headers.append("Content-Type", "application/json")?;
-
-        let mut init = RequestInit::new();
-        init.with_method(Method::Post)
-            .with_headers(headers)
-            .with_body(Some(request_body.into()));
-
-        let req = Request::new_with_init(self.url.as_ref(), &init)?;
-        let mut response = Fetch::Request(req).send().await?;
-        let response_body = response.text().await?;
-
-        let parsed_response = serde_json::from_str(&response_body)?;
-
-        Ok(parsed_response)
+        self.http
+            .send_request(method, params)
+            .await
+            .map_err(Into::into)
     }
 
     async fn send_requests<R>(
@@ -132,63 +106,7 @@ impl JsonRpcTransport for WorkersTransport {
     where
         R: AsRef<[ProviderRequestData]> + Send + Sync,
     {
-        use worker::*;
-
-        let request_bodies = requests
-            .as_ref()
-            .iter()
-            .enumerate()
-            .map(|(ind, request)| JsonRpcRequest {
-                id: ind as u64,
-                jsonrpc: "2.0",
-                method: request.jsonrpc_method(),
-                params: request,
-            })
-            .collect::<Vec<_>>();
-
-        let request_count = request_bodies.len();
-
-        let request_body = serde_json::to_string(&request_bodies)?;
-
-        let mut headers = Headers::new();
-        headers.append("Content-Type", "application/json")?;
-
-        let mut init = RequestInit::new();
-        init.with_method(Method::Post)
-            .with_headers(headers)
-            .with_body(Some(request_body.into()));
-
-        let req = Request::new_with_init(self.url.as_ref(), &init)?;
-        let mut response = Fetch::Request(req).send().await?;
-        let response_body = response.text().await?;
-
-        let parsed_response = super::parse_batch_response(&response_body)?;
-
-        let mut responses: Vec<Option<JsonRpcResponse<serde_json::Value>>> = vec![];
-        responses.resize(request_bodies.len(), None);
-
-        // Re-order the responses as servers do not maintain order.
-        for response_item in parsed_response {
-            let id = match &response_item {
-                JsonRpcResponse::Success { id, .. } | JsonRpcResponse::Error { id, .. } => id,
-            };
-
-            // This client assigns a numeric id to every batched request, so a response
-            // with an invalid numeric id can't be correlated to one.
-            let id = match id {
-                Some(id) => *id as usize,
-                None => return Err(Self::Error::InvalidNumericResponseId),
-            };
-
-            if id >= request_count {
-                return Err(Self::Error::UnexpectedResponseId(id as u64));
-            }
-
-            responses[id] = Some(response_item);
-        }
-
-        let responses = responses.into_iter().flatten().collect::<Vec<_>>();
-        Ok(responses)
+        self.http.send_requests(requests).await.map_err(Into::into)
     }
 }
 
@@ -198,17 +116,20 @@ impl From<serde_json::Error> for WorkersTransportError {
     }
 }
 
-impl From<worker::Error> for WorkersTransportError {
-    fn from(value: worker::Error) -> Self {
+impl From<reqwest::Error> for WorkersTransportError {
+    fn from(value: reqwest::Error) -> Self {
         Self::Workers(value)
     }
 }
 
-impl From<BatchParseError> for WorkersTransportError {
-    fn from(value: BatchParseError) -> Self {
+impl From<HttpTransportError> for WorkersTransportError {
+    fn from(value: HttpTransportError) -> Self {
         match value {
-            BatchParseError::BatchRejected(error) => Self::BatchError(error),
-            BatchParseError::Json(err) => Self::Json(err),
+            HttpTransportError::Reqwest(error) => Self::Workers(error),
+            HttpTransportError::Json(error) => Self::Json(error),
+            HttpTransportError::UnexpectedResponseId(id) => Self::UnexpectedResponseId(id),
+            HttpTransportError::InvalidNumericResponseId => Self::InvalidNumericResponseId,
+            HttpTransportError::BatchError(error) => Self::BatchError(error),
         }
     }
 }

@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::serde_as;
 use starknet_rust_core::{
-    serde::unsigned_field_element::{UfeHex, UfeHexOption},
+    serde::{
+        collection::VecAs,
+        unsigned_field_element::{UfeHex, UfeHexOption},
+    },
     types::Felt,
 };
 use std::sync::Arc;
@@ -293,7 +296,7 @@ impl Serialize for DeclareV3Transaction {
             compiled_class_hash: &'a Felt,
             #[serde_as(as = "UfeHex")]
             sender_address: &'a Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             signature: &'a Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             nonce: &'a Felt,
@@ -302,9 +305,9 @@ impl Serialize for DeclareV3Transaction {
             resource_bounds: &'a ResourceBoundsMapping,
             #[serde(with = "u64_hex")]
             tip: &'a u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             paymaster_data: &'a Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             account_deployment_data: &'a Vec<Felt>,
         }
 
@@ -381,7 +384,7 @@ impl Serialize for InvokeFunctionV3Transaction {
             #[serde_as(as = "UfeHex")]
             sender_address: &'a Felt,
             calldata: &'a Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             signature: &'a Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             nonce: &'a Felt,
@@ -390,9 +393,9 @@ impl Serialize for InvokeFunctionV3Transaction {
             resource_bounds: &'a ResourceBoundsMapping,
             #[serde(with = "u64_hex")]
             tip: &'a u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             paymaster_data: &'a Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             account_deployment_data: &'a Vec<Felt>,
         }
 
@@ -472,9 +475,9 @@ impl Serialize for DeployAccountV3Transaction {
             class_hash: &'a Felt,
             #[serde_as(as = "UfeHex")]
             contract_address_salt: &'a Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             constructor_calldata: &'a Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             signature: &'a Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             nonce: &'a Felt,
@@ -483,7 +486,7 @@ impl Serialize for DeployAccountV3Transaction {
             resource_bounds: &'a ResourceBoundsMapping,
             #[serde(with = "u64_hex")]
             tip: &'a u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             paymaster_data: &'a Vec<Felt>,
         }
 

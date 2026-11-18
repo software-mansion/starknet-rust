@@ -3,6 +3,7 @@ use alloc::{string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
+use crate::serde::collection::VecAs;
 use crate::serde::unsigned_field_element::UfeHex;
 
 pub use starknet_types_core::felt::*;
@@ -192,7 +193,7 @@ pub enum AddressFilter {
     /// A single address.
     Single(#[serde_as(as = "UfeHex")] Felt),
     /// A list of addresses.
-    Multiple(#[serde_as(as = "Vec<UfeHex>")] Vec<Felt>),
+    Multiple(#[serde_as(as = "VecAs<UfeHex>")] Vec<Felt>),
 }
 
 /// Result type for `starknet_simulateTransactions` that supports both 0.10.0 and 0.10.1 payloads.

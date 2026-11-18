@@ -1,12 +1,61 @@
-use serde::Deserialize;
-use serde_with::serde_as;
+use serde::{
+    Deserialize, Deserializer,
+    de::{MapAccess, Visitor},
+};
+use serde_with::{DeserializeAs, Same, de::DeserializeAsWrap, serde_as};
 use starknet_rust_core::{
-    serde::unsigned_field_element::UfeHex,
+    serde::{collection::VecAs, unsigned_field_element::UfeHex},
     types::{Felt, MigratedCompiledClassItem},
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt, marker::PhantomData, mem};
 
 use super::Block;
+
+struct FeltMapAs<Adapter>(PhantomData<Adapter>);
+
+impl<'de, T, Adapter> DeserializeAs<'de, HashMap<Felt, T>> for FeltMapAs<Adapter>
+where
+    Adapter: DeserializeAs<'de, T>,
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<HashMap<Felt, T>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct MapVisitor<T, Adapter>(PhantomData<(T, Adapter)>);
+
+        impl<'de, T, Adapter> Visitor<'de> for MapVisitor<T, Adapter>
+        where
+            Adapter: DeserializeAs<'de, T>,
+        {
+            type Value = HashMap<Felt, T>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a map")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                type FeltKey = DeserializeAsWrap<Felt, UfeHex>;
+
+                let capacity = map
+                    .size_hint()
+                    .unwrap_or(0)
+                    .min(1024 * 1024 / mem::size_of::<(Felt, T)>());
+                let mut values = HashMap::with_capacity(capacity);
+                while let Some((key, value)) =
+                    map.next_entry::<FeltKey, DeserializeAsWrap<T, Adapter>>()?
+                {
+                    values.insert(key.into_inner(), value.into_inner());
+                }
+                Ok(values)
+            }
+        }
+
+        deserializer.deserialize_map(MapVisitor::<T, Adapter>(PhantomData))
+    }
+}
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
@@ -33,15 +82,15 @@ pub struct StateUpdate {
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct StateDiff {
-    #[serde_as(as = "HashMap<UfeHex, _>")]
+    #[serde_as(deserialize_as = "FeltMapAs<Same>")]
     pub storage_diffs: HashMap<Felt, Vec<StorageDiff>>,
     pub deployed_contracts: Vec<DeployedContract>,
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub old_declared_contracts: Vec<Felt>,
     pub declared_classes: Vec<DeclaredContract>,
     pub migrated_compiled_classes: Option<Vec<DeclaredContract>>,
     #[serde(default)]
-    #[serde_as(as = "HashMap<UfeHex, UfeHex>")]
+    #[serde_as(deserialize_as = "FeltMapAs<UfeHex>")]
     pub nonces: HashMap<Felt, Felt>,
     pub replaced_classes: Vec<DeployedContract>,
 }

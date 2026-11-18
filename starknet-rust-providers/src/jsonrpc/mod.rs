@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::serde_as;
 use starknet_rust_core::{
-    serde::unsigned_field_element::UfeHex,
+    serde::{collection::VecAs, unsigned_field_element::UfeHex},
     types::{
         BlockHashAndNumber, BlockId, BroadcastedDeclareTransaction,
         BroadcastedDeployAccountTransaction, BroadcastedInvokeTransaction, BroadcastedTransaction,
@@ -309,7 +309,7 @@ struct Felt(#[serde_as(as = "UfeHex")] pub FeltPrimitive);
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-struct FeltArray(#[serde_as(as = "Vec<UfeHex>")] pub Vec<FeltPrimitive>);
+struct FeltArray(#[serde_as(as = "VecAs<UfeHex>")] pub Vec<FeltPrimitive>);
 
 impl<T> JsonRpcClient<T> {
     /// Constructs a new [`JsonRpcClient`] from a transport.

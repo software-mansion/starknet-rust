@@ -28,7 +28,7 @@ num-traits.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["alloc", "raw_value"] }
 serde_json_pythonic = { workspace = true, features = ["alloc", "raw_value"] }
-serde_with = { workspace = true, features = ["alloc", "macros"] }
+serde_with.workspace = true
 sha3.workspace = true
 starknet-types-core = { workspace = true, features = ["curve", "serde", "num-traits"] }
 semver.workspace = true

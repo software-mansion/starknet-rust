@@ -4,7 +4,10 @@ use flate2::{Compression, write::GzEncoder};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::serde_as;
 use starknet_rust_core::{
-    serde::{byte_array::base64::serialize as base64_ser, unsigned_field_element::UfeHex},
+    serde::{
+        byte_array::base64::serialize as base64_ser, collection::VecAs,
+        unsigned_field_element::UfeHex,
+    },
     types::{
         EntryPointsByType, Felt, FlattenedSierraClass,
         contract::{
@@ -78,7 +81,7 @@ impl CompressedSierraClass {
     ) -> Result<Self, DecompressProgramError> {
         #[serde_as]
         #[derive(Serialize)]
-        struct SierraProgram<'a>(#[serde_as(as = "Vec<UfeHex>")] &'a Vec<Felt>);
+        struct SierraProgram<'a>(#[serde_as(as = "VecAs<UfeHex>")] &'a Vec<Felt>);
 
         let program_json = serde_json::to_string(&SierraProgram(&flattened_class.sierra_program))
             .map_err(DecompressProgramError::Json)?;

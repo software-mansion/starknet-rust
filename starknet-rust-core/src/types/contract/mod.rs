@@ -5,6 +5,7 @@ use serde_json_pythonic::to_string_pythonic;
 use serde_with::serde_as;
 use starknet_rust_crypto::{PoseidonHasher, poseidon_hash_many};
 
+use crate::serde::collection::VecAs;
 use crate::{
     serde::unsigned_field_element::UfeHex,
     types::{EntryPointsByType, Felt, FlattenedSierraClass, SierraEntryPoint},
@@ -51,7 +52,7 @@ pub enum ContractArtifact {
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct SierraClass {
     /// Sierra bytecode.
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub sierra_program: Vec<Felt>,
     /// Sierra class debug info.
     pub sierra_program_debug_info: SierraClassDebugInfo,
@@ -78,7 +79,7 @@ pub struct CompiledClass {
     /// Version of the compiler used to compile this contract.
     pub compiler_version: String,
     /// Cairo assembly bytecode.
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub bytecode: Vec<Felt>,
     /// Represents the structure of the bytecode segments, using a nested list of segment lengths.
     /// For example, [2, [3, 4]] represents a bytecode with 2 segments, the first is a leaf of

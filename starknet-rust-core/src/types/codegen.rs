@@ -6,6 +6,7 @@
 
 // Code generated with version:
 //     https://github.com/software-mansion-labs/starknet-jsonrpc-codegen#773cd8ba6c077eacf6b3241319c95f58857442fe
+// This workspace uses VecAs in place of Vec inside serde_as adapters.
 
 // These types are ignored from code generation. Implement them manually:
 // - `RECEIPT_BLOCK`
@@ -44,7 +45,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::serde_as;
 
-use crate::serde::byte_array::base64;
+use crate::serde::{byte_array::base64, collection::VecAs};
 
 use super::{
     AddressFilter, BlockId, BroadcastedTransaction, ConfirmedBlockId, ContractExecutionError,
@@ -294,7 +295,7 @@ pub struct BlockWithTxHashes {
     /// (e.g., old blocks), compute from state diff if possible, otherwise use 0
     pub state_diff_length: u64,
     /// The hashes of the transactions included in this block
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub transactions: Vec<Felt>,
 }
 
@@ -976,10 +977,10 @@ pub struct EmittedEvent {
     #[serde_as(as = "UfeHex")]
     pub from_address: Felt,
     /// Keys
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub keys: Vec<Felt>,
     /// Data
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub data: Vec<Felt>,
     /// The hash of the block in which the event was emitted
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1042,10 +1043,10 @@ pub struct Event {
     #[serde_as(as = "UfeHex")]
     pub from_address: Felt,
     /// Keys
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub keys: Vec<Felt>,
     /// Data
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub data: Vec<Felt>,
 }
 
@@ -1067,7 +1068,7 @@ pub struct EventFilter {
     pub address: Option<AddressFilter>,
     /// The keys to filter over
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde_as(as = "Option<Vec<Vec<UfeHex>>>")]
+    #[serde_as(as = "Option<VecAs<VecAs<UfeHex>>>")]
     pub keys: Option<Vec<Vec<Felt>>>,
 }
 
@@ -1153,7 +1154,7 @@ pub struct FeePayment {
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct FlattenedSierraClass {
     /// The list of sierra instructions of which the program consists
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub sierra_program: Vec<Felt>,
     /// The version of the contract class object. Currently, the Starknet os supports version 0.1.0
     pub contract_class_version: String,
@@ -1177,7 +1178,7 @@ pub struct FunctionCall {
     #[serde_as(as = "UfeHex")]
     pub entry_point_selector: Felt,
     /// The parameters passed to the function
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub calldata: Vec<Felt>,
 }
 
@@ -1192,7 +1193,7 @@ pub struct FunctionInvocation {
     #[serde_as(as = "UfeHex")]
     pub entry_point_selector: Felt,
     /// The parameters passed to the function
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub calldata: Vec<Felt>,
     /// The address of the invoking contract. 0 for the root invocation
     #[serde_as(as = "UfeHex")]
@@ -1203,7 +1204,7 @@ pub struct FunctionInvocation {
     pub entry_point_type: EntryPointType,
     pub call_type: CallType,
     /// The value returned from the function invocation
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub result: Vec<Felt>,
     /// The calls made by this invocation
     pub calls: Vec<Self>,
@@ -1781,7 +1782,7 @@ pub struct MsgFromL1 {
     #[serde_as(as = "UfeHex")]
     pub entry_point_selector: Felt,
     /// The payload of the message
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub payload: Vec<Felt>,
 }
 
@@ -1797,7 +1798,7 @@ pub struct MsgToL1 {
     #[serde_as(as = "UfeHex")]
     pub to_address: Felt,
     /// The payload of the message
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub payload: Vec<Felt>,
 }
 
@@ -1855,10 +1856,10 @@ pub struct OrderedEvent {
     /// The order of the event within the transaction
     pub order: u64,
     /// Keys
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub keys: Vec<Felt>,
     /// Data
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub data: Vec<Felt>,
 }
 
@@ -1878,7 +1879,7 @@ pub struct OrderedMessage {
     #[serde_as(as = "UfeHex")]
     pub to_address: Felt,
     /// The payload of the message
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub payload: Vec<Felt>,
 }
 
@@ -1921,7 +1922,7 @@ pub struct PreConfirmedBlockWithReceipts {
 #[cfg_attr(feature = "no_unknown_fields", serde(deny_unknown_fields))]
 pub struct PreConfirmedBlockWithTxHashes {
     /// The hashes of the transactions included in this block
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub transactions: Vec<Felt>,
     /// The block number of the block that the proposer is currently building. Note that this is a
     /// local view of the node, whose accuracy depends on its polling interval length.
@@ -2382,7 +2383,7 @@ pub struct StateDiff {
     /// Storage diffs
     pub storage_diffs: Vec<ContractStorageDiffItem>,
     /// Deprecated declared classes
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub deprecated_declared_classes: Vec<Felt>,
     /// Declared classes
     pub declared_classes: Vec<DeclaredClassItem>,
@@ -2441,7 +2442,7 @@ pub struct StorageProof {
     #[serde_as(as = "MerkleNodeMap")]
     pub classes_proof: IndexMap<Felt, MerkleNode, RandomState>,
     pub contracts_proof: ContractsProof,
-    #[serde_as(as = "Vec<MerkleNodeMap>")]
+    #[serde_as(as = "VecAs<MerkleNodeMap>")]
     pub contracts_storage_proofs: Vec<IndexMap<Felt, MerkleNode, RandomState>>,
     pub global_roots: GlobalRoots,
 }
@@ -3264,7 +3265,7 @@ impl<'de> Deserialize<'de> for BroadcastedDeclareTransactionV3 {
             pub compiled_class_hash: Felt,
             #[serde_as(as = "UfeHex")]
             pub version: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -3272,9 +3273,9 @@ impl<'de> Deserialize<'de> for BroadcastedDeclareTransactionV3 {
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
@@ -3376,20 +3377,20 @@ impl<'de> Deserialize<'de> for BroadcastedDeployAccountTransactionV3 {
             pub r#type: Option<String>,
             #[serde_as(as = "UfeHex")]
             pub version: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
             #[serde_as(as = "UfeHex")]
             pub contract_address_salt: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub constructor_calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
@@ -3453,7 +3454,7 @@ impl Serialize for BroadcastedInvokeTransactionV3 {
             pub nonce_data_availability_mode: &'a DataAvailabilityMode,
             pub fee_data_availability_mode: &'a DataAvailabilityMode,
             #[serde(skip_serializing_if = "Option::is_none")]
-            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            #[serde_as(as = "Option<VecAs<UfeHex>>")]
             pub proof_facts: Option<Vec<Felt>>,
         }
 
@@ -3494,25 +3495,25 @@ impl<'de> Deserialize<'de> for BroadcastedInvokeTransactionV3 {
             pub r#type: Option<String>,
             #[serde_as(as = "UfeHex")]
             pub sender_address: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub version: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
             #[serde(skip_serializing_if = "Option::is_none")]
-            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            #[serde_as(as = "Option<VecAs<UfeHex>>")]
             pub proof_facts: Option<Vec<Felt>>,
         }
 
@@ -3733,7 +3734,7 @@ impl<'de> Deserialize<'de> for DeclareTransactionV0 {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
@@ -3811,7 +3812,7 @@ impl<'de> Deserialize<'de> for DeclareTransactionV0Content {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
@@ -3896,7 +3897,7 @@ impl<'de> Deserialize<'de> for DeclareTransactionV1 {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -3980,7 +3981,7 @@ impl<'de> Deserialize<'de> for DeclareTransactionV1Content {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -4073,7 +4074,7 @@ impl<'de> Deserialize<'de> for DeclareTransactionV2 {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -4163,7 +4164,7 @@ impl<'de> Deserialize<'de> for DeclareTransactionV2Content {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -4267,7 +4268,7 @@ impl<'de> Deserialize<'de> for DeclareTransactionV3 {
             pub compiled_class_hash: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -4276,9 +4277,9 @@ impl<'de> Deserialize<'de> for DeclareTransactionV3 {
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
@@ -4381,7 +4382,7 @@ impl<'de> Deserialize<'de> for DeclareTransactionV3Content {
             pub compiled_class_hash: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -4390,9 +4391,9 @@ impl<'de> Deserialize<'de> for DeclareTransactionV3Content {
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
@@ -4626,13 +4627,13 @@ impl<'de> Deserialize<'de> for DeployAccountTransactionV1 {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
             #[serde_as(as = "UfeHex")]
             pub contract_address_salt: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub constructor_calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
@@ -4716,13 +4717,13 @@ impl<'de> Deserialize<'de> for DeployAccountTransactionV1Content {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
             #[serde_as(as = "UfeHex")]
             pub contract_address_salt: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub constructor_calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
@@ -4817,20 +4818,20 @@ impl<'de> Deserialize<'de> for DeployAccountTransactionV3 {
             pub r#type: Option<String>,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
             #[serde_as(as = "UfeHex")]
             pub contract_address_salt: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub constructor_calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
@@ -4925,20 +4926,20 @@ impl<'de> Deserialize<'de> for DeployAccountTransactionV3Content {
             pub r#type: Option<String>,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
             #[serde_as(as = "UfeHex")]
             pub contract_address_salt: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub constructor_calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
@@ -5019,7 +5020,7 @@ impl<'de> Deserialize<'de> for DeployTransaction {
             pub r#type: Option<String>,
             #[serde_as(as = "UfeHex")]
             pub contract_address_salt: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub constructor_calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
@@ -5084,7 +5085,7 @@ impl<'de> Deserialize<'de> for DeployTransactionContent {
             pub r#type: Option<String>,
             #[serde_as(as = "UfeHex")]
             pub contract_address_salt: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub constructor_calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub class_hash: Felt,
@@ -5455,13 +5456,13 @@ impl<'de> Deserialize<'de> for InvokeTransactionV0 {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub contract_address: Felt,
             #[serde_as(as = "UfeHex")]
             pub entry_point_selector: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
         }
 
@@ -5539,13 +5540,13 @@ impl<'de> Deserialize<'de> for InvokeTransactionV0Content {
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub contract_address: Felt,
             #[serde_as(as = "UfeHex")]
             pub entry_point_selector: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
         }
 
@@ -5625,13 +5626,13 @@ impl<'de> Deserialize<'de> for InvokeTransactionV1 {
             pub r#type: Option<String>,
             #[serde_as(as = "UfeHex")]
             pub sender_address: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -5709,13 +5710,13 @@ impl<'de> Deserialize<'de> for InvokeTransactionV1Content {
             pub r#type: Option<String>,
             #[serde_as(as = "UfeHex")]
             pub sender_address: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub max_fee: Felt,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
@@ -5773,7 +5774,7 @@ impl Serialize for InvokeTransactionV3 {
             pub nonce_data_availability_mode: &'a DataAvailabilityMode,
             pub fee_data_availability_mode: &'a DataAvailabilityMode,
             #[serde(skip_serializing_if = "Option::is_none")]
-            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            #[serde_as(as = "Option<VecAs<UfeHex>>")]
             pub proof_facts: Option<Vec<Felt>>,
         }
 
@@ -5813,25 +5814,25 @@ impl<'de> Deserialize<'de> for InvokeTransactionV3 {
             pub r#type: Option<String>,
             #[serde_as(as = "UfeHex")]
             pub sender_address: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
             #[serde(skip_serializing_if = "Option::is_none")]
-            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            #[serde_as(as = "Option<VecAs<UfeHex>>")]
             pub proof_facts: Option<Vec<Felt>>,
         }
 
@@ -5892,7 +5893,7 @@ impl Serialize for InvokeTransactionV3Content {
             pub nonce_data_availability_mode: &'a DataAvailabilityMode,
             pub fee_data_availability_mode: &'a DataAvailabilityMode,
             #[serde(skip_serializing_if = "Option::is_none")]
-            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            #[serde_as(as = "Option<VecAs<UfeHex>>")]
             pub proof_facts: Option<Vec<Felt>>,
         }
 
@@ -5929,25 +5930,25 @@ impl<'de> Deserialize<'de> for InvokeTransactionV3Content {
             pub r#type: Option<String>,
             #[serde_as(as = "UfeHex")]
             pub sender_address: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
             #[serde_as(as = "Option<NumAsHex>")]
             pub version: Option<u64>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub signature: Vec<Felt>,
             #[serde_as(as = "UfeHex")]
             pub nonce: Felt,
             pub resource_bounds: ResourceBoundsMapping,
             #[serde_as(as = "NumAsHex")]
             pub tip: u64,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub paymaster_data: Vec<Felt>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub account_deployment_data: Vec<Felt>,
             pub nonce_data_availability_mode: DataAvailabilityMode,
             pub fee_data_availability_mode: DataAvailabilityMode,
             #[serde(skip_serializing_if = "Option::is_none")]
-            #[serde_as(as = "Option<Vec<UfeHex>>")]
+            #[serde_as(as = "Option<VecAs<UfeHex>>")]
             pub proof_facts: Option<Vec<Felt>>,
         }
 
@@ -6034,7 +6035,7 @@ impl<'de> Deserialize<'de> for L1HandlerTransaction {
             pub contract_address: Felt,
             #[serde_as(as = "UfeHex")]
             pub entry_point_selector: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
         }
 
@@ -6105,7 +6106,7 @@ impl<'de> Deserialize<'de> for L1HandlerTransactionContent {
             pub contract_address: Felt,
             #[serde_as(as = "UfeHex")]
             pub entry_point_selector: Felt,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub calldata: Vec<Felt>,
         }
 
@@ -8212,7 +8213,7 @@ impl<'de> Deserialize<'de> for GetStateUpdateRequest {
         #[derive(Deserialize)]
         #[serde(transparent)]
         struct Field1 {
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub value: Vec<Felt>,
         }
 
@@ -8592,7 +8593,7 @@ impl<'de> Deserialize<'de> for GetStorageProofRequest {
         #[derive(Deserialize)]
         #[serde(transparent)]
         struct Field1 {
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub value: Vec<Felt>,
         }
 
@@ -8600,7 +8601,7 @@ impl<'de> Deserialize<'de> for GetStorageProofRequest {
         #[derive(Deserialize)]
         #[serde(transparent)]
         struct Field2 {
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub value: Vec<Felt>,
         }
 
@@ -9328,7 +9329,7 @@ impl Serialize for SubscribeEventsRequest {
         #[derive(Serialize)]
         #[serde(transparent)]
         struct Field1<'a> {
-            #[serde_as(as = "[Vec<UfeHex>]")]
+            #[serde_as(as = "[VecAs<UfeHex>]")]
             pub value: &'a [Vec<Felt>],
         }
 
@@ -9380,7 +9381,7 @@ impl Serialize for SubscribeEventsRequestRef<'_> {
         #[derive(Serialize)]
         #[serde(transparent)]
         struct Field1<'a> {
-            #[serde_as(as = "[Vec<UfeHex>]")]
+            #[serde_as(as = "[VecAs<UfeHex>]")]
             pub value: &'a [Vec<Felt>],
         }
 
@@ -9432,7 +9433,7 @@ impl<'de> Deserialize<'de> for SubscribeEventsRequest {
         #[derive(Deserialize)]
         #[serde(transparent)]
         struct Field1 {
-            #[serde_as(as = "Vec<Vec<UfeHex>>")]
+            #[serde_as(as = "VecAs<VecAs<UfeHex>>")]
             pub value: Vec<Vec<Felt>>,
         }
 
@@ -9685,7 +9686,7 @@ impl<'de> Deserialize<'de> for SubscribeNewTransactionReceiptsRequest {
         #[derive(Deserialize)]
         #[serde(transparent)]
         struct Field1 {
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub value: Vec<Felt>,
         }
 
@@ -9836,7 +9837,7 @@ impl<'de> Deserialize<'de> for SubscribeNewTransactionsRequest {
         #[derive(Deserialize)]
         #[serde(transparent)]
         struct Field1 {
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             pub value: Vec<Felt>,
         }
 

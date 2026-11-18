@@ -1,5 +1,6 @@
 use alloc::{borrow::ToOwned, boxed::Box, collections::BTreeMap, format, string::String, vec::Vec};
 
+use crate::serde::collection::VecAs;
 use crate::{
     crypto::compute_hash_on_elements,
     serde::{num_hex::u64 as u64_hex, unsigned_field_element::UfeHex},
@@ -75,7 +76,7 @@ pub struct LegacyProgram {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compiler_version: Option<String>,
     /// The Cairo assembly bytecode of the contract.
-    #[serde_as(as = "Vec<UfeHex>")]
+    #[serde_as(as = "VecAs<UfeHex>")]
     pub data: Vec<Felt>,
     /// Debug information which is optionally emitted by the compiler. This field is not used for
     /// class declaration or class hash calculation.
@@ -689,7 +690,7 @@ impl LegacyProgram {
             builtins: &'a Vec<String>,
             #[serde(skip_serializing_if = "Option::is_none")]
             compiler_version: &'a Option<String>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             data: &'a Vec<Felt>,
             debug_info: Option<()>,
             hints: &'a BTreeMap<u64, Vec<LegacyHint>>,
@@ -779,12 +780,12 @@ impl SerializeAs<LegacyProgram> for ProgramForHintedHash {
         #[derive(Serialize)]
         struct HashVo<'a> {
             #[serde(skip_serializing_if = "should_skip_attributes_for_hinted_hash")]
-            #[serde_as(as = "Option<Vec<AttributeForHintedHash>>")]
+            #[serde_as(as = "Option<VecAs<AttributeForHintedHash>>")]
             attributes: &'a Option<Vec<LegacyAttribute>>,
             builtins: &'a Vec<String>,
             #[serde(skip_serializing_if = "Option::is_none")]
             compiler_version: &'a Option<String>,
-            #[serde_as(as = "Vec<UfeHex>")]
+            #[serde_as(as = "VecAs<UfeHex>")]
             data: &'a Vec<Felt>,
             debug_info: &'a Option<LegacyDebugInfo>,
             hints: &'a BTreeMap<u64, Vec<LegacyHint>>,

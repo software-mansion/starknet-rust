@@ -24,8 +24,7 @@ reqwest.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_with = { workspace = true, features = ["std"] }
-worker = { workspace = true, optional = true }
+serde_with.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }
@@ -40,6 +39,7 @@ semver = { workspace = true, features = ["std"] }
 default = ["std"]
 std = ["starknet-rust-core/std"]
 no_unknown_fields = ["starknet-rust-core/no_unknown_fields"]
+worker = []
 
 [lints]
 workspace = true
