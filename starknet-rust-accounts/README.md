@@ -1,1 +1,52 @@
 # Types for handling Starknet account abstraction
+
+## SNIP-29 paymasters
+
+`paymaster::PaymasterClient` supports availability checks, gas-token discovery,
+transaction construction/fee quotes, and execution. `HttpPaymasterTransport` uses
+an application-configured URL/client and checks HTTP status, JSON-RPC version,
+response ID and mutually exclusive result/error fields. Configure request
+headers/timeouts on the supplied `reqwest::Client`; there is no implicit service.
+
+```rust,ignore
+let client = PaymasterClient::new(transport);
+let quote = client.build(&intended_transaction, &parameters).await?;
+// Inspect quote.fee (match its variant) and obtain user approval.
+let checked = quote.validate(&intended_transaction, &parameters, &approval_policy)?;
+let signed = checked.sign(&owner_signer).await?;
+let result = client.execute(&signed).await?;
+```
+
+Approval policy must come from the application's intended transaction and
+independently configured provider, never blindly from the paymaster response.
+Validation requires explicit time bounds and checks transaction/deployment type,
+exact intended calls, chain, caller, validity interval, and canonical SNIP-9
+message hash. Sponsored mode permits no appended fee call. Token-paid mode
+permits exactly one appended ERC20 transfer, to the independently approved
+collector, in the approved gas token, with both amount limbs checked as u128 and
+the total bounded by a U256 user ceiling. Before parsing or hashing returned typed
+data, validation requires the exact locally defined SNIP-9 types and primary type.
+Extra unused type definitions are also rejected, preventing untrusted dependency
+graphs from reaching the recursive generic encoder. The returned message/domain
+must still match the canonical hash. Only opaque validated handles can be signed,
+and only signed handles can be passed to execute.
+
+Execution borrows the immutable signed authorization, retaining it after an error
+or cancellation. Requests are never retried automatically. An ambiguous response
+may follow successful submission: reconcile that outcome before explicitly
+resubmitting the same authorization or approving a fresh authorization/nonce.
+Retaining the payload does not guarantee that a paymaster processes retries
+idempotently. JSON-RPC failures retain optional structured `data` for application
+diagnostics, including the distinction between an absent field and explicit null.
+
+Invocation and deploy-and-invoke use standard Stark signers. Standalone deployment
+is supported in sponsored mode and requires the deployment descriptor to match
+exactly. Deployment descriptors and execute results remain protocol-shaped JSON;
+the library does not choose deployment keys, inspect class safety, implement a
+relayer, or verify actual network settlement. No live paymaster is used in tests.
+
+Nonempty SNIP-9 v1/v2 hashes are checked against independently generated
+`starknet@11.5.1` fixtures in `starknet-rust-core/test-data/typed-data/snip9/`.
+The fixture includes the exact messages, expected hashes, npm integrity digest,
+and a version-checked regeneration script. Precomputed hexadecimal selectors are
+encoded as field elements; malformed or out-of-field-range values are rejected.

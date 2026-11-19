@@ -2981,6 +2981,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "coins-ledger",
+ "reqwest",
  "serde",
  "serde_json",
  "speculos-client",
@@ -2991,6 +2992,7 @@ dependencies = [
  "test-common",
  "thiserror 2.0.21",
  "tokio",
+ "url",
 ]
 
 [[package]]

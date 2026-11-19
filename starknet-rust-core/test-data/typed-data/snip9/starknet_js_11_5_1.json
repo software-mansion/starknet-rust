@@ -1,0 +1,236 @@
+{
+  "source": {
+    "package": "starknet@11.5.1",
+    "npm_integrity": "sha512-z7xZnCVIWsn3OS04yvYEvqVKaA6zn0RQxpRV51N5HX7ram05LTtwxcH8WZQG45e3J7UefSJ+5sh80BEeXO0npA==",
+    "api": "outsideExecution.getTypedData + typedData.getMessageHash",
+    "provenance": "Generated independently using the published Starknet.js package; no Rust hashes used."
+  },
+  "chain_id": "0x534e5f5345504f4c4941",
+  "account": "0x1234",
+  "caller": "0x414e595f43414c4c4552",
+  "nonce": "0x123",
+  "execute_after": 100,
+  "execute_before": 200,
+  "calls": [
+    {
+      "contractAddress": "0x1",
+      "entrypoint": "transfer",
+      "calldata": [
+        "0x2",
+        "0x3",
+        "0x0"
+      ]
+    },
+    {
+      "contractAddress": "0x4",
+      "entrypoint": "approve",
+      "calldata": [
+        "0x5",
+        "0x6",
+        "0x0"
+      ]
+    }
+  ],
+  "selectors": [
+    "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+    "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c"
+  ],
+  "vectors": [
+    {
+      "version": "1",
+      "typed_data": {
+        "types": {
+          "StarkNetDomain": [
+            {
+              "name": "name",
+              "type": "felt"
+            },
+            {
+              "name": "version",
+              "type": "felt"
+            },
+            {
+              "name": "chainId",
+              "type": "felt"
+            }
+          ],
+          "OutsideExecution": [
+            {
+              "name": "caller",
+              "type": "felt"
+            },
+            {
+              "name": "nonce",
+              "type": "felt"
+            },
+            {
+              "name": "execute_after",
+              "type": "felt"
+            },
+            {
+              "name": "execute_before",
+              "type": "felt"
+            },
+            {
+              "name": "calls_len",
+              "type": "felt"
+            },
+            {
+              "name": "calls",
+              "type": "OutsideCall*"
+            }
+          ],
+          "OutsideCall": [
+            {
+              "name": "to",
+              "type": "felt"
+            },
+            {
+              "name": "selector",
+              "type": "felt"
+            },
+            {
+              "name": "calldata_len",
+              "type": "felt"
+            },
+            {
+              "name": "calldata",
+              "type": "felt*"
+            }
+          ]
+        },
+        "primaryType": "OutsideExecution",
+        "domain": {
+          "name": "Account.execute_from_outside",
+          "version": "1",
+          "chainId": "0x534e5f5345504f4c4941"
+        },
+        "message": {
+          "caller": "0x414e595f43414c4c4552",
+          "execute_after": 100,
+          "execute_before": 200,
+          "nonce": "0x123",
+          "calls_len": 2,
+          "calls": [
+            {
+              "to": "0x1",
+              "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+              "calldata": [
+                "2",
+                "3",
+                "0"
+              ],
+              "calldata_len": 3
+            },
+            {
+              "to": "0x4",
+              "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+              "calldata": [
+                "5",
+                "6",
+                "0"
+              ],
+              "calldata_len": 3
+            }
+          ]
+        }
+      },
+      "message_hash": "0x328b4a3d1b97871a94ee9d7fe2fb31a58eb11bfcffa6a0fa69f7d615b907af6"
+    },
+    {
+      "version": "2",
+      "typed_data": {
+        "types": {
+          "StarknetDomain": [
+            {
+              "name": "name",
+              "type": "shortstring"
+            },
+            {
+              "name": "version",
+              "type": "shortstring"
+            },
+            {
+              "name": "chainId",
+              "type": "shortstring"
+            },
+            {
+              "name": "revision",
+              "type": "shortstring"
+            }
+          ],
+          "OutsideExecution": [
+            {
+              "name": "Caller",
+              "type": "ContractAddress"
+            },
+            {
+              "name": "Nonce",
+              "type": "felt"
+            },
+            {
+              "name": "Execute After",
+              "type": "u128"
+            },
+            {
+              "name": "Execute Before",
+              "type": "u128"
+            },
+            {
+              "name": "Calls",
+              "type": "Call*"
+            }
+          ],
+          "Call": [
+            {
+              "name": "To",
+              "type": "ContractAddress"
+            },
+            {
+              "name": "Selector",
+              "type": "selector"
+            },
+            {
+              "name": "Calldata",
+              "type": "felt*"
+            }
+          ]
+        },
+        "primaryType": "OutsideExecution",
+        "domain": {
+          "name": "Account.execute_from_outside",
+          "version": "2",
+          "chainId": "0x534e5f5345504f4c4941",
+          "revision": "1"
+        },
+        "message": {
+          "Caller": "0x414e595f43414c4c4552",
+          "Nonce": "0x123",
+          "Execute After": 100,
+          "Execute Before": 200,
+          "Calls": [
+            {
+              "To": "0x1",
+              "Selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+              "Calldata": [
+                "2",
+                "3",
+                "0"
+              ]
+            },
+            {
+              "To": "0x4",
+              "Selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+              "Calldata": [
+                "5",
+                "6",
+                "0"
+              ]
+            }
+          ]
+        }
+      },
+      "message_hash": "0x6102a12d50011345a89d32fa05d3bff06c8e0339c1ceb42eeedbbda3fb5f47a"
+    }
+  ]
+}
