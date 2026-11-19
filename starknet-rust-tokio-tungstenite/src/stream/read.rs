@@ -247,6 +247,34 @@ impl StreamReadDriver {
                         }
                     }
                     StreamUpdateOrResponse::Response(JsonRpcResponse::Success { id, result }) => {
+                        // Validate the result against its pending request, not just the union of
+                        // both response types. Otherwise a bool subscribe reply is silently
+                        // routed to the unsubscribe table and becomes a retryable timeout.
+                        if let Some(id) = id {
+                            let expected = match &result {
+                                SubscriptionIdOrBool::Bool(_)
+                                    if self.pending_subscriptions.contains_key(&id)
+                                        && !self.pending_unsubscriptions.contains_key(&id) =>
+                                {
+                                    Some("a string subscription ID")
+                                }
+                                SubscriptionIdOrBool::SubscriptionId(_)
+                                    if self.pending_unsubscriptions.contains_key(&id)
+                                        && !self.pending_subscriptions.contains_key(&id) =>
+                                {
+                                    Some("a boolean unsubscribe result")
+                                }
+                                _ => None,
+                            };
+                            if let Some(expected) = expected {
+                                return HandleMessageResult::MalformedMessage {
+                                    error: Arc::new(<SerdeJsonError as serde::de::Error>::custom(
+                                        format!("invalid response result: expected {expected}"),
+                                    )),
+                                    id: Some(MalformedMessage::Response { id }),
+                                };
+                            }
+                        }
                         match result {
                             SubscriptionIdOrBool::SubscriptionId(subscription_id) => {
                                 // Response for subscribe requests
