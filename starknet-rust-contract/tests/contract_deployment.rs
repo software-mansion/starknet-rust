@@ -75,14 +75,7 @@ async fn can_deploy_contract_inner(account_address: Felt, udc: UdcSelector, uniq
     let factory = ContractFactory::new_with_udc(class_hash, account, udc);
     let salt = SigningKey::from_random().secret_scalar();
 
-    let deployment = factory
-        .deploy_v3(vec![Felt::ONE], salt, unique)
-        .l1_gas(0)
-        .l1_gas_price(1_000_000_000_000_000)
-        .l2_gas(2_000_000)
-        .l2_gas_price(100_000_000_000)
-        .l1_data_gas(1000)
-        .l1_data_gas_price(1_000_000_000_000_000);
+    let deployment = factory.deploy_v3(vec![Felt::ONE], salt, unique);
     let deployed_address = deployment.deployed_address();
 
     send_with_retry(&provider, || async {
