@@ -136,7 +136,7 @@ fn message(execution: &OutsideExecution, version: OutsideExecutionVersion) -> Va
     match version {
         OutsideExecutionVersion::V1 => object(vec![
             ("caller", felt(execution.caller)),
-            ("nonce", felt(execution.nonce.get())),
+            ("nonce", felt(execution.nonce.into())),
             (
                 "execute_after",
                 Value::UnsignedInteger(execution.execute_after.into()),
@@ -170,7 +170,7 @@ fn message(execution: &OutsideExecution, version: OutsideExecutionVersion) -> Va
         ]),
         OutsideExecutionVersion::V2 => object(vec![
             ("Caller", felt(execution.caller)),
-            ("Nonce", felt(execution.nonce.get())),
+            ("Nonce", felt(execution.nonce.into())),
             (
                 "Execute After",
                 Value::UnsignedInteger(execution.execute_after.into()),

@@ -57,11 +57,11 @@ impl SignedOutsideExecution {
     ///
     /// Both versions use the same Cairo struct encoding and different entrypoint selectors.
     /// Explicit cloning remains possible; the account's nonce check enforces replay protection.
-    pub fn call(self) -> Call {
+    pub fn into_call(self) -> Call {
         let e = self.execution;
         let mut calldata = vec![
             e.caller,
-            e.nonce.get(),
+            e.nonce.into(),
             Felt::from(e.execute_after),
             Felt::from(e.execute_before),
             Felt::from(e.calls.len() as u64),
@@ -123,7 +123,7 @@ mod tests {
             );
             assert_eq!(signed.account(), Felt::from(8u64));
             assert_eq!(signed.version(), version);
-            let call = signed.call();
+            let call = signed.into_call();
             assert_eq!(call.to, Felt::from(8u64));
             assert_eq!(call.selector, get_selector_from_name(name).unwrap());
             assert_eq!(

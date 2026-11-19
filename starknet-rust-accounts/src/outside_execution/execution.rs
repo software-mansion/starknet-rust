@@ -1,10 +1,24 @@
-use starknet_rust_core::types::{Call, Felt};
+use starknet_rust_core::types::{BlockId, Call, Felt};
+use starknet_rust_providers::Provider;
 use starknet_rust_signers::Signer;
 
 use super::{
     OutsideExecutionError, OutsideExecutionNonce, OutsideExecutionVersion, SignOutsideError,
     SignedOutsideExecution, typed_data,
 };
+
+/// Nonce attempts made by [`OutsideExecution::new`].
+pub const NEW_NONCE_ATTEMPTS: usize = 3;
+
+const fn check_time_bounds(
+    execute_after: u64,
+    execute_before: u64,
+) -> Result<(), OutsideExecutionError> {
+    if execute_after >= execute_before {
+        return Err(OutsideExecutionError::InvalidTimeBounds);
+    }
+    Ok(())
+}
 
 /// Full, inspectable authorization to be signed by the account owner.
 #[derive(Debug, Clone)]
@@ -22,27 +36,27 @@ pub struct OutsideExecution {
 }
 
 impl OutsideExecution {
-    /// Creates an authorization with a random nonce and exclusive timestamp bounds.
+    /// Creates an authorization with a fresh nonce and exclusive timestamp bounds.
     ///
-    /// The nonce is a random 251-bit value that is not checked with the account; a collision
-    /// with a used nonce is negligible. Use [`Self::with_nonce`] with
-    /// [`OutsideExecutionNonce::fresh`] to check it on-chain first.
+    /// The nonce comes from [`OutsideExecutionNonce::fresh`] with up to
+    /// [`NEW_NONCE_ATTEMPTS`] attempts, queried against `account` at `block`. Use
+    /// [`Self::with_nonce`] to control the attempt limit.
     ///
     /// Returns [`OutsideExecutionError::InvalidTimeBounds`] unless
-    /// `execute_after < execute_before`.
-    pub fn new(
+    /// `execute_after < execute_before`, before querying the provider.
+    pub async fn new<P: Provider>(
+        provider: &P,
+        account: Felt,
+        block: BlockId,
         caller: Felt,
         execute_after: u64,
         execute_before: u64,
         calls: Vec<Call>,
     ) -> Result<Self, OutsideExecutionError> {
-        Self::with_nonce(
-            OutsideExecutionNonce::random(),
-            caller,
-            execute_after,
-            execute_before,
-            calls,
-        )
+        check_time_bounds(execute_after, execute_before)?;
+        let nonce =
+            OutsideExecutionNonce::fresh(provider, account, block, NEW_NONCE_ATTEMPTS).await?;
+        Self::with_nonce(nonce, caller, execute_after, execute_before, calls)
     }
 
     /// Creates an authorization with a checked nonce and exclusive timestamp bounds.
@@ -56,9 +70,7 @@ impl OutsideExecution {
         execute_before: u64,
         calls: Vec<Call>,
     ) -> Result<Self, OutsideExecutionError> {
-        if execute_after >= execute_before {
-            return Err(OutsideExecutionError::InvalidTimeBounds);
-        }
+        check_time_bounds(execute_after, execute_before)?;
         Ok(Self {
             caller,
             nonce,
@@ -74,8 +86,8 @@ impl OutsideExecution {
     }
 
     /// Returns the unordered outside-execution nonce.
-    pub const fn nonce(&self) -> Felt {
-        self.nonce.get()
+    pub fn nonce(&self) -> Felt {
+        self.nonce.into()
     }
 
     /// Returns the exclusive lower Unix timestamp bound, in seconds.
@@ -123,24 +135,19 @@ mod tests {
 
     #[test]
     fn constructor_rejects_equal_and_reversed_bounds() {
+        let nonce = || OutsideExecutionNonce::from_felt_unchecked(Felt::ONE);
         for (after, before) in [(100, 100), (101, 100), (u64::MAX, 0), (u64::MAX, u64::MAX)] {
             assert!(matches!(
-                OutsideExecution::new(ANY_CALLER, after, before, vec![]),
+                OutsideExecution::with_nonce(nonce(), ANY_CALLER, after, before, vec![]),
                 Err(OutsideExecutionError::InvalidTimeBounds)
             ));
         }
         for (after, before) in [(0, 1), (100, 200), (u64::MAX - 1, u64::MAX)] {
-            let request = OutsideExecution::new(ANY_CALLER, after, before, vec![]).unwrap();
+            let request =
+                OutsideExecution::with_nonce(nonce(), ANY_CALLER, after, before, vec![]).unwrap();
             assert_eq!(request.execute_after(), after);
             assert_eq!(request.execute_before(), before);
+            assert_eq!(request.nonce(), Felt::ONE);
         }
-    }
-
-    #[test]
-    fn new_picks_distinct_nonzero_random_nonces() {
-        let a = OutsideExecution::new(ANY_CALLER, 0, 1, vec![]).unwrap();
-        let b = OutsideExecution::new(ANY_CALLER, 0, 1, vec![]).unwrap();
-        assert_ne!(a.nonce(), Felt::ZERO);
-        assert_ne!(a.nonce(), b.nonce());
     }
 }

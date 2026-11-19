@@ -10,6 +10,9 @@ pub enum OutsideExecutionError {
     /// The typed message could not be constructed or hashed.
     #[error(transparent)]
     Hash(#[from] TypedDataError),
+    /// No fresh nonce could be obtained.
+    #[error(transparent)]
+    Nonce(#[from] FreshNonceError),
 }
 
 /// Signing or message encoding failure.

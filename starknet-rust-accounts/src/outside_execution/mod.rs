@@ -1,11 +1,11 @@
 //! SNIP-9 v1/v2 outside execution.
 //!
 //! A signing account authorizes calls with a separate, unordered SNIP-9 nonce. The relayer
-//! submits [`SignedOutsideExecution::call`] through its ordinary `execute_v3` builder and pays
+//! submits [`SignedOutsideExecution::into_call`] through its ordinary `execute_v3` builder and pays
 //! fees. Inspect the request before signing. [`ANY_CALLER`] permits any relayer.
 //!
-//! [`OutsideExecution::new`] validates the exclusive Unix timestamp interval and picks a random
-//! nonce; [`OutsideExecution::with_nonce`] accepts a nonce checked on-chain with
+//! [`OutsideExecution::new`] validates the exclusive Unix timestamp interval and obtains a nonce
+//! checked with the account; [`OutsideExecution::with_nonce`] accepts one from
 //! [`OutsideExecutionNonce::fresh`]. A [`SignedOutsideExecution`] can only be obtained through
 //! [`OutsideExecution::sign`]. The account enforces replay protection on-chain.
 
@@ -20,7 +20,7 @@ use starknet_rust_core::utils::get_selector_from_name;
 use starknet_rust_providers::Provider;
 
 pub use errors::{FreshNonceError, OutsideExecutionError, SignOutsideError, SupportedVersionError};
-pub use execution::OutsideExecution;
+pub use execution::{NEW_NONCE_ATTEMPTS, OutsideExecution};
 pub use nonce::OutsideExecutionNonce;
 pub use signed::SignedOutsideExecution;
 
