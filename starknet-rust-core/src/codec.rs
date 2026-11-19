@@ -8,6 +8,9 @@ use crate::types::{Felt, U256};
 
 pub use starknet_rust_core_derive::{Decode, Encode};
 
+/// Upper bound on the number of items preallocated from an untrusted length prefix.
+pub(crate) const MAX_PREALLOCATED_ITEMS: usize = 1024;
+
 const I128_MIN: Felt =
     Felt::from_hex_unchecked("0x0800000000000010ffffffffffffffff80000000000000000000000000000001");
 const I128_MAX: Felt =
@@ -433,7 +436,8 @@ where
             .to_usize()
             .ok_or_else(|| Error::value_out_of_range(length, "usize"))?;
 
-        let mut result = Self::with_capacity(length);
+        // The length is untrusted, so cap the preallocation and let the vector grow on demand.
+        let mut result = Self::with_capacity(length.min(MAX_PREALLOCATED_ITEMS));
 
         for _ in 0..length {
             result.push(T::decode_iter(iter)?);
@@ -506,6 +510,15 @@ impl Error {
     {
         Self {
             repr: format!("enum tag `{tag}` is unknown for type `{type_name}`").into_boxed_str(),
+        }
+    }
+
+    /// Creates an [`Error`] which indicates that a `ByteArray` pending word length exceeds the
+    /// maximum allowed.
+    pub fn byte_array_pending_word_length_exceeded(length: usize, max: usize) -> Self {
+        Self {
+            repr: format!("pending word length `{length}` exceeds the maximum of `{max}`")
+                .into_boxed_str(),
         }
     }
 
@@ -1356,5 +1369,14 @@ mod tests {
             CairoType::decode(&[Felt::from_str("1").unwrap(), Felt::from_str("1").unwrap(),])
                 .unwrap()
         );
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn test_decode_vec_oversized_length() {
+        // `u32::MAX` fits in `usize` on 32-bit targets, so it reaches the capped preallocation there.
+        for len in [u64::from(u32::MAX), u64::MAX] {
+            assert!(Vec::<Felt>::decode(&[Felt::from(len)]).is_err());
+        }
     }
 }
