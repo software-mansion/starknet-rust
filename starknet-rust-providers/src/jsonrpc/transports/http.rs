@@ -7,7 +7,9 @@ use crate::{
     ProviderRequestData,
     jsonrpc::{
         JsonRpcError, JsonRpcMethod, JsonRpcResponse,
-        transports::{BatchParseError, JsonRpcTransport, parse_batch_response},
+        transports::{
+            BatchParseError, JsonRpcTransport, order_batch_responses, parse_batch_response,
+        },
     },
 };
 
@@ -36,6 +38,9 @@ pub enum HttpTransportError {
     /// The server rejected the batch as a whole and returned a single JSON-RPC error.
     #[error("batch request rejected: {0}")]
     BatchError(JsonRpcError),
+    /// The server left a batched request without a response.
+    #[error("missing response for request ID: {0}")]
+    MissingResponse(u64),
 }
 
 #[derive(Debug, Serialize)]
@@ -167,31 +172,7 @@ impl JsonRpcTransport for HttpTransport {
 
         let parsed_response = parse_batch_response(&response_body)?;
 
-        let mut responses: Vec<Option<JsonRpcResponse<serde_json::Value>>> = vec![];
-        responses.resize(request_bodies.len(), None);
-
-        // Re-order the responses as servers do not maintain order.
-        for response_item in parsed_response {
-            let id = match &response_item {
-                JsonRpcResponse::Success { id, .. } | JsonRpcResponse::Error { id, .. } => id,
-            };
-
-            // This client assigns a numeric id to every batched request, so a response
-            // with an invalid numeric id can't be correlated to one.
-            let id = match id {
-                Some(id) => *id as usize,
-                None => return Err(HttpTransportError::InvalidNumericResponseId),
-            };
-
-            if id >= request_count {
-                return Err(HttpTransportError::UnexpectedResponseId(id as u64));
-            }
-
-            responses[id] = Some(response_item);
-        }
-
-        let responses = responses.into_iter().flatten().collect::<Vec<_>>();
-        Ok(responses)
+        Ok(order_batch_responses(parsed_response, request_count)?)
     }
 }
 
@@ -200,6 +181,9 @@ impl From<BatchParseError> for HttpTransportError {
         match value {
             BatchParseError::BatchRejected(error) => Self::BatchError(error),
             BatchParseError::Json(err) => Self::Json(err),
+            BatchParseError::InvalidNumericResponseId => Self::InvalidNumericResponseId,
+            BatchParseError::UnexpectedResponseId(id) => Self::UnexpectedResponseId(id),
+            BatchParseError::MissingResponse(id) => Self::MissingResponse(id),
         }
     }
 }

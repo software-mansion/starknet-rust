@@ -36,6 +36,10 @@ pub trait JsonRpcTransport {
         R: DeserializeOwned + Send;
 
     /// Sends multiple JSON-RPC requests in parallel.
+    ///
+    /// Implementations must return exactly one response per request, in the same order as the
+    /// requests. [`JsonRpcClient`](crate::JsonRpcClient) matches responses to requests by
+    /// position and can only verify the count, not the order.
     async fn send_requests<R>(
         &self,
         requests: R,
@@ -44,12 +48,19 @@ pub trait JsonRpcTransport {
         R: AsRef<[ProviderRequestData]> + Send + Sync;
 }
 
-/// Outcome of parsing a JSON-RPC batch response body that is not an array of responses.
+/// Reasons a JSON-RPC batch response cannot be turned into one response per request: the body
+/// is not an array of responses, or the responses do not match the requests one-to-one.
 pub(crate) enum BatchParseError {
     /// The server rejected the batch as a whole and returned a single JSON-RPC error object.
     BatchRejected(JsonRpcError),
     /// The response body could not be deserialized as a batch response.
     Json(serde_json::Error),
+    /// A response carried an invalid numeric id that can't be matched to a request.
+    InvalidNumericResponseId,
+    /// A response carried an id that matches no request, or one that was already answered.
+    UnexpectedResponseId(u64),
+    /// The request with this id was left without a response.
+    MissingResponse(u64),
 }
 
 /// Parses a batch response body into individual responses.
@@ -71,4 +82,40 @@ pub(crate) fn parse_batch_response(
             Err(BatchParseError::Json(err))
         }
     }
+}
+
+/// Re-orders batch responses to match the order of the requests, as servers do not maintain
+/// order. Request ids are expected to be the request indices.
+///
+/// Fails unless every request is answered exactly once, so that the returned responses always
+/// line up with the requests.
+pub(crate) fn order_batch_responses(
+    parsed: Vec<JsonRpcResponse<serde_json::Value>>,
+    request_count: usize,
+) -> Result<Vec<JsonRpcResponse<serde_json::Value>>, BatchParseError> {
+    let mut responses: Vec<Option<JsonRpcResponse<serde_json::Value>>> = vec![None; request_count];
+
+    for response_item in parsed {
+        // This client assigns a numeric id to every batched request, so a response
+        // with an invalid numeric id can't be correlated to one.
+        let id = match &response_item {
+            JsonRpcResponse::Success { id, .. } | JsonRpcResponse::Error { id, .. } => {
+                id.ok_or(BatchParseError::InvalidNumericResponseId)?
+            }
+        };
+
+        match usize::try_from(id)
+            .ok()
+            .and_then(|ind| responses.get_mut(ind))
+        {
+            Some(slot @ None) => *slot = Some(response_item),
+            _ => return Err(BatchParseError::UnexpectedResponseId(id)),
+        }
+    }
+
+    responses
+        .into_iter()
+        .enumerate()
+        .map(|(ind, response)| response.ok_or(BatchParseError::MissingResponse(ind as u64)))
+        .collect()
 }

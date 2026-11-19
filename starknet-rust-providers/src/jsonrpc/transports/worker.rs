@@ -35,6 +35,9 @@ pub enum WorkersTransportError {
     /// The server rejected the batch as a whole and returned a single JSON-RPC error.
     #[error("batch request rejected: {0}")]
     BatchError(JsonRpcError),
+    /// The server left a batched request without a response.
+    #[error("missing response for request ID: {0}")]
+    MissingResponse(u64),
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -164,31 +167,10 @@ impl JsonRpcTransport for WorkersTransport {
 
         let parsed_response = super::parse_batch_response(&response_body)?;
 
-        let mut responses: Vec<Option<JsonRpcResponse<serde_json::Value>>> = vec![];
-        responses.resize(request_bodies.len(), None);
-
-        // Re-order the responses as servers do not maintain order.
-        for response_item in parsed_response {
-            let id = match &response_item {
-                JsonRpcResponse::Success { id, .. } | JsonRpcResponse::Error { id, .. } => id,
-            };
-
-            // This client assigns a numeric id to every batched request, so a response
-            // with an invalid numeric id can't be correlated to one.
-            let id = match id {
-                Some(id) => *id as usize,
-                None => return Err(Self::Error::InvalidNumericResponseId),
-            };
-
-            if id >= request_count {
-                return Err(Self::Error::UnexpectedResponseId(id as u64));
-            }
-
-            responses[id] = Some(response_item);
-        }
-
-        let responses = responses.into_iter().flatten().collect::<Vec<_>>();
-        Ok(responses)
+        Ok(super::order_batch_responses(
+            parsed_response,
+            request_count,
+        )?)
     }
 }
 
@@ -209,6 +191,9 @@ impl From<BatchParseError> for WorkersTransportError {
         match value {
             BatchParseError::BatchRejected(error) => Self::BatchError(error),
             BatchParseError::Json(err) => Self::Json(err),
+            BatchParseError::InvalidNumericResponseId => Self::InvalidNumericResponseId,
+            BatchParseError::UnexpectedResponseId(id) => Self::UnexpectedResponseId(id),
+            BatchParseError::MissingResponse(id) => Self::MissingResponse(id),
         }
     }
 }
