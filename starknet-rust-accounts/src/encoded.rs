@@ -1,10 +1,10 @@
 use crate::{
     Account, ConnectedAccount, ExecutionEncoder, ExecutionEncoding, RawDeclarationV3,
-    RawExecutionV3,
+    RawExecutionV3, single_owner::encode_calls,
 };
 
 use async_trait::async_trait;
-use starknet_rust_core::types::{BlockId, BlockTag, Call, Felt, contract::ComputeClassHashError};
+use starknet_rust_core::types::{BlockId, BlockTag, Call, Felt};
 use starknet_rust_providers::Provider;
 use starknet_rust_signers::{AccountSigner, SignerInteractivityContext};
 
@@ -23,17 +23,6 @@ where
     chain_id: Felt,
     block_id: BlockId,
     encoding: ExecutionEncoding,
-}
-
-/// Errors signing an execution/declaration request.
-#[derive(Debug, thiserror::Error)]
-pub enum EncodedSignError<S> {
-    /// An error encountered by the signer implementation.
-    #[error(transparent)]
-    Signer(S),
-    /// Failure to compute the class hash of the class being declared.
-    #[error(transparent)]
-    ClassHash(ComputeClassHashError),
 }
 
 impl<P, S> EncodedAccount<P, S>
@@ -86,7 +75,7 @@ where
     P: Provider + Sync + Send,
     S: AccountSigner + Sync + Send,
 {
-    type SignError = EncodedSignError<S::SignError>;
+    type SignError = S::SignError;
 
     fn address(&self) -> Felt {
         self.address
@@ -102,13 +91,7 @@ where
         query_only: bool,
     ) -> Result<Vec<Felt>, Self::SignError> {
         let tx_hash = execution.transaction_hash(self.chain_id, self.address, query_only, self);
-        let signature = self
-            .signer
-            .sign_account_hash(&tx_hash)
-            .await
-            .map_err(EncodedSignError::Signer)?;
-
-        Ok(signature)
+        self.signer.sign_account_hash(&tx_hash).await
     }
 
     async fn sign_declaration_v3(
@@ -117,17 +100,11 @@ where
         query_only: bool,
     ) -> Result<Vec<Felt>, Self::SignError> {
         let tx_hash = declaration.transaction_hash(self.chain_id, self.address, query_only);
-        let signature = self
-            .signer
-            .sign_account_hash(&tx_hash)
-            .await
-            .map_err(EncodedSignError::Signer)?;
-
-        Ok(signature)
+        self.signer.sign_account_hash(&tx_hash).await
     }
 
     fn is_signer_interactive(&self, context: SignerInteractivityContext<'_>) -> bool {
-        self.signer.is_account_signer_interactive(context)
+        self.signer.is_interactive(context)
     }
 }
 
@@ -137,37 +114,7 @@ where
     S: AccountSigner + Send,
 {
     fn encode_calls(&self, calls: &[Call]) -> Vec<Felt> {
-        let mut execute_calldata: Vec<Felt> = vec![calls.len().into()];
-
-        match self.encoding {
-            ExecutionEncoding::Legacy => {
-                let mut concated_calldata: Vec<Felt> = vec![];
-                for call in calls {
-                    execute_calldata.push(call.to); // to
-                    execute_calldata.push(call.selector); // selector
-                    execute_calldata.push(concated_calldata.len().into()); // data_offset
-                    execute_calldata.push(call.calldata.len().into()); // data_len
-
-                    for item in &call.calldata {
-                        concated_calldata.push(*item);
-                    }
-                }
-
-                execute_calldata.push(concated_calldata.len().into()); // calldata_len
-                execute_calldata.extend_from_slice(&concated_calldata);
-            }
-            ExecutionEncoding::New => {
-                for call in calls {
-                    execute_calldata.push(call.to); // to
-                    execute_calldata.push(call.selector); // selector
-
-                    execute_calldata.push(call.calldata.len().into()); // calldata.len()
-                    execute_calldata.extend_from_slice(&call.calldata);
-                }
-            }
-        }
-
-        execute_calldata
+        encode_calls(self.encoding, calls)
     }
 }
 

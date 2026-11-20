@@ -44,20 +44,7 @@ jobs:
 
       - name: Test EthSigner with a deployed secp256k1 account
         if: matrix.os == 'ubuntu-latest' && matrix.toolchain == 'stable'
-        env:
-          ETH_ACCOUNT_SIERRA: ${{ runner.temp }}/eth-account.sierra.json
-        run: |
-          curl --fail --silent --show-error --location --output "$ETH_ACCOUNT_SIERRA" \
-            https://raw.githubusercontent.com/starknet-io/starknet.js/e5be57628d80b65e4499d58130d6112f1b606cb0/__mocks__/cairo/ethSigner/account_eth_oz_090.sierra.json
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/devnet.tar.gz" \
-            https://github.com/starknet-io/starknet-devnet/releases/download/v0.7.2/starknet-devnet-x86_64-unknown-linux-musl.tar.gz
-          echo "fbcc9aa0159619c29e3cca3a83f350640f60d960f43896ad1c569223a51de0fc  $RUNNER_TEMP/devnet.tar.gz" | sha256sum --check
-          tar -xzf "$RUNNER_TEMP/devnet.tar.gz" -C "$RUNNER_TEMP" starknet-devnet
-          "$RUNNER_TEMP/starknet-devnet" --port 5190 --accounts 1 --seed 190 &
-          devnet_pid=$!
-          trap 'kill "$devnet_pid" 2>/dev/null || true' EXIT
-          curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 1 http://127.0.0.1:5190/is_alive
-          cargo test --locked --features eth --test eth_account_devnet -- --ignored
+        run: ./scripts/test_eth_account_devnet.sh
 
       - name: Run cargo tests
         run: |

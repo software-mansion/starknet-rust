@@ -25,4 +25,4 @@ pub use single_owner::{ExecutionEncoding, SingleOwnerAccount};
 pub struct NotPreparedError;
 
 mod encoded;
-pub use encoded::{EncodedAccount, EncodedSignError};
+pub use encoded::EncodedAccount;

@@ -106,7 +106,7 @@ impl AccountSigner for EthSigner {
         Ok(self.sign_hash(hash).to_vec())
     }
 
-    fn is_account_signer_interactive(&self, _: SignerInteractivityContext<'_>) -> bool {
+    fn is_interactive(&self, _: SignerInteractivityContext<'_>) -> bool {
         false
     }
 }

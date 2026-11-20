@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AccountSigner` trait in `starknet-rust-signers` for signers that serialize signatures in an account-defined layout. It is implemented for `LocalWallet` and `LedgerSigner`, and for `&T`, `Box<T>` and `Arc<T>` ([#190]).
+- `EthSigner`, a secp256k1 signer producing five-felt Cairo `EthSignature` values, behind the new `eth` feature ([#190]).
+- `EncodedAccount`, an `Account` implementation that works with any `AccountSigner`, such as `EthSigner` with an Ethereum account contract ([#190]).
+
 ### Changed
 
 - **Breaking:** Ledger integration is now compatible with `coins-ledger` 0.17. `LedgerSigner::new` is synchronous, and custom transports must implement `LedgerTransport` instead of the removed `LedgerAsync` ([#184]).
@@ -119,3 +125,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#170]: https://github.com/software-mansion/starknet-rust/pull/170
 [#176]: https://github.com/software-mansion/starknet-rust/pull/176
 [#184]: https://github.com/software-mansion/starknet-rust/pull/184
+[#190]: https://github.com/software-mansion/starknet-rust/pull/190

@@ -1,0 +1,16 @@
+[package]
+name = "eth_account"
+version = "0.1.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = "2.14.0"
+openzeppelin_presets = "=3.0.0"
+# Transitive dependencies of the preset, pinned to the releases built with the same Cairo version.
+openzeppelin_interfaces = "=2.1.0"
+openzeppelin_utils = "=2.1.0"
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
+build-external-contracts = ["openzeppelin_presets::eth_account::EthAccountUpgradeable"]
