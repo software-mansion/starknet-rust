@@ -7,7 +7,7 @@ use crypto_bigint::{ArrayEncoding, U256};
 use semver::Version;
 use starknet_rust_core::{crypto::Signature, types::Felt};
 
-use crate::{Signer, SignerInteractivityContext, VerifyingKey};
+use crate::{AccountSigner, Signer, SignerInteractivityContext, VerifyingKey};
 
 pub use coins_bip32::path::DerivationPath;
 
@@ -157,6 +157,26 @@ where
 
     fn is_interactive(&self, _context: SignerInteractivityContext<'_>) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl<T> AccountSigner for LedgerSigner<T>
+where
+    T: LedgerTransport + Send,
+{
+    type SignError = LedgerError;
+
+    async fn sign_account_hash(
+        &self,
+        hash: &Felt,
+    ) -> Result<Vec<Felt>, <Self as AccountSigner>::SignError> {
+        let signature = self.sign_hash(hash).await?;
+        Ok(vec![signature.r, signature.s])
+    }
+
+    fn is_interactive(&self, context: SignerInteractivityContext<'_>) -> bool {
+        Signer::is_interactive(self, context)
     }
 }
 

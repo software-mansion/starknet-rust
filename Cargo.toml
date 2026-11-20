@@ -135,6 +135,7 @@ no_unknown_fields = [
 ]
 # Cloudflare Workers provider support
 worker = ["starknet-rust-providers/worker"]
+eth = ["starknet-rust-signers/eth", "starknet-rust-accounts/eth"]
 
 [workspace.lints]
 rustdoc.all = "warn"

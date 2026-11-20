@@ -25,12 +25,17 @@ coins-ledger = { workspace = true, optional = true }
 semver = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["sync"] }
 zeroize.workspace = true
+k256 = { version = "0.14.0", default-features = false, features = ["ecdsa"], optional = true }
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 eth-keystore = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }
+
+[dev-dependencies]
+serde_json.workspace = true
+hex-literal.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 speculos-client.workspace = true
@@ -49,6 +54,7 @@ ledger = ["coins-bip32", "coins-ledger", "semver"]
 # Encrypted JSON keystore support (`SigningKey::from_keystore` / `save_as_keystore`).
 # Not available on `wasm32-unknown-unknown`.
 keystore = ["dep:eth-keystore"]
+eth = ["dep:k256"]
 
 [lints]
 workspace = true
