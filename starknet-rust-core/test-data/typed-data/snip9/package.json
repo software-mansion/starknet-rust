@@ -1,6 +1,7 @@
 {
   "name": "snip9-reference-vectors",
   "private": true,
+  "license": "MIT OR Apache-2.0",
   "description": "Generates independent SNIP-9 reference vectors with Starknet.js",
   "scripts": {
     "generate": "node generate.js > starknet_js_11_5_1.json"

@@ -5,9 +5,9 @@ use async_trait::async_trait;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use starknet_rust_accounts::outside_execution::{
-    ANY_CALLER, NEW_NONCE_ATTEMPTS, OutsideExecution, OutsideExecutionError, OutsideExecutionNonce,
-    OutsideExecutionVersion, SupportedVersionError, V1_INTERFACE_ID, V2_INTERFACE_ID,
-    supported_version,
+    ANY_CALLER, OutsideExecution, OutsideExecutionError, OutsideExecutionNonce,
+    OutsideExecutionNonceError, OutsideExecutionVersion, SupportedVersionError, V1_INTERFACE_ID,
+    V2_INTERFACE_ID, supported_version,
 };
 use starknet_rust_core::types::{BlockId, Felt, StarknetError};
 use starknet_rust_core::utils::get_selector_from_name;
@@ -156,72 +156,100 @@ async fn discovery_propagates_rpc_errors_at_either_version() {
 }
 
 #[tokio::test]
-async fn fresh_nonce_respects_zero_and_exhausted_attempt_limits() {
-    for attempts in [0, 3] {
-        let (provider, mock) = provider(vec![response(false); attempts]);
-        let error = OutsideExecutionNonce::fresh(&provider, ACCOUNT, BLOCK, attempts)
-            .await
-            .unwrap_err();
-        assert!(error.last_provider_error.is_none());
-        assert_nonce_requests(&mock, attempts);
-    }
+async fn nonce_constructor_checks_the_given_value() {
+    let nonce = Felt::from(42u64);
+    let (provider, mock) = provider(vec![response(true)]);
+    let accepted = OutsideExecutionNonce::new(&provider, ACCOUNT, nonce, BLOCK)
+        .await
+        .unwrap();
+    assert_eq!(Felt::from(accepted), nonce);
+    assert_eq!(assert_nonce_requests(&mock, 1), [nonce]);
 }
 
 #[tokio::test]
-async fn fresh_nonce_returns_the_accepted_candidate_after_rejection() {
-    let (provider, mock) = provider(vec![response(false), response(true)]);
-    let accepted = OutsideExecutionNonce::fresh(&provider, ACCOUNT, BLOCK, 5)
+async fn nonce_constructor_reports_rejected_value() {
+    let nonce = Felt::from(42u64);
+    let (provider, mock) = provider(vec![response(false)]);
+    assert!(matches!(
+        OutsideExecutionNonce::new(&provider, ACCOUNT, nonce, BLOCK).await,
+        Err(OutsideExecutionNonceError::Invalid)
+    ));
+    assert_eq!(assert_nonce_requests(&mock, 1), [nonce]);
+}
+
+#[tokio::test]
+async fn fresh_nonce_returns_the_accepted_random_value() {
+    let (provider, mock) = provider(vec![response(true)]);
+    let accepted = OutsideExecutionNonce::fresh(&provider, ACCOUNT, BLOCK)
         .await
         .unwrap();
-    assert_eq!(Felt::from(accepted), assert_nonce_requests(&mock, 2)[1]);
+    assert_eq!(assert_nonce_requests(&mock, 1), [Felt::from(accepted)]);
     let execution = OutsideExecution::with_nonce(accepted, ANY_CALLER, 0, 1, vec![]).unwrap();
     assert_eq!(execution.nonce(), Felt::from(accepted));
 }
 
 #[tokio::test]
-async fn fresh_nonce_retries_after_rpc_error() {
-    let (provider, mock) = provider(vec![error(), response(true)]);
-    let accepted = OutsideExecutionNonce::fresh(&provider, ACCOUNT, BLOCK, 5)
-        .await
-        .unwrap();
-    assert_eq!(Felt::from(accepted), assert_nonce_requests(&mock, 2)[1]);
+async fn fresh_nonce_reports_rejection_without_retrying() {
+    let (provider, mock) = provider(vec![response(false)]);
+    assert!(matches!(
+        OutsideExecutionNonce::fresh(&provider, ACCOUNT, BLOCK).await,
+        Err(OutsideExecutionNonceError::Invalid)
+    ));
+    assert_nonce_requests(&mock, 1);
 }
 
 #[tokio::test]
-async fn fresh_nonce_reports_last_rpc_error_when_attempts_run_out() {
-    let (provider, mock) = provider(vec![response(false), error()]);
-    let error = OutsideExecutionNonce::fresh(&provider, ACCOUNT, BLOCK, 2)
+async fn fresh_nonce_propagates_rpc_errors() {
+    let (provider, mock) = provider(vec![error()]);
+    let error = OutsideExecutionNonce::fresh(&provider, ACCOUNT, BLOCK)
         .await
         .unwrap_err();
-    assert_error(&error.last_provider_error.unwrap());
-    assert_nonce_requests(&mock, 2);
+    let OutsideExecutionNonceError::Provider(error) = error else {
+        panic!("expected provider error");
+    };
+    assert_error(&error);
+    assert_nonce_requests(&mock, 1);
 }
 
 #[tokio::test]
 async fn new_uses_a_fresh_checked_nonce() {
-    let (provider, mock) = provider(vec![response(false), response(true)]);
+    let (provider, mock) = provider(vec![response(true)]);
     let execution = OutsideExecution::new(&provider, ACCOUNT, BLOCK, ANY_CALLER, 0, 1, vec![])
         .await
         .unwrap();
-    assert_eq!(execution.nonce(), assert_nonce_requests(&mock, 2)[1]);
+    assert_eq!(assert_nonce_requests(&mock, 1), [execution.nonce()]);
 }
 
 #[tokio::test]
-async fn new_rejects_bounds_before_querying_the_provider() {
-    let (provider, mock) = provider(vec![]);
+async fn new_rejects_invalid_bounds() {
+    let (provider, _) = provider(vec![response(true)]);
     assert!(matches!(
         OutsideExecution::new(&provider, ACCOUNT, BLOCK, ANY_CALLER, 1, 1, vec![]).await,
         Err(OutsideExecutionError::InvalidTimeBounds)
     ));
-    assert_nonce_requests(&mock, 0);
 }
 
 #[tokio::test]
-async fn new_reports_nonce_failure_after_the_default_attempts() {
-    let (provider, mock) = provider(vec![response(false); NEW_NONCE_ATTEMPTS]);
-    assert!(matches!(
-        OutsideExecution::new(&provider, ACCOUNT, BLOCK, ANY_CALLER, 0, 1, vec![]).await,
-        Err(OutsideExecutionError::Nonce(_))
-    ));
-    assert_nonce_requests(&mock, NEW_NONCE_ATTEMPTS);
+async fn new_reports_nonce_failures() {
+    for (responses, invalid) in [(vec![response(false)], true), (vec![error()], false)] {
+        let (provider, mock) = provider(responses);
+        let result =
+            OutsideExecution::new(&provider, ACCOUNT, BLOCK, ANY_CALLER, 0, 1, vec![]).await;
+        if invalid {
+            assert!(matches!(
+                result,
+                Err(OutsideExecutionError::Nonce(
+                    OutsideExecutionNonceError::Invalid
+                ))
+            ));
+        } else {
+            assert!(matches!(
+                result,
+                Err(OutsideExecutionError::Nonce(
+                    OutsideExecutionNonceError::Provider(_)
+                ))
+            ));
+        }
+        assert_nonce_requests(&mock, 1);
+    }
 }

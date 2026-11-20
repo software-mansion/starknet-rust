@@ -247,13 +247,12 @@ mod tests {
     #[test]
     fn both_revisions_hash_and_commit_to_account_chain_and_calls() {
         for v in [OutsideExecutionVersion::V1, OutsideExecutionVersion::V2] {
-            let e = sample();
+            let mut e = sample();
             let hash = message_hash(&e, MAINNET, Felt::ONE, v).unwrap();
             assert_ne!(hash, message_hash(&e, MAINNET, Felt::TWO, v).unwrap());
             assert_ne!(hash, message_hash(&e, SEPOLIA, Felt::ONE, v).unwrap());
-            let mut changed = e;
-            changed.calls[0].calldata.push(Felt::from(4u64));
-            assert_ne!(hash, message_hash(&changed, MAINNET, Felt::ONE, v).unwrap());
+            e.calls[0].calldata.push(Felt::from(4u64));
+            assert_ne!(hash, message_hash(&e, MAINNET, Felt::ONE, v).unwrap());
         }
     }
 

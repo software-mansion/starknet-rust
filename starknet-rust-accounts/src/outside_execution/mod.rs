@@ -4,9 +4,9 @@
 //! submits [`SignedOutsideExecution::into_call`] through its ordinary `execute_v3` builder and pays
 //! fees. Inspect the request before signing. [`ANY_CALLER`] permits any relayer.
 //!
-//! [`OutsideExecution::new`] validates the exclusive Unix timestamp interval and obtains a nonce
-//! checked with the account; [`OutsideExecution::with_nonce`] accepts one from
-//! [`OutsideExecutionNonce::fresh`]. A [`SignedOutsideExecution`] can only be obtained through
+//! [`OutsideExecution::new`] obtains a random nonce checked with the account and validates the
+//! exclusive Unix timestamp interval; [`OutsideExecution::with_nonce`] accepts one from
+//! [`OutsideExecutionNonce::new`] or [`OutsideExecutionNonce::fresh`]. A [`SignedOutsideExecution`] can only be obtained through
 //! [`OutsideExecution::sign`]. The account enforces replay protection on-chain.
 
 mod errors;
@@ -19,8 +19,10 @@ use starknet_rust_core::types::{BlockId, Felt, FunctionCall};
 use starknet_rust_core::utils::get_selector_from_name;
 use starknet_rust_providers::Provider;
 
-pub use errors::{FreshNonceError, OutsideExecutionError, SignOutsideError, SupportedVersionError};
-pub use execution::{NEW_NONCE_ATTEMPTS, OutsideExecution};
+pub use errors::{
+    OutsideExecutionError, OutsideExecutionNonceError, SignOutsideError, SupportedVersionError,
+};
+pub use execution::OutsideExecution;
 pub use nonce::OutsideExecutionNonce;
 pub use signed::SignedOutsideExecution;
 

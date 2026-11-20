@@ -10,9 +10,9 @@ pub enum OutsideExecutionError {
     /// The typed message could not be constructed or hashed.
     #[error(transparent)]
     Hash(#[from] TypedDataError),
-    /// No fresh nonce could be obtained.
+    /// The nonce could not be checked or was rejected by the account.
     #[error(transparent)]
-    Nonce(#[from] FreshNonceError),
+    Nonce(#[from] OutsideExecutionNonceError),
 }
 
 /// Signing or message encoding failure.
@@ -37,14 +37,13 @@ pub enum SupportedVersionError {
     NotSupportedAccount,
 }
 
-/// No unused outside-execution nonce was confirmed within the attempt limit.
-///
-/// Provider failures count as failed attempts and are retried; the most recent one, if any, is
-/// kept for diagnosis.
+/// Failure to confirm an outside-execution nonce with the account.
 #[derive(Debug, thiserror::Error)]
-#[error("could not find an unused outside-execution nonce within the attempt limit")]
-pub struct FreshNonceError {
-    /// Last provider failure observed while checking candidates.
-    #[source]
-    pub last_provider_error: Option<ProviderError>,
+pub enum OutsideExecutionNonceError {
+    /// The nonce query failed.
+    #[error(transparent)]
+    Provider(#[from] ProviderError),
+    /// The account reports the nonce as already used.
+    #[error("outside-execution nonce rejected by the account")]
+    Invalid,
 }

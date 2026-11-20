@@ -19,8 +19,6 @@ const fixture = {
     package: `starknet@${REFERENCE.version}`,
     npm_integrity: REFERENCE.integrity,
     api: "outsideExecution.getTypedData + typedData.getMessageHash",
-    provenance:
-      "Generated independently using the published Starknet.js package; no Rust hashes used.",
   },
   chain_id: constants.StarknetChainId.SN_SEPOLIA,
   account: "0x1234",

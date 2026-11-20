@@ -7,19 +7,6 @@ use super::{
     SignedOutsideExecution, typed_data,
 };
 
-/// Nonce attempts made by [`OutsideExecution::new`].
-pub const NEW_NONCE_ATTEMPTS: usize = 3;
-
-const fn check_time_bounds(
-    execute_after: u64,
-    execute_before: u64,
-) -> Result<(), OutsideExecutionError> {
-    if execute_after >= execute_before {
-        return Err(OutsideExecutionError::InvalidTimeBounds);
-    }
-    Ok(())
-}
-
 /// Full, inspectable authorization to be signed by the account owner.
 #[derive(Debug, Clone)]
 pub struct OutsideExecution {
@@ -38,12 +25,9 @@ pub struct OutsideExecution {
 impl OutsideExecution {
     /// Creates an authorization with a fresh nonce and exclusive timestamp bounds.
     ///
-    /// The nonce comes from [`OutsideExecutionNonce::fresh`] with up to
-    /// [`NEW_NONCE_ATTEMPTS`] attempts, queried against `account` at `block`. Use
-    /// [`Self::with_nonce`] to control the attempt limit.
-    ///
-    /// Returns [`OutsideExecutionError::InvalidTimeBounds`] unless
-    /// `execute_after < execute_before`, before querying the provider.
+    /// The nonce comes from [`OutsideExecutionNonce::fresh`], queried against `account` at
+    /// `block`, and the bounds are then checked by [`Self::with_nonce`]. Use [`Self::with_nonce`]
+    /// directly to supply a nonce from [`OutsideExecutionNonce::new`].
     pub async fn new<P: Provider>(
         provider: &P,
         account: Felt,
@@ -53,9 +37,7 @@ impl OutsideExecution {
         execute_before: u64,
         calls: Vec<Call>,
     ) -> Result<Self, OutsideExecutionError> {
-        check_time_bounds(execute_after, execute_before)?;
-        let nonce =
-            OutsideExecutionNonce::fresh(provider, account, block, NEW_NONCE_ATTEMPTS).await?;
+        let nonce = OutsideExecutionNonce::fresh(provider, account, block).await?;
         Self::with_nonce(nonce, caller, execute_after, execute_before, calls)
     }
 
@@ -70,7 +52,9 @@ impl OutsideExecution {
         execute_before: u64,
         calls: Vec<Call>,
     ) -> Result<Self, OutsideExecutionError> {
-        check_time_bounds(execute_after, execute_before)?;
+        if execute_after >= execute_before {
+            return Err(OutsideExecutionError::InvalidTimeBounds);
+        }
         Ok(Self {
             caller,
             nonce,

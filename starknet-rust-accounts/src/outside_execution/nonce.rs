@@ -1,13 +1,14 @@
 use starknet_rust_core::types::{BlockId, Felt, FunctionCall};
 use starknet_rust_core::utils::get_selector_from_name;
-use starknet_rust_providers::{Provider, ProviderError};
+use starknet_rust_providers::Provider;
 use starknet_rust_signers::SigningKey;
 
-use super::FreshNonceError;
+use super::OutsideExecutionNonceError;
 
 /// SNIP-9 nonce confirmed unused by the signing account.
 ///
-/// The only way to obtain one is [`OutsideExecutionNonce::fresh`]. Pass it to
+/// Obtain one with [`OutsideExecutionNonce::new`] for a caller-chosen value or
+/// [`OutsideExecutionNonce::fresh`] for a random one. Pass it to
 /// [`OutsideExecution::with_nonce`](super::OutsideExecution::with_nonce), or let
 /// [`OutsideExecution::new`](super::OutsideExecution::new) obtain one.
 ///
@@ -16,10 +17,10 @@ use super::FreshNonceError;
 pub struct OutsideExecutionNonce(Felt);
 
 impl OutsideExecutionNonce {
-    /// Generates a random nonce and checks it with the account, with bounded attempts.
+    /// Checks `nonce` with the account's `is_valid_outside_execution_nonce` at `block`.
     ///
     /// Choose the query block accordingly; a nonce unused at a historical block may be used now.
-    /// Rejected candidates and provider failures both consume an attempt.
+    /// Returns [`OutsideExecutionNonceError::Invalid`] if the account rejects the nonce.
     ///
     /// ```no_run
     /// # use starknet_rust_accounts::outside_execution::{
@@ -29,7 +30,47 @@ impl OutsideExecutionNonce {
     /// # use starknet_rust_providers::Provider;
     /// # async fn example<P: Provider>(provider: &P, account: Felt, block: BlockId)
     /// # -> Result<OutsideExecution, Box<dyn std::error::Error>> {
-    /// let nonce = OutsideExecutionNonce::fresh(provider, account, block, 8).await?;
+    /// let nonce = OutsideExecutionNonce::new(provider, account, Felt::from(42u64), block).await?;
+    /// let execution = OutsideExecution::with_nonce(nonce, ANY_CALLER, 100, 200, vec![])?;
+    /// # Ok(execution)
+    /// # }
+    /// ```
+    pub async fn new<P: Provider>(
+        provider: &P,
+        account: Felt,
+        nonce: Felt,
+        block: BlockId,
+    ) -> Result<Self, OutsideExecutionNonceError> {
+        let result = provider
+            .call(
+                FunctionCall {
+                    contract_address: account,
+                    entry_point_selector: get_selector_from_name(
+                        "is_valid_outside_execution_nonce",
+                    )
+                    .expect("constant entrypoint name is a valid selector"),
+                    calldata: vec![nonce],
+                },
+                block,
+            )
+            .await?;
+        if result.as_slice() != [Felt::ONE] {
+            return Err(OutsideExecutionNonceError::Invalid);
+        }
+        Ok(Self(nonce))
+    }
+
+    /// Generates a random nonce and checks it with the account via [`Self::new`].
+    ///
+    /// ```no_run
+    /// # use starknet_rust_accounts::outside_execution::{
+    /// #     ANY_CALLER, OutsideExecution, OutsideExecutionNonce,
+    /// # };
+    /// # use starknet_rust_core::types::{BlockId, Felt};
+    /// # use starknet_rust_providers::Provider;
+    /// # async fn example<P: Provider>(provider: &P, account: Felt, block: BlockId)
+    /// # -> Result<OutsideExecution, Box<dyn std::error::Error>> {
+    /// let nonce = OutsideExecutionNonce::fresh(provider, account, block).await?;
     /// let execution = OutsideExecution::with_nonce(nonce, ANY_CALLER, 100, 200, vec![])?;
     /// # Ok(execution)
     /// # }
@@ -38,20 +79,9 @@ impl OutsideExecutionNonce {
         provider: &P,
         account: Felt,
         block: BlockId,
-        max_attempts: usize,
-    ) -> Result<Self, FreshNonceError> {
-        let mut last_provider_error = None;
-        for _ in 0..max_attempts {
-            let nonce = SigningKey::from_random().secret_scalar();
-            match is_valid(provider, account, nonce, block).await {
-                Ok(true) => return Ok(Self(nonce)),
-                Ok(false) => {}
-                Err(error) => last_provider_error = Some(error),
-            }
-        }
-        Err(FreshNonceError {
-            last_provider_error,
-        })
+    ) -> Result<Self, OutsideExecutionNonceError> {
+        let nonce = SigningKey::from_random().secret_scalar();
+        Self::new(provider, account, nonce, block).await
     }
 
     /// Wraps a known nonce; for in-crate tests against fixed reference vectors.
@@ -65,24 +95,4 @@ impl From<OutsideExecutionNonce> for Felt {
     fn from(nonce: OutsideExecutionNonce) -> Self {
         nonce.0
     }
-}
-
-async fn is_valid<P: Provider>(
-    provider: &P,
-    account: Felt,
-    nonce: Felt,
-    block: BlockId,
-) -> Result<bool, ProviderError> {
-    let result = provider
-        .call(
-            FunctionCall {
-                contract_address: account,
-                entry_point_selector: get_selector_from_name("is_valid_outside_execution_nonce")
-                    .expect("constant entrypoint name is a valid selector"),
-                calldata: vec![nonce],
-            },
-            block,
-        )
-        .await?;
-    Ok(result.as_slice() == [Felt::ONE])
 }
