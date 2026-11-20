@@ -36,11 +36,11 @@ async fn deployed_eth_account_executes_transfer() {
 
     // OpenZeppelin `EthAccountUpgradeable`, built by `test-data/contracts/eth-account`.
     let class: SierraClass = serde_json::from_str(include_str!(
-        "../starknet-rust-core/test-data/contracts/eth-account/artifacts/eth_account_sierra.json"
+        "../starknet-rust-core/test-data/contracts/eth-account/artifacts/eth_account_sierra.txt"
     ))
     .unwrap();
     let compiled: CompiledClass = serde_json::from_str(include_str!(
-        "../starknet-rust-core/test-data/contracts/eth-account/artifacts/eth_account_compiled.json"
+        "../starknet-rust-core/test-data/contracts/eth-account/artifacts/eth_account_compiled.txt"
     ))
     .unwrap();
     let class_hash = funder

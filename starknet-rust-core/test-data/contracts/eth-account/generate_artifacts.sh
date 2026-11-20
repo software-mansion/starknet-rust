@@ -9,5 +9,5 @@ cd "$(dirname "$0")"
 
 scarb build
 
-cp target/dev/eth_account_EthAccountUpgradeable.contract_class.json artifacts/eth_account_sierra.json
-cp target/dev/eth_account_EthAccountUpgradeable.compiled_contract_class.json artifacts/eth_account_compiled.json
+cp target/dev/eth_account_EthAccountUpgradeable.contract_class.json artifacts/eth_account_sierra.txt
+cp target/dev/eth_account_EthAccountUpgradeable.compiled_contract_class.json artifacts/eth_account_compiled.txt
