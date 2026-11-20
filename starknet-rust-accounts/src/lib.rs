@@ -23,3 +23,5 @@ pub use single_owner::{ExecutionEncoding, SingleOwnerAccount};
 #[derive(Debug, thiserror::Error)]
 #[error("Not all fields are prepared")]
 pub struct NotPreparedError;
+
+pub mod outside_execution;
