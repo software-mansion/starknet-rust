@@ -54,6 +54,7 @@ impl OutsideExecutionNonce {
                 block,
             )
             .await?;
+
         if result.as_slice() != [Felt::ONE] {
             return Err(OutsideExecutionNonceError::Invalid);
         }

@@ -1,9 +1,4 @@
 {
-  "source": {
-    "package": "starknet@11.5.1",
-    "npm_integrity": "sha512-z7xZnCVIWsn3OS04yvYEvqVKaA6zn0RQxpRV51N5HX7ram05LTtwxcH8WZQG45e3J7UefSJ+5sh80BEeXO0npA==",
-    "api": "outsideExecution.getTypedData + typedData.getMessageHash"
-  },
   "chain_id": "0x534e5f5345504f4c4941",
   "account": "0x1234",
   "caller": "0x414e595f43414c4c4552",

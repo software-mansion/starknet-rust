@@ -10,16 +10,8 @@
  *   npm run generate
  */
 const { outsideExecution, typedData, hash, constants } = require("starknet");
-const lock = require("./package-lock.json");
-
-const REFERENCE = lock.packages["node_modules/starknet"];
 
 const fixture = {
-  source: {
-    package: `starknet@${REFERENCE.version}`,
-    npm_integrity: REFERENCE.integrity,
-    api: "outsideExecution.getTypedData + typedData.getMessageHash",
-  },
   chain_id: constants.StarknetChainId.SN_SEPOLIA,
   account: "0x1234",
   caller: constants.OutsideExecutionCallerAny,
