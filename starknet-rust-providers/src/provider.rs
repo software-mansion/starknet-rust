@@ -341,7 +341,7 @@ pub trait Provider {
             .await?;
 
         if result.len() == 1 {
-            // Unwrapping here is safe becuase we already checked length
+            // Unwrapping here is safe because we already checked length
             Ok(result.pop().unwrap())
         } else {
             Err(ProviderError::ArrayLengthMismatch)
@@ -376,7 +376,7 @@ pub trait Provider {
         };
 
         if simulated_transactions.len() == 1 {
-            // Unwrapping here is safe becuase we already checked length
+            // Unwrapping here is safe because we already checked length
             Ok(simulated_transactions.pop().unwrap())
         } else {
             Err(ProviderError::ArrayLengthMismatch)
