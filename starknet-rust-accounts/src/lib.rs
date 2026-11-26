@@ -11,7 +11,7 @@ pub use account::{
 mod factory;
 pub use factory::{
     AccountDeploymentV3, AccountFactory, AccountFactoryError, PreparedAccountDeploymentV3,
-    RawAccountDeploymentV3, argent::ArgentAccountFactory,
+    RawAccountDeploymentV3, argent::ArgentAccountFactory, encoded::EncodedAccountFactory,
     open_zeppelin::OpenZeppelinAccountFactory,
 };
 
@@ -23,3 +23,6 @@ pub use single_owner::{ExecutionEncoding, SingleOwnerAccount};
 #[derive(Debug, thiserror::Error)]
 #[error("Not all fields are prepared")]
 pub struct NotPreparedError;
+
+mod encoded;
+pub use encoded::EncodedAccount;

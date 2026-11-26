@@ -1,4 +1,6 @@
-use crate::{Infallible, Signer, SignerInteractivityContext, SigningKey, VerifyingKey};
+use crate::{
+    AccountSigner, Infallible, Signer, SignerInteractivityContext, SigningKey, VerifyingKey,
+};
 
 use async_trait::async_trait;
 use starknet_rust_core::{
@@ -44,6 +46,24 @@ impl Signer for LocalWallet {
 
     fn is_interactive(&self, _context: SignerInteractivityContext<'_>) -> bool {
         false
+    }
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+impl AccountSigner for LocalWallet {
+    type SignError = SignError;
+
+    async fn sign_account_hash(
+        &self,
+        hash: &Felt,
+    ) -> Result<Vec<Felt>, <Self as AccountSigner>::SignError> {
+        let signature = self.sign_hash(hash).await?;
+        Ok(vec![signature.r, signature.s])
+    }
+
+    fn is_interactive(&self, context: SignerInteractivityContext<'_>) -> bool {
+        Signer::is_interactive(self, context)
     }
 }
 
