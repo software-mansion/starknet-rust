@@ -3,6 +3,24 @@
 //! Leaves are already hashed. Pairs are sorted numerically before hashing; an odd final node is
 //! paired with zero at every level. This is not a Starknet state-trie proof verifier. Applications
 //! must domain-separate leaf hashes from internal-node hashes when their leaf format requires it.
+//!
+//! # Security
+//!
+//! A stateless verifier such as [`verify_proof`](crate::merkle::verify_proof) does not know the
+//! tree depth, so an internal node together with a shorter path also verifies. For leaves
+//! `[A, B, C, D]`, `H(A, B)` with the path `[H(C, D)]` reaches the root. This is inherent to
+//! sorted-pair trees (starknet.js and the OpenZeppelin Cairo verifier behave the same way). To rule
+//! it out:
+//!
+//! - derive leaves with a hash that differs from the internal-node hash, for example
+//!   `poseidon_hash_many(&[domain_tag, ..leaf_data])` when nodes use Pedersen, and have the
+//!   verifier compute the leaf from the claim data instead of accepting it from the caller; or
+//! - when the tree is available, use [`MerkleTree::verify`](crate::merkle::MerkleTree::verify),
+//!   which also requires the path length to match the tree depth.
+//!
+//! Because an odd final node is paired with zero, `Felt::ZERO` is never accepted as a leaf: tree
+//! construction rejects it and [`verify_proof`](crate::merkle::verify_proof) returns `false` for
+//! it.
 
 use crate::types::Felt;
 use alloc::{vec, vec::Vec};
@@ -37,12 +55,15 @@ pub enum MerkleError {
     EmptyTree,
     /// The requested leaf index is outside the tree.
     InvalidIndex,
+    /// A leaf equals zero, which is reserved for padding odd levels.
+    ZeroLeaf,
 }
 impl fmt::Display for MerkleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::EmptyTree => "a Merkle tree requires at least one leaf",
             Self::InvalidIndex => "Merkle leaf index is out of bounds",
+            Self::ZeroLeaf => "a Merkle leaf must not be zero",
         })
     }
 }
@@ -56,7 +77,7 @@ pub struct MerkleTree {
     hash: MerkleHash,
 }
 impl MerkleTree {
-    /// Builds a tree from already-hashed leaves. Empty trees are rejected.
+    /// Builds a tree from already-hashed leaves. Empty trees and zero leaves are rejected.
     ///
     /// ```
     /// use starknet_rust_core::{merkle::{MerkleTree, MerkleHash, verify_proof}, types::Felt};
@@ -68,6 +89,9 @@ impl MerkleTree {
     pub fn new(leaves: Vec<Felt>, hash: MerkleHash) -> Result<Self, MerkleError> {
         if leaves.is_empty() {
             return Err(MerkleError::EmptyTree);
+        }
+        if leaves.contains(&Felt::ZERO) {
+            return Err(MerkleError::ZeroLeaf);
         }
         let mut levels = vec![leaves];
         while levels.last().unwrap().len() > 1 {
@@ -107,21 +131,31 @@ impl MerkleTree {
         }
         Ok(proof)
     }
+    /// Verifies a membership path against this tree's root, requiring the path length to equal
+    /// the tree depth so that internal nodes are not accepted as leaves.
+    pub fn verify(&self, leaf: Felt, proof: &[Felt]) -> bool {
+        proof.len() == self.levels.len() - 1 && verify_proof(self.root(), leaf, proof, self.hash)
+    }
 }
 
 /// Verifies a sorted-pair membership path against a root and an already-hashed leaf.
-/// An empty path is valid exactly when the leaf equals the root.
+/// An empty path is valid exactly when the leaf equals the root. A zero leaf is always rejected.
+///
+/// The path length is not checked, so an internal node with a shorter path also verifies; see the
+/// [module-level security notes](self#security).
 pub fn verify_proof(root: Felt, leaf: Felt, proof: &[Felt], hash: MerkleHash) -> bool {
-    proof
-        .iter()
-        .fold(leaf, |node, sibling| hash.hash(node, *sibling))
-        == root
+    leaf != Felt::ZERO
+        && proof
+            .iter()
+            .fold(leaf, |node, sibling| hash.hash(node, *sibling))
+            == root
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn starknet_js_documented_vector() {
         let leaves = (1u64..=7).map(Felt::from).collect();
         let tree = MerkleTree::new(leaves, MerkleHash::Pedersen).unwrap();
@@ -144,14 +178,16 @@ mod tests {
         );
     }
     #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     fn every_leaf_odd_even_and_duplicate() {
         for hash in [MerkleHash::Pedersen, MerkleHash::Poseidon] {
             for count in 1..18 {
-                let leaves = (0..count).map(|i| Felt::from((i % 5) as u64)).collect();
+                let leaves = (0..count).map(|i| Felt::from((i % 5) as u64 + 1)).collect();
                 let tree = MerkleTree::new(leaves, hash).unwrap();
                 for (index, leaf) in tree.leaves().iter().enumerate() {
                     let proof = tree.proof(index).unwrap();
                     assert!(verify_proof(tree.root(), *leaf, &proof, hash));
+                    assert!(tree.verify(*leaf, &proof));
                     assert!(!verify_proof(
                         tree.root(),
                         *leaf + Felt::from(42u64),
@@ -166,5 +202,38 @@ mod tests {
             MerkleTree::new(vec![], MerkleHash::Pedersen),
             Err(MerkleError::EmptyTree)
         ));
+    }
+
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn zero_leaf_is_rejected() {
+        let (l1, l2, l3) = (Felt::ONE, Felt::TWO, Felt::THREE);
+        let hash = MerkleHash::Pedersen;
+        let tree = MerkleTree::new(vec![l1, l2, l3], hash).unwrap();
+        // The zero padding next to the lone third leaf must not verify as a leaf.
+        assert!(!verify_proof(
+            tree.root(),
+            Felt::ZERO,
+            &[l3, hash.hash(l1, l2)],
+            hash
+        ));
+        assert!(!tree.verify(Felt::ZERO, &[l3, hash.hash(l1, l2)]));
+        assert_eq!(
+            MerkleTree::new(vec![l1, Felt::ZERO], hash).unwrap_err(),
+            MerkleError::ZeroLeaf
+        );
+    }
+    #[test]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    fn tree_verify_rejects_internal_node_as_leaf() {
+        let hash = MerkleHash::Poseidon;
+        let leaves = (1u64..=4).map(Felt::from).collect::<Vec<_>>();
+        let tree = MerkleTree::new(leaves.clone(), hash).unwrap();
+        let inner = hash.hash(leaves[0], leaves[1]);
+        let short_path = [hash.hash(leaves[2], leaves[3])];
+        // Documented limitation of the stateless verifier.
+        assert!(verify_proof(tree.root(), inner, &short_path, hash));
+        // The depth-checked verifier rejects it.
+        assert!(!tree.verify(inner, &short_path));
     }
 }
