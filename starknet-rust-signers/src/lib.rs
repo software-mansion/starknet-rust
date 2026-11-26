@@ -37,4 +37,4 @@ pub use account_signer::AccountSigner;
 #[cfg(feature = "eth")]
 pub mod eth;
 #[cfg(feature = "eth")]
-pub use eth::EthSigner;
+pub use eth::{EthKeyError, EthSigner, EthVerifyError, EthVerifyingKey};

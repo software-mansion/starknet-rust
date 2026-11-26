@@ -10,8 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `AccountSigner` trait in `starknet-rust-signers` for signers that serialize signatures in an account-defined layout. It is implemented for `LocalWallet` and `LedgerSigner`, and for `&T`, `Box<T>` and `Arc<T>` ([#190]).
-- `EthSigner`, a secp256k1 signer producing five-felt Cairo `EthSignature` values, behind the new `eth` feature ([#190]).
+- `EthSigner`, a secp256k1 signer producing five-felt Cairo `EthSignature` values, and `EthVerifyingKey` to verify them, behind the new `eth` feature ([#190]).
 - `EncodedAccount`, an `Account` implementation that works with any `AccountSigner`, such as `EthSigner` with an Ethereum account contract ([#190]).
+- `EncodedAccountFactory`, an `AccountFactory` implementation that deploys an account with `DEPLOY_ACCOUNT` signed by any `AccountSigner` ([#190]).
 
 ### Changed
 

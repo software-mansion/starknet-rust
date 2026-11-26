@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Runs the `EthSigner` integration test against a deployed OpenZeppelin `EthAccountUpgradeable`
-# account on a fresh local `starknet-devnet`.
+# Runs the `EthSigner` integration test on a fresh local `starknet-devnet`: an OpenZeppelin
+# `EthAccountUpgradeable` account deploys itself with `DEPLOY_ACCOUNT`, then sends a transfer.
 #
 # Uses `starknet-devnet` from `PATH` when available. Otherwise downloads the pinned release, which
 # is only supported on x86_64 Linux.
@@ -52,4 +52,4 @@ DEVNET_ACCOUNT_PRIVATE_KEY="$(echo "$funder" | jq --exit-status --raw-output '.r
 export DEVNET_ACCOUNT_ADDRESS DEVNET_ACCOUNT_PRIVATE_KEY
 
 cd "$REPO_ROOT"
-cargo test --locked --features eth --test eth_account_devnet -- --ignored
+cargo test --locked -p starknet-rust-accounts --features eth --test eth_account -- --ignored

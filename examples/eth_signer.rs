@@ -9,10 +9,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let signer = EthSigner::from_bytes(&[1; 32])?;
     let hash = Felt::from(42u8);
     let signature = signer.sign_hash(&hash);
-    assert!(signer.verify_hash(&hash, &signature));
+    assert!(signer.verifying_key().verify(&hash, &signature)?);
     println!("Cairo EthSignature: {signature:?}");
-    // EncodedAccount can use this signer for INVOKE/DECLARE v3 when the deployed
-    // account validates secp256k1 signatures in this five-felt layout.
+    // OpenZeppelin's `EthAccount` takes this public key as its constructor argument.
+    println!("Cairo EthPublicKey: {:?}", signer.public_key());
+    // `EncodedAccount` (INVOKE/DECLARE v3) and `EncodedAccountFactory` (DEPLOY_ACCOUNT v3) can use
+    // this signer when the account validates secp256k1 signatures in this five-felt layout.
     Ok(())
 }
 

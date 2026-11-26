@@ -15,6 +15,7 @@ use starknet_rust_providers::{Provider, ProviderError};
 use std::error::Error;
 
 pub(crate) mod argent;
+pub(crate) mod encoded;
 pub(crate) mod open_zeppelin;
 
 /// Cairo string for `deploy_account`

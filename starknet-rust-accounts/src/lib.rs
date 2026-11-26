@@ -11,7 +11,7 @@ pub use account::{
 mod factory;
 pub use factory::{
     AccountDeploymentV3, AccountFactory, AccountFactoryError, PreparedAccountDeploymentV3,
-    RawAccountDeploymentV3, argent::ArgentAccountFactory,
+    RawAccountDeploymentV3, argent::ArgentAccountFactory, encoded::EncodedAccountFactory,
     open_zeppelin::OpenZeppelinAccountFactory,
 };
 

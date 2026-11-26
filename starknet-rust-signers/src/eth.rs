@@ -6,35 +6,81 @@ use k256::ecdsa::{RecoveryId, Signature, SigningKey, VerifyingKey};
 use starknet_rust_core::types::{Felt, TypedData};
 
 /// An Ethereum signer for Starknet accounts that verify secp256k1 signatures.
-/// Signatures are `[r.low, r.high, s.low, s.high, recovery_id]` with 128-bit limbs.
+/// Signatures are `[r.low, r.high, s.low, s.high, y_parity]` with 128-bit limbs.
 /// This does not implement Ethereum personal-sign/EIP-191: Starknet hashes are signed directly.
 #[derive(Clone)]
 pub struct EthSigner {
     key: SigningKey,
 }
 
+/// A secp256k1 public key that verifies Cairo `EthSignature` values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EthVerifyingKey {
+    key: VerifyingKey,
+}
+
+/// Invalid secp256k1 key material.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum EthKeyError {
+    /// The secret scalar is zero or not less than the curve order.
+    #[error("secp256k1 secret scalar must be nonzero and less than the curve order")]
+    InvalidSecretKey,
+    /// The coordinates are not a point on secp256k1, or a limb is wider than 128 bits.
+    #[error("coordinates are not a valid secp256k1 public key")]
+    InvalidPublicKey,
+}
+
+/// A signature that is malformed, as opposed to well-formed but signed by another key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum EthVerifyError {
+    /// The signature does not have exactly five felts.
+    #[error("expected 5 signature felts, got {0}")]
+    InvalidLength(usize),
+    /// An `r` or `s` limb does not fit in 128 bits.
+    #[error("signature limb does not fit in 128 bits")]
+    LimbOutOfRange,
+    /// `r` or `s` is zero or not less than the curve order.
+    #[error("signature scalar is zero or not less than the curve order")]
+    InvalidScalar,
+    /// `s` is in the upper half of the curve order. Only low-S signatures are canonical.
+    #[error("signature is not low-S normalized")]
+    HighS,
+    /// The parity felt is not `0` or `1`.
+    #[error("signature parity must be 0 or 1")]
+    InvalidParity,
+}
+
 impl std::fmt::Debug for EthSigner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EthSigner")
-            .field("public_key", &self.public_key())
+            .field("verifying_key", &self.verifying_key())
             .finish_non_exhaustive()
     }
 }
 
 impl EthSigner {
     /// Imports a nonzero secp256k1 secret scalar, strictly less than the curve order.
-    pub fn from_bytes(bytes: &[u8; 32]) -> Result<Self, k256::ecdsa::Error> {
+    pub fn from_bytes(bytes: &[u8; 32]) -> Result<Self, EthKeyError> {
         Ok(Self {
-            key: SigningKey::from_slice(bytes)?,
+            key: SigningKey::from_slice(bytes).map_err(|_| EthKeyError::InvalidSecretKey)?,
         })
     }
 
-    /// Full affine X/Y coordinates, 32 bytes each, without the SEC1 prefix.
-    pub fn public_key(&self) -> [u8; 64] {
-        let point = self.key.verifying_key().to_sec1_point(false);
-        let mut output = [0; 64];
-        output.copy_from_slice(&point.as_bytes()[1..]);
-        output
+    /// Returns the public key that verifies this signer's signatures.
+    pub fn verifying_key(&self) -> EthVerifyingKey {
+        EthVerifyingKey {
+            key: *self.key.verifying_key(),
+        }
+    }
+
+    /// Returns the public key as Cairo serializes it: `[x.low, x.high, y.low, y.high]`.
+    ///
+    /// This is the constructor argument of `OpenZeppelin`'s `EthAccount`. Use
+    /// [`EthVerifyingKey::to_bytes`] for the raw coordinates.
+    pub fn public_key(&self) -> [Felt; 4] {
+        self.verifying_key().to_felts()
     }
 
     /// Signs a Starknet prehash directly, with low-S normalization and recovery ID.
@@ -58,14 +104,58 @@ impl EthSigner {
     ) -> Result<[Felt; 5], starknet_rust_core::types::typed_data::TypedDataError> {
         Ok(self.sign_hash(&data.message_hash(address)?))
     }
+}
 
-    /// Verifies a canonical low-S signature against this signer's full public key.
-    pub fn verify_hash(&self, hash: &Felt, encoded: &[Felt]) -> bool {
-        let Some((signature, recovery)) = decode_signature(encoded) else {
-            return false;
-        };
-        VerifyingKey::recover_from_prehash(&hash.to_bytes_be(), &signature, recovery)
-            .is_ok_and(|key| key == *self.key.verifying_key())
+impl EthVerifyingKey {
+    /// Imports uncompressed affine coordinates: X then Y, 32 big-endian bytes each.
+    pub fn from_bytes(bytes: &[u8; 64]) -> Result<Self, EthKeyError> {
+        let mut sec1 = [0u8; 65];
+        sec1[0] = 0x04;
+        sec1[1..].copy_from_slice(bytes);
+        VerifyingKey::from_sec1_bytes(&sec1)
+            .map(|key| Self { key })
+            .map_err(|_| EthKeyError::InvalidPublicKey)
+    }
+
+    /// Imports the Cairo serialization `[x.low, x.high, y.low, y.high]`.
+    pub fn from_felts(felts: &[Felt; 4]) -> Result<Self, EthKeyError> {
+        let mut bytes = [0u8; 64];
+        for (felt, dest) in felts.iter().zip([16, 0, 48, 32]) {
+            let limb = low_limb(felt).ok_or(EthKeyError::InvalidPublicKey)?;
+            bytes[dest..dest + 16].copy_from_slice(&limb);
+        }
+        Self::from_bytes(&bytes)
+    }
+
+    /// Returns uncompressed affine coordinates: X then Y, 32 big-endian bytes each.
+    pub fn to_bytes(&self) -> [u8; 64] {
+        let point = self.key.to_sec1_point(false);
+        let mut output = [0; 64];
+        output.copy_from_slice(&point.as_bytes()[1..]);
+        output
+    }
+
+    /// Returns the Cairo serialization `[x.low, x.high, y.low, y.high]`.
+    pub fn to_felts(&self) -> [Felt; 4] {
+        let bytes = self.to_bytes();
+        [
+            limb(&bytes[16..32]),
+            limb(&bytes[..16]),
+            limb(&bytes[48..]),
+            limb(&bytes[32..48]),
+        ]
+    }
+
+    /// Verifies a five-felt `EthSignature` over a Starknet prehash.
+    ///
+    /// Returns `Ok(false)` for a well-formed signature made by another key or over another hash,
+    /// and an error when the signature itself is malformed or not canonical (high-S).
+    pub fn verify(&self, hash: &Felt, signature: &[Felt]) -> Result<bool, EthVerifyError> {
+        let (signature, recovery) = decode_signature(signature)?;
+        Ok(
+            VerifyingKey::recover_from_prehash(&hash.to_bytes_be(), &signature, recovery)
+                .is_ok_and(|key| key == self.key),
+        )
     }
 }
 
@@ -75,26 +165,37 @@ fn limb(bytes: &[u8]) -> Felt {
     Felt::from(u128::from_be_bytes(value))
 }
 
-fn decode_signature(values: &[Felt]) -> Option<(Signature, RecoveryId)> {
-    if values.len() != 5 {
+/// Returns the 16 low bytes of a felt that fits in 128 bits.
+fn low_limb(felt: &Felt) -> Option<[u8; 16]> {
+    let bytes = felt.to_bytes_be();
+    if bytes[..16].iter().any(|byte| *byte != 0) {
         return None;
+    }
+    let mut limb = [0; 16];
+    limb.copy_from_slice(&bytes[16..]);
+    Some(limb)
+}
+
+fn decode_signature(values: &[Felt]) -> Result<(Signature, RecoveryId), EthVerifyError> {
+    if values.len() != 5 {
+        return Err(EthVerifyError::InvalidLength(values.len()));
     }
     let mut bytes = [0u8; 64];
     for (source, dest) in [(0, 16), (1, 0), (2, 48), (3, 32)] {
-        let limb = values[source].to_bytes_be();
-        if limb[..16].iter().any(|byte| *byte != 0) {
-            return None;
-        }
-        bytes[dest..dest + 16].copy_from_slice(&limb[16..]);
+        let limb = low_limb(&values[source]).ok_or(EthVerifyError::LimbOutOfRange)?;
+        bytes[dest..dest + 16].copy_from_slice(&limb);
     }
-    let signature = Signature::from_slice(&bytes).ok()?;
+    let signature = Signature::from_slice(&bytes).map_err(|_| EthVerifyError::InvalidScalar)?;
     if signature.normalize_s() != signature {
-        return None;
+        return Err(EthVerifyError::HighS);
     }
-    let recovery = u8::try_from(values[4])
-        .ok()
-        .and_then(RecoveryId::from_byte)?;
-    Some((signature, recovery))
+    // Cairo deserializes the parity as a `bool`.
+    let parity = [Felt::ZERO, Felt::ONE]
+        .iter()
+        .position(|value| *value == values[4])
+        .ok_or(EthVerifyError::InvalidParity)?;
+    let recovery = RecoveryId::from_byte(parity as u8).ok_or(EthVerifyError::InvalidParity)?;
+    Ok((signature, recovery))
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
@@ -114,6 +215,23 @@ impl AccountSigner for EthSigner {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// secp256k1 generator, the public key of secret scalar 1.
+    const GENERATOR: [u8; 64] = hex_literal::hex!(
+        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+    );
+
+    fn encode(signature: &Signature, recovery: RecoveryId) -> [Felt; 5] {
+        let bytes = signature.to_bytes();
+        [
+            limb(&bytes[16..32]),
+            limb(&bytes[..16]),
+            limb(&bytes[48..]),
+            limb(&bytes[32..48]),
+            Felt::from(recovery.to_byte()),
+        ]
+    }
 
     #[test]
     fn matches_starknet_js_noble_prehash_vector() {
@@ -151,12 +269,21 @@ mod tests {
         ]
         .map(|value| Felt::from_hex(value).unwrap());
         assert_eq!(signer.sign_message(&data, address).unwrap(), expected);
-        assert!(!signer.verify_hash(&data.message_hash(address + Felt::ONE).unwrap(), &expected));
+        let key = signer.verifying_key();
+        assert_eq!(
+            key.verify(&data.message_hash(address).unwrap(), &expected),
+            Ok(true)
+        );
+        assert_eq!(
+            key.verify(&data.message_hash(address + Felt::ONE).unwrap(), &expected),
+            Ok(false)
+        );
     }
 
     #[test]
     fn rejects_mathematically_valid_high_s_twin() {
         let signer = EthSigner::from_bytes(&[1; 32]).unwrap();
+        let key = signer.verifying_key();
         let hash = Felt::from(42u8);
         let encoded = signer.sign_hash(&hash);
         let (signature, recovery) = decode_signature(&encoded).unwrap();
@@ -170,41 +297,89 @@ mod tests {
             VerifyingKey::recover_from_prehash(&hash.to_bytes_be(), &high_s, flipped).unwrap(),
             *signer.key.verifying_key()
         );
-        let bytes = high_s.to_bytes();
-        let twin = [
-            limb(&bytes[16..32]),
-            limb(&bytes[..16]),
-            limb(&bytes[48..]),
-            limb(&bytes[32..48]),
-            Felt::from(flipped.to_byte()),
-        ];
-        assert!(decode_signature(&twin).is_none());
-        assert!(!signer.verify_hash(&hash, &twin));
-        assert!(signer.verify_hash(&hash, &encoded));
+        let twin = encode(&high_s, flipped);
+        assert_eq!(key.verify(&hash, &twin), Err(EthVerifyError::HighS));
+        assert_eq!(key.verify(&hash, &encoded), Ok(true));
     }
 
     #[test]
     fn validates_secret_scalar_and_full_coordinates() {
-        assert!(EthSigner::from_bytes(&[0; 32]).is_err());
-        assert!(EthSigner::from_bytes(&[255; 32]).is_err());
+        assert_eq!(
+            EthSigner::from_bytes(&[0; 32]).unwrap_err(),
+            EthKeyError::InvalidSecretKey
+        );
+        assert_eq!(
+            EthSigner::from_bytes(&[255; 32]).unwrap_err(),
+            EthKeyError::InvalidSecretKey
+        );
         let mut secret = [0; 32];
         secret[31] = 1;
         let signer = EthSigner::from_bytes(&secret).unwrap();
-        assert_eq!(
-            signer.public_key()[..32],
-            [
-                0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0, 0x62, 0x95, 0xce, 0x87,
-                0x0b, 0x07, 0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce, 0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b,
-                0x16, 0xf8, 0x17, 0x98
-            ]
-        );
-        let signature = signer.sign_hash(&Felt::from(42u8));
-        assert!(signer.verify_hash(&Felt::from(42u8), &signature));
-        assert!(!signer.verify_hash(&Felt::from(43u8), &signature));
-        assert!(!signer.verify_hash(&Felt::from(42u8), &signature[..4]));
-        let mut malformed = signature;
-        malformed[0] = Felt::MAX;
-        assert!(!signer.verify_hash(&Felt::from(42u8), &malformed));
+        let key = signer.verifying_key();
+        // Both coordinates of the generator.
+        assert_eq!(key.to_bytes(), GENERATOR);
+        assert_eq!(EthVerifyingKey::from_bytes(&GENERATOR).unwrap(), key);
         assert!(!format!("{signer:?}").contains("secret"));
+    }
+
+    #[test]
+    fn serializes_public_key_as_cairo_u256_limbs() {
+        let key = EthVerifyingKey::from_bytes(&GENERATOR).unwrap();
+        let expected = [
+            "0x029bfcdb2dce28d959f2815b16f81798",
+            "0x79be667ef9dcbbac55a06295ce870b07",
+            "0xfd17b448a68554199c47d08ffb10d4b8",
+            "0x483ada7726a3c4655da4fbfc0e1108a8",
+        ]
+        .map(|value| Felt::from_hex(value).unwrap());
+        assert_eq!(key.to_felts(), expected);
+        assert_eq!(EthVerifyingKey::from_felts(&expected).unwrap(), key);
+
+        let mut wide = expected;
+        wide[0] = Felt::from(u128::MAX) + Felt::ONE;
+        assert_eq!(
+            EthVerifyingKey::from_felts(&wide).unwrap_err(),
+            EthKeyError::InvalidPublicKey
+        );
+        let mut off_curve = expected;
+        off_curve[2] += Felt::ONE;
+        assert_eq!(
+            EthVerifyingKey::from_felts(&off_curve).unwrap_err(),
+            EthKeyError::InvalidPublicKey
+        );
+    }
+
+    #[test]
+    fn distinguishes_malformed_signatures_from_wrong_keys() {
+        let signer = EthSigner::from_bytes(&[1; 32]).unwrap();
+        let other = EthSigner::from_bytes(&[2; 32]).unwrap().verifying_key();
+        let key = signer.verifying_key();
+        let hash = Felt::from(42u8);
+        let signature = signer.sign_hash(&hash);
+
+        assert_eq!(key.verify(&hash, &signature), Ok(true));
+        assert_eq!(key.verify(&Felt::from(43u8), &signature), Ok(false));
+        assert_eq!(other.verify(&hash, &signature), Ok(false));
+
+        assert_eq!(
+            key.verify(&hash, &signature[..4]),
+            Err(EthVerifyError::InvalidLength(4))
+        );
+        let mut wide = signature;
+        wide[0] = Felt::MAX;
+        assert_eq!(
+            key.verify(&hash, &wide),
+            Err(EthVerifyError::LimbOutOfRange)
+        );
+        let mut zero = signature;
+        zero[0] = Felt::ZERO;
+        zero[1] = Felt::ZERO;
+        assert_eq!(key.verify(&hash, &zero), Err(EthVerifyError::InvalidScalar));
+        let mut parity = signature;
+        parity[4] = Felt::TWO;
+        assert_eq!(
+            key.verify(&hash, &parity),
+            Err(EthVerifyError::InvalidParity)
+        );
     }
 }

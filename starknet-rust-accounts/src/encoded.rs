@@ -157,7 +157,7 @@ mod tests {
     #[tokio::test]
     async fn invoke_uses_five_felt_signature_and_query_domain() {
         let account = account();
-        let verifier = account.signer();
+        let verifier = account.signer().verifying_key();
         let prepared = account
             .execute_v3(vec![Call {
                 to: Felt::ONE,
@@ -177,13 +177,22 @@ mod tests {
         let request = prepared.get_invoke_request(false, false).await.unwrap();
         let sig = &request.broadcasted_invoke_txn_v3.signature;
         assert_eq!(sig.len(), 5);
-        assert!(verifier.verify_hash(&prepared.transaction_hash(false), sig));
-        assert!(!verifier.verify_hash(&prepared.transaction_hash(true), sig));
+        assert_eq!(
+            verifier.verify(&prepared.transaction_hash(false), sig),
+            Ok(true)
+        );
+        assert_eq!(
+            verifier.verify(&prepared.transaction_hash(true), sig),
+            Ok(false)
+        );
         let query = prepared.get_invoke_request(true, false).await.unwrap();
-        assert!(verifier.verify_hash(
-            &prepared.transaction_hash(true),
-            &query.broadcasted_invoke_txn_v3.signature
-        ));
+        assert_eq!(
+            verifier.verify(
+                &prepared.transaction_hash(true),
+                &query.broadcasted_invoke_txn_v3.signature
+            ),
+            Ok(true)
+        );
     }
 
     #[tokio::test]
@@ -210,21 +219,20 @@ mod tests {
             .tip(0)
             .prepared()
             .unwrap();
+        let verifier = account.signer().verifying_key();
         for query_only in [false, true] {
             let request = prepared
                 .get_declare_request(query_only, false)
                 .await
                 .unwrap();
             assert_eq!(request.signature.len(), 5);
-            assert!(
-                account
-                    .signer()
-                    .verify_hash(&prepared.transaction_hash(query_only), &request.signature)
+            assert_eq!(
+                verifier.verify(&prepared.transaction_hash(query_only), &request.signature),
+                Ok(true)
             );
-            assert!(
-                !account
-                    .signer()
-                    .verify_hash(&prepared.transaction_hash(!query_only), &request.signature)
+            assert_eq!(
+                verifier.verify(&prepared.transaction_hash(!query_only), &request.signature),
+                Ok(false)
             );
         }
     }
