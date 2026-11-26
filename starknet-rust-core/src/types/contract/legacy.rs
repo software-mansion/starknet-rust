@@ -70,7 +70,7 @@ pub struct LegacyProgram {
     /// The list of Cairo builtins this program has access to.
     pub builtins: Vec<String>,
     // This field was introduced in Cairo 0.10.0. By making it optional we're keeping compatibility
-    // with older artifacts. This decision should be reviewd in the future.
+    // with older artifacts. This decision should be reviewed in the future.
     /// Version of the compiler used to compile this contract.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compiler_version: Option<String>,
