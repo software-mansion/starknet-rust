@@ -209,21 +209,21 @@ pub enum JsonRpcMethod {
 pub struct JsonRpcRequest {
     /// ID of the request. Useful for identifying responses in certain transports like `WebSocket`.
     pub id: u64,
-    /// Data of the requeest.
+    /// Data of the request.
     pub data: ProviderRequestData,
 }
 
 /// JSON-RPC stream update.
 #[derive(Debug, Clone)]
 pub struct JsonRpcStreamUpdate {
-    /// Data of the requeest.
+    /// Data of the request.
     pub data: StreamUpdateData,
 }
 
 /// Errors from JSON-RPC client.
 #[derive(Debug, thiserror::Error)]
 pub enum JsonRpcClientError<T> {
-    /// JSON serialization/deserialization erors.
+    /// JSON serialization/deserialization errors.
     #[error(transparent)]
     JsonError(serde_json::Error),
     /// Transport-specific errors.

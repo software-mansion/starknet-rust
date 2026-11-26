@@ -70,7 +70,7 @@ impl Types {
 
     /// Gets the SNIP-12 type hash of a user-defined type.
     ///
-    /// Returns `Err` if the type or any of its dependancies are not defined.
+    /// Returns `Err` if the type or any of its dependencies are not defined.
     pub fn get_type_hash(&self, type_name: &str) -> Result<Felt, TypedDataError> {
         let type_def = self
             .get_type(type_name)
