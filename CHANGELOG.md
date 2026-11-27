@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - Add support for SNIP-9 outside execution in `starknet_rust::accounts::outside_execution` module ([#188]).
 - Add Merkle tree construction and membership proofs ([#185]).
 
