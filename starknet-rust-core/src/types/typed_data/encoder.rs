@@ -1,5 +1,6 @@
 use alloc::{borrow::ToOwned, vec::Vec};
 use core::str::FromStr;
+use crypto_bigint::U256 as RawU256;
 use starknet_rust_crypto::{PedersenHasher, PoseidonHasher};
 
 use crate::codec::Encode;
@@ -342,8 +343,26 @@ impl Encoder {
                     }
                 };
 
-                get_selector_from_name(str_value)
-                    .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?
+                // TODO(#217): `Felt::from_hex` contains bug that parses modulus to 0
+                // After fix is merged, it's *probably* okay to change the if statement to:
+                // `Felt::from_hex(str_value).or_else(|_| get_selector_from_name(str_value))`
+                if let Some(hexadecimal) = str_value
+                    .strip_prefix("0x")
+                    .or_else(|| str_value.strip_prefix("0X"))
+                {
+                    let raw = RawU256::from_str_radix_vartime(hexadecimal, 16)
+                        .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?;
+                    // The pinned Felt parser accepts the modulus itself as zero.
+                    // Check the unreduced value so that boundary cannot alias a selector.
+                    if raw > RawU256::from_be_slice(&Felt::MAX.to_bytes_be()) {
+                        return Err(TypedDataError::InvalidSelector(str_value.to_owned()));
+                    }
+                    Felt::from_hex(hexadecimal)
+                        .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?
+                } else {
+                    get_selector_from_name(str_value)
+                        .map_err(|_| TypedDataError::InvalidSelector(str_value.to_owned()))?
+                }
             }
             CommonTypeReference::MerkleTree(leaf) => {
                 let arr_value = match value {
