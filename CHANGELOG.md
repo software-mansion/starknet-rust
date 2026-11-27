@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add support for SNIP-9 outside execution in `starknet_rust::accounts::outside_execution` module ([#188]).
+- Add Merkle tree construction and membership proofs ([#185]).
+
 ### Changed
 
 - **Breaking:** Ledger integration is now compatible with `coins-ledger` 0.17. `LedgerSigner::new` is synchronous, and custom transports must implement `LedgerTransport` instead of the removed `LedgerAsync` ([#184]).
@@ -119,3 +123,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#170]: https://github.com/software-mansion/starknet-rust/pull/170
 [#176]: https://github.com/software-mansion/starknet-rust/pull/176
 [#184]: https://github.com/software-mansion/starknet-rust/pull/184
+[#185]: https://github.com/software-mansion/starknet-rust/pull/185
+[#188]: https://github.com/software-mansion/starknet-rust/pull/188
