@@ -343,9 +343,9 @@ impl Encoder {
                     }
                 };
 
-                // SNIP-9 supplies already computed selectors as hexadecimal strings.
-                // A prefixed value must parse as a field element; malformed or out-of-range
-                // inputs must not fall back to being hashed as entrypoint names.
+                // TODO(#217): `Felt::from_hex` contains bug that parses modulus to 0
+                // After fix is merged, it's *probably* okay to change the if statement to:
+                // `Felt::from_hex(str_value).or_else(|_| get_selector_from_name(str_value))`
                 if let Some(hexadecimal) = str_value
                     .strip_prefix("0x")
                     .or_else(|| str_value.strip_prefix("0X"))
